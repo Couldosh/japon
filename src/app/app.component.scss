@@ -1,0 +1,10 @@
+a {
+  color: inherit;        /* garde la couleur normale */
+  text-decoration: none; /* enlève le soulignement */
+}
+
+a:hover {
+  color: inherit;        /* garde la couleur normale */
+  text-decoration: none; /* enlève le soulignement */
+  cursor:pointer;
+}

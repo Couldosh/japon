@@ -1,0 +1,29 @@
+<p-card>
+  <p-table
+    [value]="activites"
+    [paginator]="true"
+    [rows]="10"
+    [tableStyle]="{ 'min-width': '50rem' }"
+  >
+    <ng-template #header>
+      <tr>
+        <th>Ville</th>
+        <th>Lieu</th>
+        <th>Activité</th>
+        <th>Prix</th>
+        <th>Temps</th>
+        <th>Commentaires</th>
+      </tr>
+    </ng-template>
+    <ng-template #body let-activite>
+      <tr>
+        <td>{{ activite.Ville }}</td>
+        <td>{{ activite.Lieu }}</td>
+        <td>{{ activite.Activite }}</td>
+        <td>{{ activite.Prix }}</td>
+        <td>{{ activite.Temps }}</td>
+        <td>{{ activite.Commentaires }}</td>
+      </tr>
+    </ng-template>
+  </p-table>
+</p-card>
