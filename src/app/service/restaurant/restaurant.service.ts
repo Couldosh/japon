@@ -4,11 +4,12 @@ import {Papa} from 'ngx-papaparse';
 import {map, Observable} from 'rxjs';
 import {Plat} from '../../components/plat/plat.component';
 import {Avis} from '../../models/avis.model';
+import {QuartierModel} from '../../models/quartier.model';
 
 export interface Restaurant {
   Ville: string,
   Liens: string,
-  Quartier: string,
+  Quartier: QuartierModel[],
   Nom: string,
   Description: string,
   Prix: string,
@@ -58,8 +59,13 @@ export class RestaurantService {
               .split(',')
               .map((p: string) => p.trim())
               .filter(Boolean)
-              .map((nom: string) => ({Nom: nom}))
-          }
+              .map((nom: string) => ({Nom: nom})),
+            Quartier: row.Quartier
+              .split(',')
+              .map((p: string) => p.trim())
+              .filter(Boolean)
+              .map((nom: string) => ({Nom: nom}) as QuartierModel)
+          } as Restaurant;
           })
         }
       )

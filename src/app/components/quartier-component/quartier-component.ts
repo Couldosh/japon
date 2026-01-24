@@ -1,37 +1,38 @@
 import {ChangeDetectorRef, Component, OnInit} from '@angular/core';
-import {Card} from 'primeng/card';
-import {TableModule} from 'primeng/table';
-import {Restaurant, RestaurantService} from '../../service/restaurant/restaurant.service';
-import {Ville} from '../../service/ville/ville.service';
-import {FormsModule} from '@angular/forms';
-import {TreeNode} from 'primeng/api';
-import {TreeTableModule} from 'primeng/treetable';
-import {Tag} from 'primeng/tag';
-import {Select} from 'primeng/select';
-import {Plat} from '../plat/plat.component';
-import {PlatService} from '../../service/plat/plat.service';
-import {Dialog} from 'primeng/dialog';
 import {Button} from 'primeng/button';
+import {Card} from 'primeng/card';
+import {Dialog} from 'primeng/dialog';
 import {FloatLabel} from 'primeng/floatlabel';
+import {Select} from 'primeng/select';
+import {Tag} from 'primeng/tag';
+import {TreeTableModule} from 'primeng/treetable';
+import {Restaurant, RestaurantService} from '../../service/restaurant/restaurant.service';
+import {Plat} from '../plat/plat.component';
+import {TreeNode} from 'primeng/api';
+import {PlatService} from '../../service/plat/plat.service';
+import {FormsModule} from '@angular/forms';
+import {MultiSelect} from 'primeng/multiselect';
+import {Checkbox} from 'primeng/checkbox';
+import {QuartierService} from '../../service/quartier/quartier.service';
 import {QuartierModel} from '../../models/quartier.model';
+import {forkJoin} from 'rxjs';
 
 @Component({
-  selector: 'app-restaurant.component',
+  selector: 'app-quartier.component',
   imports: [
-    Card,
-    TableModule,
-    FormsModule,
-    TreeTableModule,
-    Tag,
-    Select,
-    Dialog,
     Button,
-    FloatLabel
+    Card,
+    Dialog,
+    FloatLabel,
+    Select,
+    Tag,
+    TreeTableModule,
+    FormsModule,
   ],
-  templateUrl: './restaurant.component.html',
-  styleUrl: './restaurant.component.scss',
+  templateUrl: './quartier-component.html',
+  styleUrl: './quartier-component.scss',
 })
-export class RestaurantComponent implements OnInit {
+export class QuartierComponent implements OnInit {
   restaurants: Restaurant[] = [];
   plats: Plat[] = [];
   villes: string[] = [];
@@ -47,7 +48,7 @@ export class RestaurantComponent implements OnInit {
     private restaurantService: RestaurantService,
     protected platService: PlatService,
     private cdr: ChangeDetectorRef
-    ) {
+  ) {
   }
 
   ngOnInit() {
@@ -68,7 +69,7 @@ export class RestaurantComponent implements OnInit {
 
     restaurants.forEach(restaurant => {
       const villeKey = restaurant.Ville;
-      const quartiersList: QuartierModel[] = restaurant.Quartier;
+      const quartiersList = restaurant.Quartier;
 
       if (!villesMap.has(villeKey)) {
         villesMap.set(villeKey, {
@@ -242,4 +243,5 @@ export class RestaurantComponent implements OnInit {
     this.platToShow = this.findPlat(plat)!;
     this.displayPlatDetails = true;
   }
+
 }

@@ -15,6 +15,11 @@ import {FontAwesomeModule} from '@fortawesome/angular-fontawesome';
 export class AppComponent {
   items: MenuItem[] = [
     {
+      label: 'Quartier',
+      icon: 'fa-solid fa-map-location',
+      routerLink: '/quartiers'
+    },
+    {
       label: 'Restaurants',
       icon: 'fa-solid fa-utensils',
       routerLink: '/restaurants'
