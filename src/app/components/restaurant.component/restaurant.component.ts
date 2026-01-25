@@ -1,8 +1,7 @@
 import {ChangeDetectorRef, Component, OnInit} from '@angular/core';
 import {Card} from 'primeng/card';
 import {TableModule} from 'primeng/table';
-import {Restaurant, RestaurantService} from '../../service/restaurant/restaurant.service';
-import {Ville} from '../../service/ville/ville.service';
+import { RestaurantService} from '../../service/restaurant/restaurant.service';
 import {FormsModule} from '@angular/forms';
 import {TreeNode} from 'primeng/api';
 import {TreeTableModule} from 'primeng/treetable';
@@ -14,6 +13,8 @@ import {Dialog} from 'primeng/dialog';
 import {Button} from 'primeng/button';
 import {FloatLabel} from 'primeng/floatlabel';
 import {QuartierModel} from '../../models/quartier.model';
+import {RestaurantModel} from '../../models/restaurant.model';
+import {VilleModel} from '../../models/ville.model';
 
 @Component({
   selector: 'app-restaurant.component',
@@ -32,9 +33,9 @@ import {QuartierModel} from '../../models/quartier.model';
   styleUrl: './restaurant.component.scss',
 })
 export class RestaurantComponent implements OnInit {
-  restaurants: Restaurant[] = [];
+  restaurants: RestaurantModel[] = [];
   plats: Plat[] = [];
-  villes: string[] = [];
+  villes: VilleModel[] = [];
   treeRestaurants: TreeNode[] = [];
   selectedPlat: Plat | null = null;
   selectedVille: string | null = null;
@@ -53,7 +54,7 @@ export class RestaurantComponent implements OnInit {
   ngOnInit() {
     this.restaurantService.getRestaurants().subscribe(restaurants => {
       this.restaurants = restaurants.filter(restaurant => {return restaurant.Nom.length !== 0});
-      this.villes = [...new Set(this.restaurants.map((restaurant: Restaurant) => restaurant.Ville).sort((one, two) => (one < two ? -1 : 1)))];
+      this.villes = [...new Set(this.restaurants.map((restaurant: RestaurantModel) => restaurant.Ville).sort((one, two) => (one < two ? -1 : 1)))];
       this.treeRestaurants = this.transformToTreeData(this.restaurants);
       this.applyFilters()
       this.cdr.detectChanges();
@@ -63,22 +64,22 @@ export class RestaurantComponent implements OnInit {
   }
 
 
-  transformToTreeData(restaurants: Restaurant[]): any[] {
+  transformToTreeData(restaurants: RestaurantModel[]): any[] {
     const villesMap = new Map<string, any>();
 
     restaurants.forEach(restaurant => {
       const villeKey = restaurant.Ville;
       const quartiersList: QuartierModel[] = restaurant.Quartier;
 
-      if (!villesMap.has(villeKey)) {
-        villesMap.set(villeKey, {
+      if (!villesMap.has(villeKey.Nom)) {
+        villesMap.set(villeKey.Nom, {
           data: {Nom: villeKey, type: 'Ville'},
           quartiers: new Map<string, any>(),
           restaurantsSansQuartier: []
         });
       }
 
-      const ville = villesMap.get(villeKey);
+      const ville = villesMap.get(villeKey.Nom);
 
       /* ======================
          RESTAURANT SANS QUARTIER

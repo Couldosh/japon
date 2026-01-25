@@ -2,109 +2,110 @@
   <div class="flex flex-wrap gap-3 mb-4">
 
     <p-floatlabel variant="on">
-      <p-select id="villeSelect" class="min-w-24" [options]="villes" [(ngModel)]="selectedVille" [filter]="true" filterBy="Nom" (onChange)="applyFilters()" showClear>
+      <p-select id="quartierSelect" class="min-w-24" [options]="groupedQuartiers" [group]="true" [(ngModel)]="selectedQuartier" [filter]="true" filterBy="Nom" (onChange)="applyFilters()">
         <ng-template let-option #item>
-          <p-tag [value]="option"/>
+          <p-tag [value]="option.label"/>
         </ng-template>
         <ng-template let-option #selectedItem>
-          <p-tag [value]="option"/>
+          <p-tag [value]="option.label"/>
+        </ng-template>
+        <ng-template let-group #group>
+          <div class="flex items-center">
+            <span>{{ group.label }}</span>
+          </div>
         </ng-template>
       </p-select>
-      <label for="villeSelect">Ville</label>
+      <label for="quartierSelect">Quartier</label>
     </p-floatlabel>
     <p-floatlabel variant="on">
-      <p-select id="platSelect" class="min-w-24" [options]="plats" [(ngModel)]="selectedPlat" [filter]="true" filterBy="Nom" (onChange)="applyFilters()" showClear>
+      <p-select id="mode" class="min-w-24" [options]="Object.values(Mode)" [(ngModel)]="selectedMode" [filter]="true">
         <ng-template let-option #item>
-          <p-tag [value]="option.Nom"/>
+          <p-tag [value]="option"/>
         </ng-template>
         <ng-template let-option #selectedItem>
-          <p-tag [value]="option.Nom"/>
+          <p-tag [value]="option"/>
         </ng-template>
       </p-select>
-      <label for="platSelect">Plat</label>
+      <label for="mode">Mode</label>
     </p-floatlabel>
   </div>
-  <p-treetable
-    [value]="filteredTreeRestaurants"
-    [scrollable]="true"
-    [tableStyle]="{'min-width':'50rem'}"
-    (onNodeExpand)="onNodeExpand($event)"
-    showGridlines
-  >
-    <ng-template #header>
-      <tr>
-        <th>Nom</th>
-        <th>Plats</th>
-        <th>Prix</th>
-        <th>Description</th>
-        <th>Commentaires</th>
-        <th class="w-24">Avis</th>
-      </tr>
-    </ng-template>
-    <ng-template #body let-rowNode let-rowData="rowData">
-      <tr [ttRow]="rowNode">
-        <td>
-          <div class="flex items-center gap-2">
-            <p-treetable-toggler [rowNode]="rowNode" />
-            <span>
+
+  @if (selectedMode === Mode.Restaurant) {
+    <p-table id="tableRestaurants" [value]="filteredRestaurants" [tableStyle]="{ 'min-width': '50rem' }">
+      <ng-template #header>
+        <tr>
+          <th>Nom</th>
+          <th>Plats</th>
+          <th>Prix</th>
+          <th>Description</th>
+          <th>Commentaires</th>
+          <th class="w-24">Avis</th>
+        </tr>
+      </ng-template>
+      <ng-template #body let-rowData>
+        <tr>
+          <td>
+            <div class="flex items-center gap-2">
+              <span>
               {{ rowData.Nom }}
-              @if (rowData.Localisation) {
-                <a href="{{rowData.Localisation}}"
-                   target="_blank"
-                   rel="noopener noreferrer"
-                   class="text-inherit no-underline hover:text-inherit"
-                >
+                @if (rowData.Localisation) {
+                  <a href="{{rowData.Localisation}}"
+                     target="_blank"
+                     rel="noopener noreferrer"
+                     class="text-inherit no-underline hover:text-inherit"
+                  >
                   <i class="fa-solid fa-location-dot"></i>
                 </a>
-              }
-              @if (rowData.Video) {
-                <a href="{{rowData.Video}}"
-                   target="_blank"
-                   rel="noopener noreferrer"
-                   class="text-inherit no-underline hover:text-inherit"
-                >
+                }
+                @if (rowData.Video) {
+                  <a href="{{rowData.Video}}"
+                     target="_blank"
+                     rel="noopener noreferrer"
+                     class="text-inherit no-underline hover:text-inherit"
+                  >
                   <i class="fa-brands fa-youtube"></i>
                 </a>
-              }
-              @if (rowData.Menu) {
-                <a href="{{rowData.Menu}}"
-                   target="_blank"
-                   rel="noopener noreferrer"
-                   class="text-inherit no-underline hover:text-inherit"
-                >
+                }
+                @if (rowData.Menu) {
+                  <a href="{{rowData.Menu}}"
+                     target="_blank"
+                     rel="noopener noreferrer"
+                     class="text-inherit no-underline hover:text-inherit"
+                  >
                   <i class="fa-solid fa-book"></i>
                 </a>
-              }
+                }
             </span>
-          </div>
-        </td>
-        <td>
-          <div class="flex flex-wrap gap-2">
-            @for (plat of rowData.Plats; track plat.Nom) {
-              <p-tag
-                [value]="plat.Nom"
-                [severity]="getPlatSeverity(plat)"
-                (click)="showPlatDetails(plat)"
-                class="cursor-pointer"
-              ></p-tag>
+            </div>
+          </td>
+          <td>
+            <div class="flex flex-wrap gap-2">
+              @for (plat of rowData.Plats; track plat.Nom) {
+                <p-tag
+                  [value]="plat.Nom"
+                  [severity]="getPlatSeverity(plat)"
+                  (click)="showPlatDetails(plat)"
+                  class="cursor-pointer"
+                ></p-tag>
+              }
+            </div>
+          </td>
+
+          <td>{{ rowData.Prix }}</td>
+          <td>{{ rowData.Description }}</td>
+          <td>{{ rowData.Commentaires }}</td>
+          <td class="w-24">
+            @if (rowData.Avis) {
+              {{ rowData.Avis?.moyenne }}
+              <i class="fa-solid fa-star"></i>
             }
-          </div>
-        </td>
 
-        <td>{{ rowData.Prix }}</td>
-        <td>{{ rowData.Description }}</td>
-        <td>{{ rowData.Commentaires }}</td>
-        <td class="w-24">
-          @if (rowData.Avis) {
-            {{ rowData.Avis?.moyenne }}
-            <i class="fa-solid fa-star"></i>
-          }
+          </td>
 
-        </td>
-
-      </tr>
-    </ng-template>
-  </p-treetable>
+        </tr>
+      </ng-template>
+    </p-table>
+  }
 </p-card>
 
 <p-dialog

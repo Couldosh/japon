@@ -1,12 +1,13 @@
-import {Ville} from '../service/ville/ville.service';
+import {VilleModel} from './ville.model';
+
 
 export class QuartierModel {
-  Ville: Ville;
+  Ville: VilleModel;
   Nom: string;
   Mood: string;
 
 
-  constructor(Ville: Ville, Nom: string, Mood: string) {
+  constructor(Ville: VilleModel, Nom: string, Mood: string) {
     this.Ville = Ville;
     this.Nom = Nom;
     this.Mood = Mood;

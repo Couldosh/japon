@@ -2,24 +2,9 @@ import {Injectable} from '@angular/core';
 import {SheetsApi} from '../google/sheets-api.service';
 import {Papa} from 'ngx-papaparse';
 import {map, Observable} from 'rxjs';
-import {Plat} from '../../components/plat/plat.component';
 import {Avis} from '../../models/avis.model';
 import {QuartierModel} from '../../models/quartier.model';
-
-export interface Restaurant {
-  Ville: string,
-  Liens: string,
-  Quartier: QuartierModel[],
-  Nom: string,
-  Description: string,
-  Prix: string,
-  Plats: Plat[],
-  Commentaires: string,
-  Avis: Avis,
-  Localisation: string,
-  Video: string,
-  Menu: string
-}
+import {RestaurantModel} from '../../models/restaurant.model';
 
 @Injectable({
   providedIn: 'root',
@@ -27,7 +12,7 @@ export interface Restaurant {
 export class RestaurantService {
   constructor(private sheetsApi: SheetsApi, private papa: Papa) {}
 
-  getRestaurants(): Observable<Restaurant[]> {
+  getRestaurants(): Observable<RestaurantModel[]> {
     return this.sheetsApi.getCsv('892590698').pipe(
       map(csv => {
           const result = this.papa.parse(csv, {
@@ -65,7 +50,7 @@ export class RestaurantService {
               .map((p: string) => p.trim())
               .filter(Boolean)
               .map((nom: string) => ({Nom: nom}) as QuartierModel)
-          } as Restaurant;
+          } as RestaurantModel;
           })
         }
       )
