@@ -7,7 +7,7 @@
           <p-tag [value]="option.label"/>
         </ng-template>
         <ng-template let-option #selectedItem>
-          <p-tag [value]="option.label"/>
+          <p-tag [value]="option.ville + ' - ' + option.label"/>
         </ng-template>
         <ng-template let-group #group>
           <div class="flex items-center">
@@ -100,6 +100,113 @@
               <i class="fa-solid fa-star"></i>
             }
 
+          </td>
+
+        </tr>
+      </ng-template>
+    </p-table>
+  }
+
+  @if (selectedMode === Mode.Magasin) {
+    <p-table id="tableMagasins" [value]="filteredMagasins" [tableStyle]="{ 'min-width': '50rem' }">
+      <ng-template #header>
+        <tr>
+          <th>Nom</th>
+          <th>Type</th>
+          <th>Commentaires</th>
+          <th class="w-24">Avis</th>
+        </tr>
+      </ng-template>
+      <ng-template #body let-rowData>
+        <tr>
+          <td>
+            <div class="flex items-center gap-2">
+              <span>
+              {{ rowData.Nom }}
+                @if (rowData.Localisation) {
+                  <a href="{{rowData.Localisation}}"
+                     target="_blank"
+                     rel="noopener noreferrer"
+                     class="text-inherit no-underline hover:text-inherit"
+                  >
+                  <i class="fa-solid fa-location-dot"></i>
+                </a>
+                }
+                @if (rowData.Liens) {
+                  <a href="{{rowData.Liens}}"
+                     target="_blank"
+                     rel="noopener noreferrer"
+                     class="text-inherit no-underline hover:text-inherit"
+                  >
+                  <i class="fa-brands fa-youtube"></i>
+                </a>
+                }
+            </span>
+            </div>
+          </td>
+          <td>{{ rowData.Type }}</td>
+          <td>{{ rowData.Commentaires }}</td>
+          <td class="w-24">
+            @if (rowData.Avis) {
+              {{ rowData.Avis?.moyenne }}
+              <i class="fa-solid fa-star"></i>
+            }
+
+          </td>
+
+        </tr>
+      </ng-template>
+    </p-table>
+  }
+
+  @if (selectedMode === Mode.Activite) {
+    <p-table id="tableMagasins" [value]="filteredActivites" [tableStyle]="{ 'min-width': '50rem' }">
+      <ng-template #header>
+        <tr>
+          <th>Nom</th>
+          <th>Description</th>
+          <th>Prix</th>
+          <th>Temps</th>
+          <th>Commentaires</th>
+          <th class="w-24">Avis</th>
+        </tr>
+      </ng-template>
+      <ng-template #body let-rowData>
+        <tr>
+          <td>
+            <div class="flex items-center gap-2">
+              <span>
+              {{ rowData.Nom }}
+                @if (rowData.Localisation) {
+                  <a href="{{rowData.Localisation}}"
+                     target="_blank"
+                     rel="noopener noreferrer"
+                     class="text-inherit no-underline hover:text-inherit"
+                  >
+                  <i class="fa-solid fa-location-dot"></i>
+                </a>
+                }
+                @if (rowData.Liens) {
+                  <a href="{{rowData.Liens}}"
+                     target="_blank"
+                     rel="noopener noreferrer"
+                     class="text-inherit no-underline hover:text-inherit"
+                  >
+                  <i class="fa-brands fa-youtube"></i>
+                </a>
+                }
+            </span>
+            </div>
+          </td>
+          <td>{{ rowData.Description }}</td>
+          <td>{{ rowData.Prix }}</td>
+          <td>{{ rowData.Temps }}</td>
+          <td>{{ rowData.Commentaires }}</td>
+          <td class="w-24">
+            @if (rowData.Avis) {
+              {{ rowData.Avis?.moyenne }}
+              <i class="fa-solid fa-star"></i>
+            }
           </td>
 
         </tr>

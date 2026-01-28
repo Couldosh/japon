@@ -3,8 +3,8 @@ import {Avis} from './avis.model';
 import {VilleModel} from './ville.model';
 
 export class MagasinModel {
-  Ville: VilleModel;
   Liens: string;
+  Localisation: string;
   Quartier: QuartierModel[];
   Nom: string;
   Type: string;
@@ -12,9 +12,9 @@ export class MagasinModel {
   Avis: Avis
 
 
-  constructor(Ville: VilleModel, Liens: string, Quartier: QuartierModel[], Nom: string, Type: string, Commentaires: string, Avis: Avis) {
-    this.Ville = Ville;
+  constructor(Liens: string, Localisation: string, Quartier: QuartierModel[], Nom: string, Type: string, Commentaires: string, Avis: Avis) {
     this.Liens = Liens;
+    this.Localisation = Localisation;
     this.Quartier = Quartier;
     this.Nom = Nom;
     this.Type = Type;

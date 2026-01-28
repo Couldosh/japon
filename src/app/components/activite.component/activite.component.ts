@@ -1,17 +1,8 @@
 import {Component, OnInit} from '@angular/core';
-import {PlatService} from '../../service/plat/plat.service';
 import {ActiviteService} from '../../service/activite/activite.service';
 import {Card} from 'primeng/card';
 import {TableModule} from 'primeng/table';
-
-export interface Activite {
-  Ville: string;
-  Lieu: string;
-  Activite: string;
-  Prix: string;
-  Temps: string;
-  Commentaires: string;
-}
+import {ActiviteModel} from '../../models/activite.model';
 
 @Component({
   selector: 'app-activite.component',
@@ -24,7 +15,7 @@ export interface Activite {
 })
 
 export class ActiviteComponent implements OnInit {
-  activites: Activite[] = [];
+  activites: ActiviteModel[] = [];
   constructor(private activiteService: ActiviteService) { }
   ngOnInit(): void {
     this.activiteService.getActivites().subscribe(activites => {

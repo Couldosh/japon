@@ -22,14 +22,14 @@ export class RestaurantService {
         return result.data.map((row: any) => {
           // 1. Parser les avis
           const avisData = new Avis({
-            Valérian: this.countX(row.Valérian),
-            Laurie: this.countX(row.Laurie),
-            Greg: this.countX(row.Greg),
-            Alex: this.countX(row.Alex),
-            Mela: this.countX(row.Mela),
-            Tiffa: this.countX(row.Tiffa),
-            Tony: this.countX(row.Tony),
-            Fabrice: this.countX(row.Fabrice)
+            Valérian: Avis.countX(row.Valérian),
+            Laurie: Avis.countX(row.Laurie),
+            Greg: Avis.countX(row.Greg),
+            Alex: Avis.countX(row.Alex),
+            Mela: Avis.countX(row.Mela),
+            Tiffa: Avis.countX(row.Tiffa),
+            Tony: Avis.countX(row.Tony),
+            Fabrice: Avis.countX(row.Fabrice)
           });
 
           // 2. Calculer la moyenne automatiquement via la méthode de la classe
@@ -57,12 +57,5 @@ export class RestaurantService {
     );
   }
 
-  /**
-   * Compte le nombre de caractères 'X' dans une chaîne
-   */
-  private countX(value: string): number {
-    if (!value) return 0;
-    return (value.match(/X/gi) || []).length;
-  }
 
 }

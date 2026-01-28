@@ -3,18 +3,18 @@ import {Avis} from './avis.model';
 import {VilleModel} from './ville.model';
 
 export class ActiviteModel {
-  Ville: VilleModel;
-  Quartier: QuartierModel;
+  Quartier: QuartierModel[];
   Nom: string;
   Description: string;
   Prix: string;
   Temps: string;
   Commentaires: string;
   Avis: Avis;
+  Localisation: string;
+  Liens: string;
 
 
-  constructor(Ville: VilleModel, Quartier: QuartierModel, Nom: string, Description: string, Prix: string, Temps: string, Commentaires: string, Avis: Avis) {
-    this.Ville = Ville;
+  constructor(Quartier: QuartierModel[], Nom: string, Description: string, Prix: string, Temps: string, Commentaires: string, Avis: Avis, Localisation: string, Liens: string) {
     this.Quartier = Quartier;
     this.Nom = Nom;
     this.Description = Description;
@@ -22,5 +22,7 @@ export class ActiviteModel {
     this.Temps = Temps;
     this.Commentaires = Commentaires;
     this.Avis = Avis;
+    this.Localisation = Localisation;
+    this.Liens = Liens;
   }
 }

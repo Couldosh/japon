@@ -1,22 +1,19 @@
-import {Injectable} from '@angular/core';
+import { Injectable } from '@angular/core';
 import {SheetsApi} from '../google/sheets-api.service';
 import {Papa} from 'ngx-papaparse';
 import {map, Observable} from 'rxjs';
-import {ActiviteModel} from '../../models/activite.model';
-import {RestaurantModel} from '../../models/restaurant.model';
 import {Avis} from '../../models/avis.model';
 import {QuartierModel} from '../../models/quartier.model';
+import {MagasinModel} from '../../models/magasin.model';
 
 @Injectable({
   providedIn: 'root',
 })
-export class ActiviteService {
-  constructor(private sheetsApi: SheetsApi, private papa: Papa) {
+export class MagasinService {
+  constructor(private sheetsApi: SheetsApi, private papa: Papa) {}
 
-  }
-
-  getActivites(): Observable<ActiviteModel[]> {
-    return this.sheetsApi.getCsv('0').pipe(
+  getMagasins(): Observable<MagasinModel[]> {
+    return this.sheetsApi.getCsv('346756517').pipe(
       map(csv => {
           const result = this.papa.parse(csv, {
             header: true,
@@ -48,11 +45,10 @@ export class ActiviteService {
                 .map((p: string) => p.trim())
                 .filter(Boolean)
                 .map((nom: string) => ({Nom: nom}) as QuartierModel)
-            } as RestaurantModel;
+            } as MagasinModel;
           })
         }
       )
     );
   }
-
 }

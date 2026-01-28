@@ -28,4 +28,12 @@ export class Avis {
     this.moyenne = notesValides.reduce((a, b) => a + b, 0) / notesValides.length;
     return this.moyenne;
   }
+
+  /**
+   * Compte le nombre de caractères 'X' dans une chaîne
+   */
+  static countX(value: string): number {
+    if (!value) return 0;
+    return (value.match(/X/gi) || []).length;
+  }
 }

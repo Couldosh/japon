@@ -16,6 +16,8 @@ import {TableModule} from 'primeng/table';
 import {RestaurantModel} from '../../models/restaurant.model';
 import {ActiviteModel} from '../../models/activite.model';
 import {MagasinModel} from '../../models/magasin.model';
+import {MagasinService} from '../../service/magasin/magasin.service';
+import {ActiviteService} from '../../service/activite/activite.service';
 
 
 enum Mode {
@@ -60,6 +62,8 @@ export class QuartierComponent implements OnInit {
 
   constructor(
     private restaurantService: RestaurantService,
+    private magasinService: MagasinService,
+    private activiteService: ActiviteService,
     private quartierService: QuartierService,
     protected platService: PlatService,
     private cdr: ChangeDetectorRef
@@ -71,11 +75,15 @@ export class QuartierComponent implements OnInit {
     forkJoin({
       quartiers: this.quartierService.getQuartiers(),
       restaurants: this.restaurantService.getRestaurants(),
-      plats: this.platService.getPlats()
-    }).subscribe(({ quartiers, restaurants, plats }) => {
+      plats: this.platService.getPlats(),
+      magasins: this.magasinService.getMagasins(),
+      activites: this.activiteService.getActivites()
+    }).subscribe(({ quartiers, restaurants, plats, magasins, activites }) => {
       this.restaurants = restaurants.filter(restaurant => {return restaurant.Nom.length !== 0});
       this.plats = plats.sort((one, two) => (one.Nom < two.Nom ? -1 : 1));
-      this.quartiers = quartiers;
+      this.quartiers = quartiers.filter(quartier => {return quartier.Nom.length !== 0});
+      this.magasins = magasins.filter(magasin => {return magasin.Nom.length !== 0})
+      this.activites = activites.filter(activite => {return activite.Nom.length !== 0})
       this.applyFilters();
       this.groupQuartiersByVille()
     })
@@ -85,8 +93,8 @@ export class QuartierComponent implements OnInit {
   applyFilters() {
     if (this.selectedQuartier != null) {
       this.filteredRestaurants = this.restaurants.filter(restaurant => restaurant.Quartier.map(quartier => quartier.Nom).includes(this.selectedQuartier!.Nom));
-      this.filteredActivites = this.activites.filter(activite => activite.Quartier === (this.selectedQuartier!));
-      this.filteredMagasins = this.magasins.filter(magasin => magasin.Quartier.includes(this.selectedQuartier!));
+      this.filteredActivites = this.activites.filter(activite => activite.Quartier.map(quartier => quartier.Nom).includes(this.selectedQuartier!.Nom));
+      this.filteredMagasins = this.magasins.filter(magasin => magasin.Quartier.map(quartier => quartier.Nom).includes(this.selectedQuartier!.Nom));
     } else {
       this.filteredRestaurants = [...this.restaurants];
       this.filteredActivites = [...this.activites];
@@ -111,7 +119,8 @@ export class QuartierComponent implements OnInit {
 
       groups[nomVille].items.push({
         label: quartier.Nom,
-        value: quartier
+        value: quartier,
+        ville: nomVille
       });
     });
 
