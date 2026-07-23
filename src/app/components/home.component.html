@@ -1,0 +1,108 @@
+<ion-header class="ion-no-border">
+  <ion-toolbar>
+    <div class="entete">
+      <div class="entete-zone">
+        <p class="entete-sous-titre">Vous êtes à</p>
+        <p class="entete-titre">
+          <ion-icon name="location-outline"></ion-icon>
+          {{ quartierCourant() }}
+        </p>
+      </div>
+    </div>
+
+    <ion-searchbar
+      placeholder="Rechercher un plat, un lieu..."
+      [debounce]="250"
+      (ionInput)="onRecherche($any($event.detail).value)">
+    </ion-searchbar>
+
+    <div class="filtres">
+      <ion-chip
+        [class.filtre-actif]="filtreActif() === 'tout'"
+        (click)="changerFiltre('tout')">
+        Tout
+      </ion-chip>
+      <ion-chip
+        [class.filtre-actif]="filtreActif() === 'restaurant'"
+        (click)="changerFiltre('restaurant')">
+        Restaurants
+      </ion-chip>
+      <ion-chip
+        [class.filtre-actif]="filtreActif() === 'activite'"
+        (click)="changerFiltre('activite')">
+        Activités
+      </ion-chip>
+      <ion-chip
+        [class.filtre-actif]="filtreActif() === 'plat'"
+        (click)="changerFiltre('plat')">
+        Plats
+      </ion-chip>
+    </div>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content>
+  <div class="section">
+    <p class="section-titre">Près de vous</p>
+
+    @if (chargement()) {
+      @for (i of [1, 2, 3]; track i) {
+        <div class="carte-lieu">
+          <ion-skeleton-text [animated]="true" style="width: 56px; height: 56px; border-radius: 10px;"></ion-skeleton-text>
+          <div class="carte-lieu-contenu">
+            <ion-skeleton-text [animated]="true" style="width: 60%;"></ion-skeleton-text>
+            <ion-skeleton-text [animated]="true" style="width: 40%;"></ion-skeleton-text>
+          </div>
+        </div>
+      }
+    } @else if (lieuxAffiches().length === 0) {
+      <p class="etat-vide">Aucun lieu ne correspond à votre recherche.</p>
+    } @else {
+      @for (lieu of lieuxAffiches(); track lieu.id) {
+        <div class="carte-lieu">
+          <div class="carte-lieu-icone">
+            <ion-icon [name]="lieu.icone"></ion-icon>
+          </div>
+          <div class="carte-lieu-contenu">
+            <div class="carte-lieu-ligne">
+              <p class="carte-lieu-nom">{{ lieu.nom }}</p>
+              @if (lieu.estOuvert !== undefined) {
+                <ion-badge [color]="lieu.estOuvert ? 'success' : 'medium'">
+                  {{ lieu.estOuvert ? 'Ouvert' : 'Fermé' }}
+                </ion-badge>
+              }
+            </div>
+            <p class="carte-lieu-details">{{ lieu.quartier }}</p>
+            <div class="carte-lieu-meta">
+              @if (lieu.distanceMetres != null) {
+                <span><ion-icon name="walk-outline"></ion-icon> {{ formaterDistance(lieu.distanceMetres) }}</span>
+              }
+              @if (lieu.prixIndicatif) {
+                <span>{{ lieu.prixIndicatif }}</span>
+              }
+            </div>
+          </div>
+        </div>
+      }
+    }
+  </div>
+</ion-content>
+
+<ion-tab-bar slot="bottom">
+  <ion-tab-button tab="home" [selected]="true">
+    <ion-icon name="home-outline"></ion-icon>
+    <ion-label>Accueil</ion-label>
+  </ion-tab-button>
+  <ion-tab-button tab="liste">
+    <ion-icon name="list-outline"></ion-icon>
+    <ion-label>Liste</ion-label>
+  </ion-tab-button>
+  <ion-tab-button tab="carte">
+    <ion-icon name="map-outline"></ion-icon>
+    <ion-label>Carte</ion-label>
+  </ion-tab-button>
+  <ion-tab-button tab="favoris">
+    <ion-icon name="heart-outline"></ion-icon>
+    <ion-label>Favoris</ion-label>
+  </ion-tab-button>
+</ion-tab-bar>
