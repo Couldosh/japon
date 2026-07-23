@@ -22,7 +22,7 @@ export class ActiviteService {
             header: true,
             skipEmptyLines: true,
           })
-          return result.data.map((row: any) => {
+          return result.data.map((row: any, index: any) => {
             // 1. Parser les avis
             const avisData = new Avis({
               Valérian: Avis.countX(row.Valérian),
@@ -47,7 +47,8 @@ export class ActiviteService {
                 .split(',')
                 .map((p: string) => p.trim())
                 .filter(Boolean)
-                .map((nom: string) => ({Nom: nom}) as QuartierModel)
+                .map((nom: string) => ({Nom: nom}) as QuartierModel),
+              id: 'activite_' + index
             } as RestaurantModel;
           })
         }

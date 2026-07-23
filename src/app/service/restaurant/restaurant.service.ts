@@ -14,12 +14,12 @@ export class RestaurantService {
 
   getRestaurants(): Observable<RestaurantModel[]> {
     return this.sheetsApi.getCsv('892590698').pipe(
-      map(csv => {
+      map((csv) => {
           const result = this.papa.parse(csv, {
             header: true,
             skipEmptyLines: true,
           })
-        return result.data.map((row: any) => {
+        return result.data.map((row: any, index: any) => {
           // 1. Parser les avis
           const avisData = new Avis({
             Valérian: Avis.countX(row.Valérian),
@@ -49,7 +49,8 @@ export class RestaurantService {
               .split(',')
               .map((p: string) => p.trim())
               .filter(Boolean)
-              .map((nom: string) => ({Nom: nom}) as QuartierModel)
+              .map((nom: string) => ({Nom: nom}) as QuartierModel),
+            id: 'restaurant_' + index
           } as RestaurantModel;
           })
         }
