@@ -45,11 +45,7 @@ export class RestaurantService {
               .map((p: string) => p.trim())
               .filter(Boolean)
               .map((nom: string) => ({Nom: nom})),
-            Quartier: row.Quartier
-              .split(',')
-              .map((p: string) => p.trim())
-              .filter(Boolean)
-              .map((nom: string) => ({Nom: nom}) as QuartierModel),
+            Quartier: ({Nom: row.Quartier}) as QuartierModel,
             id: 'restaurant_' + index
           } as RestaurantModel;
           })

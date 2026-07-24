@@ -9,7 +9,7 @@ export class RestaurantModel {
   id: string;
   Ville: VilleModel;
   Liens: string;
-  Quartier: QuartierModel[];
+  Quartier: QuartierModel;
   Nom: string;
   Description: string;
   Prix: string;
@@ -23,7 +23,7 @@ export class RestaurantModel {
   Menu: string;
 
 
-  constructor(id: string, Ville: VilleModel, Liens: string, Quartier: QuartierModel[], Nom: string, Description: string, Prix: string, Plats: Plat[], Commentaires: string, Avis: Avis, Localisation: string, Video: string, Menu: string) {
+  constructor(id: string, Ville: VilleModel, Liens: string, Quartier: QuartierModel, Nom: string, Description: string, Prix: string, Plats: Plat[], Commentaires: string, Avis: Avis, Localisation: string, Video: string, Menu: string) {
     this.id = id;
     this.Ville = Ville;
     this.Liens = Liens;
