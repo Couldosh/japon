@@ -10,7 +10,7 @@ export interface LieuAffichable {
   id: string;
   type: TypeLieu;
   nom: string;
-  quartier: QuartierModel[];
+  quartier: QuartierModel;
   latitude: number | null;
   longitude: number | null;
   prixIndicatif?: string;      // ex: '¥', '¥¥', 'Gratuit'

@@ -4,7 +4,7 @@ import {GeolocationService} from '../service/geolocation/GeolocationService';
 
 export class ActiviteModel {
   id: string
-  Quartier: QuartierModel[];
+  Quartier: QuartierModel;
   Nom: string;
   Description: string;
   Prix: string;
@@ -17,7 +17,7 @@ export class ActiviteModel {
   Liens: string;
 
 
-  constructor(id: string, Quartier: QuartierModel[], Nom: string, Description: string, Prix: string, Temps: string, Commentaires: string, Avis: Avis, Localisation: string, Liens: string) {
+  constructor(id: string, Quartier: QuartierModel, Nom: string, Description: string, Prix: string, Temps: string, Commentaires: string, Avis: Avis, Localisation: string, Liens: string) {
     this.id = id;
     this.Quartier = Quartier;
     this.Nom = Nom;
