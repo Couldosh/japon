@@ -31,6 +31,7 @@ export class PlatService {
       case PlatCategory.Snack:
         return "danger"
     }
+    return 'success'
   }
 
 }

@@ -66,7 +66,7 @@ export class HomeComponent implements OnInit {
     if (terme) {
       resultat = resultat.filter(l =>
         l.nom.toLowerCase().includes(terme) ||
-        l.quartier.map(q => q.Nom.toLowerCase()).includes(terme)
+        l.quartier.Nom.toLowerCase().includes(terme)
       );
     }
 
@@ -78,6 +78,21 @@ export class HomeComponent implements OnInit {
     }
 
     return resultat;
+  });
+
+  readonly quartierCourant = computed(() => {
+    const pos = this.position();
+    if (!pos) {
+      return 'Localisation en cours...';
+    }
+
+    const lieuxTries = this.lieuxAffiches();
+    if (lieuxTries.length === 0) {
+      return 'Position inconnue';
+    }
+
+    // lieuxAffiches() est déjà trié par distance quand la position est dispo
+    return `${lieuxTries[0].quartier}, ${lieuxTries[0].quartier}`;
   });
 
   constructor() {
