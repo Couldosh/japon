@@ -72,7 +72,7 @@
                 </ion-badge>
               }
             </div>
-            <p class="carte-lieu-details">{{ lieu.quartier }}</p>
+            <p class="carte-lieu-details">{{ lieu.quartier.Nom }}</p>
             <div class="carte-lieu-meta">
               @if (lieu.distanceMetres != null) {
                 <span><ion-icon name="walk-outline"></ion-icon> {{ formaterDistance(lieu.distanceMetres) }}</span>

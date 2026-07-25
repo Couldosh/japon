@@ -49,7 +49,6 @@ export class HomeComponent implements OnInit {
 
   // Position et libellé de zone courante, dérivés du service de géoloc
   readonly position = this.geoloc.position;
-  readonly quartierCourant = signal<string>('Localisation en cours...');
 
   // Liste filtrée + triée par distance, recalculée automatiquement
   readonly lieuxAffiches = computed(() => {
@@ -92,7 +91,7 @@ export class HomeComponent implements OnInit {
     }
 
     // lieuxAffiches() est déjà trié par distance quand la position est dispo
-    return `${lieuxTries[0].quartier}, ${lieuxTries[0].quartier}`;
+    return `${lieuxTries[0].quartier.Nom}`;
   });
 
   constructor() {
