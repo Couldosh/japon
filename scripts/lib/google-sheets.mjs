@@ -32,14 +32,16 @@ export function attendre(ms) {
 }
 
 // Même logique que GeolocationService.extraireCoordonnees côté app.
+// !3d/!4d (position précise du lieu) est vérifié avant @lat,lng (centre de la
+// vue au moment du partage, potentiellement décalé) : voir GeolocationService.
 export function extraireCoordonnees(lienGoogleMaps) {
   if (!lienGoogleMaps) return null;
-  const matchArobase = lienGoogleMaps.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/);
-  if (matchArobase) return { latitude: parseFloat(matchArobase[1]), longitude: parseFloat(matchArobase[2]) };
-  const matchQuery = lienGoogleMaps.match(/[?&]q=(-?\d+\.\d+),(-?\d+\.\d+)/);
-  if (matchQuery) return { latitude: parseFloat(matchQuery[1]), longitude: parseFloat(matchQuery[2]) };
   const matchPlace = lienGoogleMaps.match(/!3d(-?\d+\.\d+)!4d(-?\d+\.\d+)/);
   if (matchPlace) return { latitude: parseFloat(matchPlace[1]), longitude: parseFloat(matchPlace[2]) };
+  const matchQuery = lienGoogleMaps.match(/[?&]q=(-?\d+\.\d+),(-?\d+\.\d+)/);
+  if (matchQuery) return { latitude: parseFloat(matchQuery[1]), longitude: parseFloat(matchQuery[2]) };
+  const matchArobase = lienGoogleMaps.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/);
+  if (matchArobase) return { latitude: parseFloat(matchArobase[1]), longitude: parseFloat(matchArobase[2]) };
   return null;
 }
 

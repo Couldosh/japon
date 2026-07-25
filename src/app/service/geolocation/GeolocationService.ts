@@ -67,12 +67,16 @@ export class GeolocationService {
       return null;
     }
 
-    // Format 1 : .../@35.6595,139.7005,17z/...
-    const matchArobase = lienGoogleMaps.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/);
-    if (matchArobase) {
+    // Format 1 : liens de type "place" avec coordonnées encodées (!3d et !4d)
+    // ex: .../data=!4m5!3m4!1s...!8m2!3d35.6595!4d139.7005
+    // Vérifié en premier : c'est la position précise du lieu lui-même, alors
+    // que le "@lat,lng" ci-dessous n'est que le centre de la vue au moment du
+    // partage (peut être décalé si la carte a été déplacée avant de partager).
+    const matchPlace = lienGoogleMaps.match(/!3d(-?\d+\.\d+)!4d(-?\d+\.\d+)/);
+    if (matchPlace) {
       return {
-        latitude: parseFloat(matchArobase[1]),
-        longitude: parseFloat(matchArobase[2])
+        latitude: parseFloat(matchPlace[1]),
+        longitude: parseFloat(matchPlace[2])
       };
     }
 
@@ -85,13 +89,12 @@ export class GeolocationService {
       };
     }
 
-    // Format 3 : liens de type "place" avec coordonnées encodées (!3d et !4d)
-    // ex: .../data=!4m5!3m4!1s...!8m2!3d35.6595!4d139.7005
-    const matchPlace = lienGoogleMaps.match(/!3d(-?\d+\.\d+)!4d(-?\d+\.\d+)/);
-    if (matchPlace) {
+    // Format 3 (repli) : .../@35.6595,139.7005,17z/... — centre de la vue, moins fiable.
+    const matchArobase = lienGoogleMaps.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/);
+    if (matchArobase) {
       return {
-        latitude: parseFloat(matchPlace[1]),
-        longitude: parseFloat(matchPlace[2])
+        latitude: parseFloat(matchArobase[1]),
+        longitude: parseFloat(matchArobase[2])
       };
     }
 

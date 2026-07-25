@@ -5,6 +5,16 @@
   padding: 4px 16px 0;
 }
 
+.vue-carte {
+  position: absolute;
+  inset: 0;
+
+  &.masquee {
+    visibility: hidden;
+    pointer-events: none;
+  }
+}
+
 .filtres {
   display: flex;
   gap: 8px;

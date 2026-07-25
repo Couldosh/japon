@@ -33,6 +33,9 @@ import { MagasinModel } from '../models/magasin.model';
 import { Plat, PlatCategory } from './plat/plat.component';
 import { emojiRestaurant, emojiActivite, emojiMagasin } from '../utils/emoji-lieu';
 import { estOuvertMaintenant, horairesAujourdhui, horairesSemaine } from '../utils/horaires';
+import { CarteComponent } from './carte/carte.component';
+
+type Vue = 'accueil' | 'carte' | 'favoris';
 
 type DetailLieu =
   | { type: 'restaurant'; data: RestaurantModel }
@@ -47,7 +50,8 @@ type DetailLieu =
     IonHeader, IonToolbar, IonSearchbar, IonChip, IonIcon, IonButton, IonButtons,
     IonList, IonItem, IonLabel, IonBadge, IonTabBar, IonTabButton,
     IonContent, IonSkeletonText, IonRefresher, IonRefresherContent,
-    IonModal, IonTitle, IonSelect, IonSelectOption
+    IonModal, IonTitle, IonSelect, IonSelectOption,
+    CarteComponent
   ],
   templateUrl: './home.component.html',
   styleUrl: './home.component.scss'
@@ -76,7 +80,7 @@ export class HomeComponent implements OnInit {
   readonly filtreCategoriePlat = signal<PlatCategory | 'tout'>('tout');
   readonly filtreTypeMagasin = signal<string | null>(null);
   readonly lieux = signal<LieuAffichable[]>([]);
-  readonly affichageFavoris = signal(false);
+  readonly vue = signal<Vue>('accueil');
   readonly detailSelectionne = signal<DetailLieu | null>(null);
   readonly platSelectionne = signal<Plat | null>(null);
 
@@ -109,7 +113,7 @@ export class HomeComponent implements OnInit {
 
     let resultat = this.lieux();
 
-    if (this.affichageFavoris()) {
+    if (this.vue() === 'favoris') {
       resultat = resultat.filter(l => this.favorisService.estFavori(l.id));
     }
 
@@ -268,12 +272,8 @@ export class HomeComponent implements OnInit {
     this.filtreTypeMagasin.set(null);
   }
 
-  afficherAccueil(): void {
-    this.affichageFavoris.set(false);
-  }
-
-  afficherFavoris(): void {
-    this.affichageFavoris.set(true);
+  changerVue(vue: Vue): void {
+    this.vue.set(vue);
   }
 
   onRecherche(valeur: string): void {

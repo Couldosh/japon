@@ -89,75 +89,91 @@
   </ion-toolbar>
 </ion-header>
 
-<ion-content>
-  <ion-refresher slot="fixed" (ionRefresh)="rafraichir($event)">
-    <ion-refresher-content></ion-refresher-content>
-  </ion-refresher>
+<ion-content [scrollY]="vue() !== 'carte'">
+  @if (vue() !== 'carte') {
+    <ion-refresher slot="fixed" (ionRefresh)="rafraichir($event)">
+      <ion-refresher-content></ion-refresher-content>
+    </ion-refresher>
+  }
 
-  <div class="section">
-    <p class="section-titre">{{ affichageFavoris() ? 'Vos favoris' : 'Près de vous' }}</p>
+  <!-- Toujours présent (juste masqué) pour ne pas recréer la carte à chaque
+       passage sur l'onglet. [actif] déclenche le recalcul de taille Leaflet
+       au moment où le conteneur redevient visible. -->
+  <app-carte
+    class="vue-carte"
+    [class.masquee]="vue() !== 'carte'"
+    [actif]="vue() === 'carte'"
+    [lieux]="lieuxAffiches()"
+    [position]="position()"
+    (lieuClique)="ouvrirDetails($event)">
+  </app-carte>
 
-    @if (chargement()) {
-      @for (i of [1, 2, 3]; track i) {
-        <div class="carte-lieu">
-          <ion-skeleton-text [animated]="true" style="width: 56px; height: 56px; border-radius: 10px;"></ion-skeleton-text>
-          <div class="carte-lieu-contenu">
-            <ion-skeleton-text [animated]="true" style="width: 60%;"></ion-skeleton-text>
-            <ion-skeleton-text [animated]="true" style="width: 40%;"></ion-skeleton-text>
-          </div>
-        </div>
-      }
-    } @else if (lieuxAffiches().length === 0) {
-      <p class="etat-vide">
-        {{ affichageFavoris() ? "Vous n'avez pas encore de favoris." : 'Aucun lieu ne correspond à votre recherche.' }}
-      </p>
-    } @else {
-      @for (lieu of lieuxAffiches(); track lieu.id) {
-        <div class="carte-lieu" (click)="ouvrirDetails(lieu)">
-          <div class="carte-lieu-icone">
-            <span class="carte-lieu-emoji">{{ lieu.icone }}</span>
-          </div>
-          <div class="carte-lieu-contenu">
-            <div class="carte-lieu-ligne">
-              <p class="carte-lieu-nom">{{ lieu.nom }}</p>
-              @if (favorisService.estFavori(lieu.id)) {
-                <ion-icon class="carte-lieu-favori" name="heart"></ion-icon>
-              }
-              @if (lieu.estOuvert !== undefined) {
-                <ion-badge [color]="lieu.estOuvert ? 'success' : 'medium'">
-                  {{ lieu.estOuvert ? 'Ouvert' : 'Fermé' }}
-                </ion-badge>
-              }
-            </div>
-            <p class="carte-lieu-details">{{ lieu.quartier.Nom }}</p>
-            <div class="carte-lieu-meta">
-              @if (lieu.distanceMetres != null) {
-                <span><ion-icon name="walk-outline"></ion-icon> {{ formaterDistance(lieu.distanceMetres) }}</span>
-              }
-              @if (lieu.prixIndicatif) {
-                <span>{{ lieu.prixIndicatif }}</span>
-              }
-              @if (lieu.horaireTexte) {
-                <span><ion-icon name="time-outline"></ion-icon> {{ lieu.horaireTexte }}</span>
-              }
+  @if (vue() !== 'carte') {
+    <div class="section">
+      <p class="section-titre">{{ vue() === 'favoris' ? 'Vos favoris' : 'Près de vous' }}</p>
+
+      @if (chargement()) {
+        @for (i of [1, 2, 3]; track i) {
+          <div class="carte-lieu">
+            <ion-skeleton-text [animated]="true" style="width: 56px; height: 56px; border-radius: 10px;"></ion-skeleton-text>
+            <div class="carte-lieu-contenu">
+              <ion-skeleton-text [animated]="true" style="width: 60%;"></ion-skeleton-text>
+              <ion-skeleton-text [animated]="true" style="width: 40%;"></ion-skeleton-text>
             </div>
           </div>
-        </div>
+        }
+      } @else if (lieuxAffiches().length === 0) {
+        <p class="etat-vide">
+          {{ vue() === 'favoris' ? "Vous n'avez pas encore de favoris." : 'Aucun lieu ne correspond à votre recherche.' }}
+        </p>
+      } @else {
+        @for (lieu of lieuxAffiches(); track lieu.id) {
+          <div class="carte-lieu" (click)="ouvrirDetails(lieu)">
+            <div class="carte-lieu-icone">
+              <span class="carte-lieu-emoji">{{ lieu.icone }}</span>
+            </div>
+            <div class="carte-lieu-contenu">
+              <div class="carte-lieu-ligne">
+                <p class="carte-lieu-nom">{{ lieu.nom }}</p>
+                @if (favorisService.estFavori(lieu.id)) {
+                  <ion-icon class="carte-lieu-favori" name="heart"></ion-icon>
+                }
+                @if (lieu.estOuvert !== undefined) {
+                  <ion-badge [color]="lieu.estOuvert ? 'success' : 'medium'">
+                    {{ lieu.estOuvert ? 'Ouvert' : 'Fermé' }}
+                  </ion-badge>
+                }
+              </div>
+              <p class="carte-lieu-details">{{ lieu.quartier.Nom }}</p>
+              <div class="carte-lieu-meta">
+                @if (lieu.distanceMetres != null) {
+                  <span><ion-icon name="walk-outline"></ion-icon> {{ formaterDistance(lieu.distanceMetres) }}</span>
+                }
+                @if (lieu.prixIndicatif) {
+                  <span>{{ lieu.prixIndicatif }}</span>
+                }
+                @if (lieu.horaireTexte) {
+                  <span><ion-icon name="time-outline"></ion-icon> {{ lieu.horaireTexte }}</span>
+                }
+              </div>
+            </div>
+          </div>
+        }
       }
-    }
-  </div>
+    </div>
+  }
 </ion-content>
 
 <ion-tab-bar slot="bottom">
-  <ion-tab-button tab="home" [selected]="!affichageFavoris()" (click)="afficherAccueil()">
+  <ion-tab-button tab="home" [selected]="vue() === 'accueil'" (click)="changerVue('accueil')">
     <ion-icon name="home-outline"></ion-icon>
     <ion-label>Accueil</ion-label>
   </ion-tab-button>
-  <ion-tab-button tab="carte">
+  <ion-tab-button tab="carte" [selected]="vue() === 'carte'" (click)="changerVue('carte')">
     <ion-icon name="map-outline"></ion-icon>
     <ion-label>Carte</ion-label>
   </ion-tab-button>
-  <ion-tab-button tab="favoris" [selected]="affichageFavoris()" (click)="afficherFavoris()">
+  <ion-tab-button tab="favoris" [selected]="vue() === 'favoris'" (click)="changerVue('favoris')">
     <ion-icon name="heart-outline"></ion-icon>
     <ion-label>Favoris</ion-label>
   </ion-tab-button>
