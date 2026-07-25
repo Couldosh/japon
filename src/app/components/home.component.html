@@ -37,6 +37,55 @@
         Magasins
       </ion-chip>
     </div>
+
+    <div class="sous-filtres">
+      <ion-select
+        interface="popover"
+        placeholder="Tous les quartiers"
+        [value]="filtreQuartier()"
+        (ionChange)="filtreQuartier.set($event.detail.value)">
+        <ion-select-option [value]="null">Tous les quartiers</ion-select-option>
+        @for (quartier of quartiersDisponibles(); track quartier) {
+          <ion-select-option [value]="quartier">{{ quartier }}</ion-select-option>
+        }
+      </ion-select>
+
+      @if (filtreActif() === 'restaurant') {
+        <ion-select
+          interface="popover"
+          placeholder="Tous les plats"
+          [value]="filtrePlat()"
+          (ionChange)="filtrePlat.set($event.detail.value)">
+          <ion-select-option [value]="null">Tous les plats</ion-select-option>
+          @for (nom of platsDisponibles(); track nom) {
+            <ion-select-option [value]="nom">{{ nom }}</ion-select-option>
+          }
+        </ion-select>
+
+        <ion-select
+          interface="popover"
+          placeholder="Catégorie"
+          [value]="filtreCategoriePlat()"
+          (ionChange)="filtreCategoriePlat.set($event.detail.value)">
+          <ion-select-option value="tout">Plat ou snack</ion-select-option>
+          <ion-select-option value="Plat">Plat</ion-select-option>
+          <ion-select-option value="Snack">Snack</ion-select-option>
+        </ion-select>
+      }
+
+      @if (filtreActif() === 'magasin') {
+        <ion-select
+          interface="popover"
+          placeholder="Tous les types"
+          [value]="filtreTypeMagasin()"
+          (ionChange)="filtreTypeMagasin.set($event.detail.value)">
+          <ion-select-option [value]="null">Tous les types</ion-select-option>
+          @for (type of typesMagasins(); track type) {
+            <ion-select-option [value]="type">{{ type }}</ion-select-option>
+          }
+        </ion-select>
+      }
+    </div>
   </ion-toolbar>
 </ion-header>
 
@@ -46,7 +95,7 @@
   </ion-refresher>
 
   <div class="section">
-    <p class="section-titre">Près de vous</p>
+    <p class="section-titre">{{ affichageFavoris() ? 'Vos favoris' : 'Près de vous' }}</p>
 
     @if (chargement()) {
       @for (i of [1, 2, 3]; track i) {
@@ -59,16 +108,21 @@
         </div>
       }
     } @else if (lieuxAffiches().length === 0) {
-      <p class="etat-vide">Aucun lieu ne correspond à votre recherche.</p>
+      <p class="etat-vide">
+        {{ affichageFavoris() ? "Vous n'avez pas encore de favoris." : 'Aucun lieu ne correspond à votre recherche.' }}
+      </p>
     } @else {
       @for (lieu of lieuxAffiches(); track lieu.id) {
-        <div class="carte-lieu">
+        <div class="carte-lieu" (click)="ouvrirDetails(lieu)">
           <div class="carte-lieu-icone">
-            <ion-icon [name]="lieu.icone"></ion-icon>
+            <span class="carte-lieu-emoji">{{ lieu.icone }}</span>
           </div>
           <div class="carte-lieu-contenu">
             <div class="carte-lieu-ligne">
               <p class="carte-lieu-nom">{{ lieu.nom }}</p>
+              @if (favorisService.estFavori(lieu.id)) {
+                <ion-icon class="carte-lieu-favori" name="heart"></ion-icon>
+              }
               @if (lieu.estOuvert !== undefined) {
                 <ion-badge [color]="lieu.estOuvert ? 'success' : 'medium'">
                   {{ lieu.estOuvert ? 'Ouvert' : 'Fermé' }}
@@ -92,20 +146,238 @@
 </ion-content>
 
 <ion-tab-bar slot="bottom">
-  <ion-tab-button tab="home" [selected]="true">
+  <ion-tab-button tab="home" [selected]="!affichageFavoris()" (click)="afficherAccueil()">
     <ion-icon name="home-outline"></ion-icon>
     <ion-label>Accueil</ion-label>
-  </ion-tab-button>
-  <ion-tab-button tab="liste">
-    <ion-icon name="list-outline"></ion-icon>
-    <ion-label>Liste</ion-label>
   </ion-tab-button>
   <ion-tab-button tab="carte">
     <ion-icon name="map-outline"></ion-icon>
     <ion-label>Carte</ion-label>
   </ion-tab-button>
-  <ion-tab-button tab="favoris">
+  <ion-tab-button tab="favoris" [selected]="affichageFavoris()" (click)="afficherFavoris()">
     <ion-icon name="heart-outline"></ion-icon>
     <ion-label>Favoris</ion-label>
   </ion-tab-button>
 </ion-tab-bar>
+
+<ion-modal [isOpen]="detailSelectionne() !== null" (didDismiss)="fermerDetails()">
+  <ng-template>
+    @if (detailSelectionne(); as detail) {
+      <ion-header class="ion-no-border">
+        <ion-toolbar>
+          <ion-title>{{ detail.data.Nom }} {{ emojiDetail(detail) }}</ion-title>
+          <ion-buttons slot="end">
+            <ion-button (click)="favorisService.basculer(detail.data.id)" aria-label="Ajouter aux favoris">
+              <ion-icon slot="icon-only" [name]="favorisService.estFavori(detail.data.id) ? 'heart' : 'heart-outline'" [color]="favorisService.estFavori(detail.data.id) ? 'danger' : undefined"></ion-icon>
+            </ion-button>
+            <ion-button (click)="fermerDetails()" aria-label="Fermer">
+              <ion-icon slot="icon-only" name="close-outline"></ion-icon>
+            </ion-button>
+          </ion-buttons>
+        </ion-toolbar>
+      </ion-header>
+
+      <ion-content>
+        <div class="detail-section">
+          @if (detail.type === 'restaurant') {
+            <div class="detail-badges">
+              <span class="detail-badge">
+                <ion-icon name="location-outline"></ion-icon>
+                {{ detail.data.Quartier.Nom }}@if (detail.data.Ville.Nom) {, {{ detail.data.Ville.Nom }}}
+              </span>
+              @if (detail.data.Prix) {
+                <span class="detail-badge"><ion-icon name="pricetag-outline"></ion-icon>{{ detail.data.Prix }}</span>
+              }
+              @if (distanceDetail(detail.data.latitude, detail.data.longitude); as distance) {
+                <span class="detail-badge"><ion-icon name="walk-outline"></ion-icon>{{ formaterDistance(distance) }}</span>
+              }
+            </div>
+
+            @if (detail.data.Avis.moyenne) {
+              <div class="detail-etoiles">
+                @for (icone of etoiles(detail.data.Avis.moyenne); track $index) {
+                  <ion-icon [name]="icone"></ion-icon>
+                }
+                <span class="detail-etoiles-valeur">{{ detail.data.Avis.moyenne | number:'1.1-1' }} / 5</span>
+              </div>
+            }
+
+            @if (detail.data.Description) {
+              <p class="detail-texte">{{ detail.data.Description }}</p>
+            }
+
+            @if (detail.data.Plats.length) {
+              <p class="detail-sous-titre">Plats</p>
+              <div class="detail-chips">
+                @for (plat of detail.data.Plats; track plat.Nom) {
+                  <ion-chip [color]="couleurPlat(plat.Nom)" (click)="ouvrirPlat(plat.Nom)">{{ plat.Nom }}</ion-chip>
+                }
+              </div>
+            }
+
+            @if (detail.data.Commentaires) {
+              <p class="detail-sous-titre">Commentaires</p>
+              <p class="detail-texte">{{ detail.data.Commentaires }}</p>
+            }
+
+            <div class="detail-actions">
+              @if (detail.data.Localisation) {
+                <a class="action-icone action-icone-principale" [href]="detail.data.Localisation" target="_blank" rel="noopener">
+                  <span class="action-icone-cercle"><ion-icon name="location-outline"></ion-icon></span>
+                  <span class="action-icone-label">Maps</span>
+                </a>
+              }
+              @if (detail.data.Menu) {
+                <a class="action-icone" [href]="detail.data.Menu" target="_blank" rel="noopener">
+                  <span class="action-icone-cercle"><ion-icon name="restaurant-outline"></ion-icon></span>
+                  <span class="action-icone-label">Menu</span>
+                </a>
+              }
+              @if (detail.data.Video) {
+                <a class="action-icone" [href]="detail.data.Video" target="_blank" rel="noopener">
+                  <span class="action-icone-cercle"><ion-icon name="play-outline"></ion-icon></span>
+                  <span class="action-icone-label">Vidéo</span>
+                </a>
+              }
+              @if (detail.data.Liens) {
+                <a class="action-icone" [href]="detail.data.Liens" target="_blank" rel="noopener">
+                  <span class="action-icone-cercle"><ion-icon name="open-outline"></ion-icon></span>
+                  <span class="action-icone-label">Plus d'infos</span>
+                </a>
+              }
+            </div>
+          } @else if (detail.type === 'activite') {
+            <div class="detail-badges">
+              <span class="detail-badge"><ion-icon name="location-outline"></ion-icon>{{ detail.data.Quartier.Nom }}</span>
+              @if (detail.data.Prix) {
+                <span class="detail-badge"><ion-icon name="pricetag-outline"></ion-icon>{{ detail.data.Prix }}</span>
+              }
+              @if (detail.data.Temps) {
+                <span class="detail-badge"><ion-icon name="walk-outline"></ion-icon>{{ detail.data.Temps }}</span>
+              }
+              @if (distanceDetail(detail.data.latitude, detail.data.longitude); as distance) {
+                <span class="detail-badge"><ion-icon name="walk-outline"></ion-icon>{{ formaterDistance(distance) }}</span>
+              }
+            </div>
+
+            @if (detail.data.Avis.moyenne) {
+              <div class="detail-etoiles">
+                @for (icone of etoiles(detail.data.Avis.moyenne); track $index) {
+                  <ion-icon [name]="icone"></ion-icon>
+                }
+                <span class="detail-etoiles-valeur">{{ detail.data.Avis.moyenne | number:'1.1-1' }} / 5</span>
+              </div>
+            }
+
+            @if (detail.data.Description) {
+              <p class="detail-texte">{{ detail.data.Description }}</p>
+            }
+            @if (detail.data.Commentaires) {
+              <p class="detail-sous-titre">Commentaires</p>
+              <p class="detail-texte">{{ detail.data.Commentaires }}</p>
+            }
+
+            <div class="detail-actions">
+              @if (detail.data.Localisation) {
+                <a class="action-icone action-icone-principale" [href]="detail.data.Localisation" target="_blank" rel="noopener">
+                  <span class="action-icone-cercle"><ion-icon name="location-outline"></ion-icon></span>
+                  <span class="action-icone-label">Maps</span>
+                </a>
+              }
+              @if (detail.data.Liens) {
+                <a class="action-icone" [href]="detail.data.Liens" target="_blank" rel="noopener">
+                  <span class="action-icone-cercle"><ion-icon name="open-outline"></ion-icon></span>
+                  <span class="action-icone-label">Plus d'infos</span>
+                </a>
+              }
+            </div>
+          } @else {
+            <div class="detail-badges">
+              @if (detail.data.Quartier.length) {
+                <span class="detail-badge"><ion-icon name="location-outline"></ion-icon>{{ nomsQuartiers(detail.data.Quartier) }}</span>
+              }
+              @if (detail.data.Type) {
+                <span class="detail-badge">{{ detail.data.Type }}</span>
+              }
+              @if (distanceDetail(detail.data.latitude, detail.data.longitude); as distance) {
+                <span class="detail-badge"><ion-icon name="walk-outline"></ion-icon>{{ formaterDistance(distance) }}</span>
+              }
+            </div>
+
+            @if (detail.data.Avis.moyenne) {
+              <div class="detail-etoiles">
+                @for (icone of etoiles(detail.data.Avis.moyenne); track $index) {
+                  <ion-icon [name]="icone"></ion-icon>
+                }
+                <span class="detail-etoiles-valeur">{{ detail.data.Avis.moyenne | number:'1.1-1' }} / 5</span>
+              </div>
+            }
+
+            @if (detail.data.Commentaires) {
+              <p class="detail-sous-titre">Commentaires</p>
+              <p class="detail-texte">{{ detail.data.Commentaires }}</p>
+            }
+
+            <div class="detail-actions">
+              @if (detail.data.Localisation) {
+                <a class="action-icone action-icone-principale" [href]="detail.data.Localisation" target="_blank" rel="noopener">
+                  <span class="action-icone-cercle"><ion-icon name="location-outline"></ion-icon></span>
+                  <span class="action-icone-label">Maps</span>
+                </a>
+              }
+              @if (detail.data.Liens) {
+                <a class="action-icone" [href]="detail.data.Liens" target="_blank" rel="noopener">
+                  <span class="action-icone-cercle"><ion-icon name="open-outline"></ion-icon></span>
+                  <span class="action-icone-label">Plus d'infos</span>
+                </a>
+              }
+            </div>
+          }
+        </div>
+      </ion-content>
+    }
+  </ng-template>
+</ion-modal>
+
+<ion-modal [isOpen]="platSelectionne() !== null" (didDismiss)="fermerPlat()">
+  <ng-template>
+    @if (platSelectionne(); as plat) {
+      <ion-header class="ion-no-border">
+        <ion-toolbar>
+          <ion-title>{{ plat.Nom }}</ion-title>
+          <ion-buttons slot="end">
+            <ion-button (click)="fermerPlat()" aria-label="Fermer">
+              <ion-icon slot="icon-only" name="close-outline"></ion-icon>
+            </ion-button>
+          </ion-buttons>
+        </ion-toolbar>
+      </ion-header>
+
+      <ion-content>
+        <div class="detail-section">
+          @if (plat.Categorie) {
+            <ion-badge [color]="severitePlat(plat.Categorie)">{{ plat.Categorie }}</ion-badge>
+          }
+          @if (plat.Description) {
+            <p class="detail-texte">{{ plat.Description }}</p>
+          }
+          @if (plat.Commentaires) {
+            <p class="detail-sous-titre">Commentaires</p>
+            <p class="detail-texte">{{ plat.Commentaires }}</p>
+          }
+          @if (!plat.Categorie && !plat.Description && !plat.Commentaires) {
+            <p class="etat-vide">Aucun détail disponible pour ce plat.</p>
+          }
+          @if (plat.Wiki) {
+            <div class="detail-actions">
+              <a class="action-icone action-icone-principale" [href]="plat.Wiki" target="_blank" rel="noopener">
+                <span class="action-icone-cercle"><ion-icon name="open-outline"></ion-icon></span>
+                <span class="action-icone-label">En savoir plus</span>
+              </a>
+            </div>
+          }
+        </div>
+      </ion-content>
+    }
+  </ng-template>
+</ion-modal>

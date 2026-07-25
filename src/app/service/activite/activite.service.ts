@@ -3,7 +3,6 @@ import {SheetsApi} from '../google/sheets-api.service';
 import {Papa} from 'ngx-papaparse';
 import {map, Observable} from 'rxjs';
 import {ActiviteModel} from '../../models/activite.model';
-import {RestaurantModel} from '../../models/restaurant.model';
 import {Avis} from '../../models/avis.model';
 import {QuartierModel} from '../../models/quartier.model';
 
@@ -20,9 +19,11 @@ export class ActiviteService {
       map(csv => {
           const result = this.papa.parse(csv, {
             header: true,
-            skipEmptyLines: true,
+            skipEmptyLines: 'greedy',
           })
-          return result.data.map((row: any, index: any) => {
+          return result.data
+            .filter((row: any) => row.Nom?.trim())
+            .map((row: any, index: any) => {
             // 1. Parser les avis
             const avisData = new Avis({
               Valérian: Avis.countX(row.Valérian),
@@ -38,18 +39,14 @@ export class ActiviteService {
             // 2. Calculer la moyenne automatiquement via la méthode de la classe
             avisData.calculerMoyenne();
 
-            // 3. Retourner l'objet restaurant complet
+            // 3. Retourner l'objet activité complet
 
             return {
               ...row,
               Avis: avisData,
-              Quartier: row.Quartier
-                .split(',')
-                .map((p: string) => p.trim())
-                .filter(Boolean)
-                .map((nom: string) => ({Nom: nom}) as QuartierModel),
+              Quartier: ({Nom: row.Quartier}) as QuartierModel,
               id: 'activite_' + index
-            } as RestaurantModel;
+            } as ActiviteModel;
           })
         }
       )

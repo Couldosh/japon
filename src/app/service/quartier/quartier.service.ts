@@ -13,10 +13,10 @@ export class QuartierService {
   getQuartiers(forceRefresh = false): Observable<QuartierModel[]> {
     return this.sheetsApi.getCsv('1855356526', forceRefresh).pipe(
       map(csv =>
-        this.papa.parse(csv, {
+        (this.papa.parse(csv, {
           header: true,
-          skipEmptyLines: true
-        }).data as QuartierModel[]
+          skipEmptyLines: 'greedy'
+        }).data as QuartierModel[]).filter(quartier => quartier.Nom?.trim())
       )
     );
   }

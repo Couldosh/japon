@@ -17,9 +17,11 @@ export class RestaurantService {
       map((csv) => {
           const result = this.papa.parse(csv, {
             header: true,
-            skipEmptyLines: true,
+            skipEmptyLines: 'greedy',
           })
-        return result.data.map((row: any, index: any) => {
+        return result.data
+          .filter((row: any) => row.Nom?.trim())
+          .map((row: any, index: any) => {
           // 1. Parser les avis
           const avisData = new Avis({
             Valérian: Avis.countX(row.Valérian),

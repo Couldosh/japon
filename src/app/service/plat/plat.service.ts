@@ -16,10 +16,10 @@ export class PlatService {
   getPlats(forceRefresh = false): Observable<Plat[]> {
     return this.sheetsApi.getCsv('2053739160', forceRefresh).pipe(
       map(csv =>
-        this.papa.parse(csv, {
+        (this.papa.parse(csv, {
           header: true,
-          skipEmptyLines: true
-        }).data as Plat[]
+          skipEmptyLines: 'greedy'
+        }).data as Plat[]).filter(plat => plat.Nom?.trim())
       )
     );
   }

@@ -13,10 +13,10 @@ export class VilleService {
   getVilles(forceRefresh = false): Observable<VilleModel[]> {
     return this.sheetsApi.getCsv('357846773', forceRefresh).pipe(
       map(csv =>
-        this.papa.parse(csv, {
+        (this.papa.parse(csv, {
           header: true,
-          skipEmptyLines: true
-        }).data as VilleModel[]
+          skipEmptyLines: 'greedy'
+        }).data as VilleModel[]).filter(ville => ville.Nom?.trim())
       )
     );
   }

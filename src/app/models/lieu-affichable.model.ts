@@ -17,5 +17,7 @@ export interface LieuAffichable {
   estOuvert?: boolean;         // calculé à partir des horaires si dispo
   horaireTexte?: string;       // ex: 'Ferme à 17h'
   distanceMetres?: number | null;     // calculé côté client via géoloc
-  icone: string;               // nom d'icône Ionic (ex: 'restaurant-outline')
+  icone: string;               // emoji représentatif du lieu (ex: '🍣' pour un restaurant de sushi)
+  platsNoms?: string[];         // restaurant uniquement : noms des plats servis, pour le filtre par plat
+  typeMagasin?: string;         // magasin uniquement : catégorie du magasin, pour le filtre par type
 }
