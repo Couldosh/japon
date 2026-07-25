@@ -137,6 +137,9 @@
               @if (lieu.prixIndicatif) {
                 <span>{{ lieu.prixIndicatif }}</span>
               }
+              @if (lieu.horaireTexte) {
+                <span><ion-icon name="time-outline"></ion-icon> {{ lieu.horaireTexte }}</span>
+              }
             </div>
           </div>
         </div>
@@ -180,7 +183,13 @@
       <ion-content>
         <div class="detail-section">
           @if (detail.type === 'restaurant') {
+            @let ouvert = estOuvertDetail(detail.data.Horaires);
             <div class="detail-badges">
+              @if (ouvert !== undefined) {
+                <span class="detail-badge" [class.detail-badge-ouvert]="ouvert" [class.detail-badge-ferme]="!ouvert">
+                  {{ ouvert ? 'Ouvert' : 'Fermé' }}
+                </span>
+              }
               <span class="detail-badge">
                 <ion-icon name="location-outline"></ion-icon>
                 {{ detail.data.Quartier.Nom }}@if (detail.data.Ville.Nom) {, {{ detail.data.Ville.Nom }}}
@@ -199,6 +208,18 @@
                   <ion-icon [name]="icone"></ion-icon>
                 }
                 <span class="detail-etoiles-valeur">{{ detail.data.Avis.moyenne | number:'1.1-1' }} / 5</span>
+              </div>
+            }
+
+            @if (horairesSemaineDetail(detail.data.Horaires); as semaine) {
+              <p class="detail-sous-titre">Horaires</p>
+              <div class="detail-horaires">
+                @for (jour of semaine; track jour.jour) {
+                  <div class="detail-horaires-ligne" [class.detail-horaires-aujourdhui]="jour.aujourdhui">
+                    <span>{{ jour.jour }}</span>
+                    <span>{{ jour.horaires }}</span>
+                  </div>
+                }
               </div>
             }
 
@@ -247,7 +268,13 @@
               }
             </div>
           } @else if (detail.type === 'activite') {
+            @let ouvert = estOuvertDetail(detail.data.Horaires);
             <div class="detail-badges">
+              @if (ouvert !== undefined) {
+                <span class="detail-badge" [class.detail-badge-ouvert]="ouvert" [class.detail-badge-ferme]="!ouvert">
+                  {{ ouvert ? 'Ouvert' : 'Fermé' }}
+                </span>
+              }
               <span class="detail-badge"><ion-icon name="location-outline"></ion-icon>{{ detail.data.Quartier.Nom }}</span>
               @if (detail.data.Prix) {
                 <span class="detail-badge"><ion-icon name="pricetag-outline"></ion-icon>{{ detail.data.Prix }}</span>
@@ -266,6 +293,18 @@
                   <ion-icon [name]="icone"></ion-icon>
                 }
                 <span class="detail-etoiles-valeur">{{ detail.data.Avis.moyenne | number:'1.1-1' }} / 5</span>
+              </div>
+            }
+
+            @if (horairesSemaineDetail(detail.data.Horaires); as semaine) {
+              <p class="detail-sous-titre">Horaires</p>
+              <div class="detail-horaires">
+                @for (jour of semaine; track jour.jour) {
+                  <div class="detail-horaires-ligne" [class.detail-horaires-aujourdhui]="jour.aujourdhui">
+                    <span>{{ jour.jour }}</span>
+                    <span>{{ jour.horaires }}</span>
+                  </div>
+                }
               </div>
             }
 
@@ -292,7 +331,13 @@
               }
             </div>
           } @else {
+            @let ouvert = estOuvertDetail(detail.data.Horaires);
             <div class="detail-badges">
+              @if (ouvert !== undefined) {
+                <span class="detail-badge" [class.detail-badge-ouvert]="ouvert" [class.detail-badge-ferme]="!ouvert">
+                  {{ ouvert ? 'Ouvert' : 'Fermé' }}
+                </span>
+              }
               @if (detail.data.Quartier.length) {
                 <span class="detail-badge"><ion-icon name="location-outline"></ion-icon>{{ nomsQuartiers(detail.data.Quartier) }}</span>
               }
@@ -310,6 +355,18 @@
                   <ion-icon [name]="icone"></ion-icon>
                 }
                 <span class="detail-etoiles-valeur">{{ detail.data.Avis.moyenne | number:'1.1-1' }} / 5</span>
+              </div>
+            }
+
+            @if (horairesSemaineDetail(detail.data.Horaires); as semaine) {
+              <p class="detail-sous-titre">Horaires</p>
+              <div class="detail-horaires">
+                @for (jour of semaine; track jour.jour) {
+                  <div class="detail-horaires-ligne" [class.detail-horaires-aujourdhui]="jour.aujourdhui">
+                    <span>{{ jour.jour }}</span>
+                    <span>{{ jour.horaires }}</span>
+                  </div>
+                }
               </div>
             }
 

@@ -13,6 +13,7 @@ export class MagasinModel {
   Avis: Avis;
   latitude: number | null;
   longitude: number | null;
+  Horaires?: string; // format compact JSON produit par scripts/fetch-horaires.mjs
 
 
   constructor(id: string, Liens: string, Localisation: string, Quartier: QuartierModel[], Nom: string, Type: string, Commentaires: string, Avis: Avis, latitude: number | null, longitude: number | null) {

@@ -4,22 +4,18 @@
  * établissement d'un Google Sheet, à partir de son nom et de son lien Google
  * Maps (colonne "Localisation"), et les écrit dans une colonne "Horaires".
  *
+ * Les horaires sont stockés sous forme compacte structurée (JSON), pas en
+ * texte libre (les libellés "weekdayDescriptions" de Google dépendent de la
+ * langue et sont peu fiables à re-parser côté app pour calculer "ouvert
+ * maintenant"). Voir src/app/utils/horaires.ts côté app pour la lecture.
+ *
  * Ce script est indépendant de l'app Angular : il s'exécute une fois (ou de
  * temps en temps) pour compléter le Sheet, jamais depuis le navigateur.
  *
- * Authentification Sheets : OAuth "Desktop app" (pas de compte de service,
- * bloqué par la règle d'organisation iam.disableServiceAccountKeyCreation).
- * Au premier lancement, une fenêtre de navigateur s'ouvre pour te connecter
- * avec ton compte Google ; le jeton obtenu est ensuite mis en cache dans
- * token.json pour les lancements suivants (pas de fichier -> nouvelle connexion).
- *
- * Prérequis :
- *   - credentials.json à la racine du projet : client OAuth "Desktop app"
- *     téléchargé depuis Google Cloud Console (API et services > Identifiants).
- *   - Variables d'environnement, via un fichier .env non commité :
- *       SPREADSHEET_ID  - ID du Google Sheet (dans l'URL d'édition,
- *                          entre "/d/" et "/edit")
- *       PLACES_API_KEY  - clé API restreinte à "Places API (New)"
+ * Voir scripts/lib/google-sheets.mjs pour les prérequis d'authentification.
+ * Variables d'environnement (via un fichier .env non commité) :
+ *   SPREADSHEET_ID  - ID du Google Sheet (dans l'URL d'édition, entre "/d/" et "/edit")
+ *   PLACES_API_KEY  - clé API restreinte à "Places API (New)"
  *
  * Usage :
  *   node --env-file=.env scripts/fetch-horaires.mjs
@@ -27,18 +23,15 @@
  *   les lignes où la colonne "Horaires" est déjà remplie)
  */
 
-import fs from 'fs/promises';
-import path from 'path';
-import { authenticate } from '@google-cloud/local-auth';
-import { google } from 'googleapis';
+import {
+  requireEnv, attendre, extraireCoordonnees,
+  connexionSheets, trouverTitreOnglet, lireFeuille,
+  indexColonne, lettreColonne,
+} from './lib/google-sheets.mjs';
 
 const SPREADSHEET_ID = requireEnv('SPREADSHEET_ID');
 const PLACES_API_KEY = requireEnv('PLACES_API_KEY');
 const FORCER = process.argv.includes('--force');
-
-const SCOPES = ['https://www.googleapis.com/auth/spreadsheets'];
-const CREDENTIALS_PATH = path.join(process.cwd(), 'credentials.json');
-const TOKEN_PATH = path.join(process.cwd(), 'token.json');
 
 // gid des onglets, repris de src/app/service/*/*.service.ts
 const GIDS_FEUILLES = [892590698, 0, 346756517]; // Restaurants, Activités, Magasins
@@ -46,104 +39,30 @@ const GIDS_FEUILLES = [892590698, 0, 346756517]; // Restaurants, Activités, Mag
 const COLONNE_HORAIRES = 'Horaires';
 const DELAI_ENTRE_APPELS_MS = 300; // reste sous les limites de quota par défaut de Places API
 
-function requireEnv(nom) {
-  const valeur = process.env[nom];
-  if (!valeur) {
-    console.error(`Variable d'environnement manquante : ${nom}`);
-    process.exit(1);
-  }
-  return valeur;
+function formaterHeureMinute({ hour, minute }) {
+  return `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
 }
 
-function attendre(ms) {
-  return new Promise(resolve => setTimeout(resolve, ms));
+// Sérialise les "periods" de Places API en JSON compact :
+// [{ j: jourOuverture(0=dim..6=sam, comme Date.getDay()), h: "HH:mm",
+//    jf?: jourFermeture, hf?: "HH:mm" }]
+// jf/hf absents = établissement ouvert en continu à partir de ce point (24h/24).
+function serialiserPeriodes(periods) {
+  if (!periods?.length) return null;
+  return JSON.stringify(periods.map(p => ({
+    j: p.open.day,
+    h: formaterHeureMinute(p.open),
+    ...(p.close && { jf: p.close.day, hf: formaterHeureMinute(p.close) }),
+  })));
 }
 
-// Même logique que GeolocationService.extraireCoordonnees côté app.
-function extraireCoordonnees(lienGoogleMaps) {
-  if (!lienGoogleMaps) return null;
-  const matchArobase = lienGoogleMaps.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/);
-  if (matchArobase) return { latitude: parseFloat(matchArobase[1]), longitude: parseFloat(matchArobase[2]) };
-  const matchQuery = lienGoogleMaps.match(/[?&]q=(-?\d+\.\d+),(-?\d+\.\d+)/);
-  if (matchQuery) return { latitude: parseFloat(matchQuery[1]), longitude: parseFloat(matchQuery[2]) };
-  const matchPlace = lienGoogleMaps.match(/!3d(-?\d+\.\d+)!4d(-?\d+\.\d+)/);
-  if (matchPlace) return { latitude: parseFloat(matchPlace[1]), longitude: parseFloat(matchPlace[2]) };
-  return null;
-}
+async function chercherEtablissement(nomEtablissement, quartier, coordonnees) {
+  // Inclure le quartier dans la requête aide beaucoup à désambiguïser les
+  // enseignes qui ont de nombreuses succursales (Daiso, Uniqlo, Starbucks...).
+  const textQuery = quartier ? `${nomEtablissement} ${quartier}` : nomEtablissement;
 
-async function chargerJetonExistant() {
-  try {
-    const contenu = await fs.readFile(TOKEN_PATH);
-    return google.auth.fromJSON(JSON.parse(contenu));
-  } catch {
-    return null;
-  }
-}
-
-async function sauvegarderJeton(client) {
-  const contenu = await fs.readFile(CREDENTIALS_PATH);
-  const cles = JSON.parse(contenu);
-  const cle = cles.installed || cles.web;
-  const payload = JSON.stringify({
-    type: 'authorized_user',
-    client_id: cle.client_id,
-    client_secret: cle.client_secret,
-    refresh_token: client.credentials.refresh_token,
-  });
-  await fs.writeFile(TOKEN_PATH, payload);
-}
-
-async function autoriser() {
-  const jetonExistant = await chargerJetonExistant();
-  if (jetonExistant) {
-    return jetonExistant;
-  }
-
-  const client = await authenticate({ scopes: SCOPES, keyfilePath: CREDENTIALS_PATH });
-  if (client.credentials) {
-    await sauvegarderJeton(client);
-  }
-  return client;
-}
-
-async function connexionSheets() {
-  const auth = await autoriser();
-  return google.sheets({ version: 'v4', auth });
-}
-
-async function trouverTitreOnglet(sheets, gid) {
-  const { data } = await sheets.spreadsheets.get({ spreadsheetId: SPREADSHEET_ID });
-  const feuille = data.sheets.find(s => s.properties.sheetId === gid);
-  if (!feuille) throw new Error(`Aucun onglet avec gid=${gid} trouvé dans le Sheet.`);
-  return feuille.properties.title;
-}
-
-async function lireFeuille(sheets, titre) {
-  const { data } = await sheets.spreadsheets.values.get({
-    spreadsheetId: SPREADSHEET_ID,
-    range: titre,
-  });
-  return data.values ?? [];
-}
-
-function indexColonne(entetes, nom) {
-  return entetes.findIndex(e => e?.trim().toLowerCase() === nom.toLowerCase());
-}
-
-// Conversion index de colonne (0-based) -> lettre(s) A, B, ..., Z, AA, AB, ...
-function lettreColonne(index) {
-  let lettre = '';
-  let n = index;
-  while (n >= 0) {
-    lettre = String.fromCharCode((n % 26) + 65) + lettre;
-    n = Math.floor(n / 26) - 1;
-  }
-  return lettre;
-}
-
-async function recupererHoraires(nomEtablissement, coordonnees) {
   const corps = {
-    textQuery: nomEtablissement,
+    textQuery,
     maxResultCount: 1,
     ...(coordonnees && {
       locationBias: {
@@ -161,7 +80,7 @@ async function recupererHoraires(nomEtablissement, coordonnees) {
       'Content-Type': 'application/json',
       'X-Goog-Api-Key': PLACES_API_KEY,
       // Adapter si Google fait évoluer le nom des champs de l'API Places (New).
-      'X-Goog-FieldMask': 'places.displayName,places.regularOpeningHours.weekdayDescriptions',
+      'X-Goog-FieldMask': 'places.displayName,places.formattedAddress,places.regularOpeningHours.periods',
     },
     body: JSON.stringify(corps),
   });
@@ -171,15 +90,14 @@ async function recupererHoraires(nomEtablissement, coordonnees) {
   }
 
   const { places } = await reponse.json();
-  const horaires = places?.[0]?.regularOpeningHours?.weekdayDescriptions;
-  return horaires?.length ? horaires.join('\n') : null;
+  return places?.[0] ?? null;
 }
 
 async function traiterFeuille(sheets, gid) {
-  const titre = await trouverTitreOnglet(sheets, gid);
+  const titre = await trouverTitreOnglet(sheets, SPREADSHEET_ID, gid);
   console.log(`\n--- ${titre} ---`);
 
-  const lignes = await lireFeuille(sheets, titre);
+  const lignes = await lireFeuille(sheets, SPREADSHEET_ID, titre);
   if (lignes.length === 0) {
     console.log('Feuille vide, ignorée.');
     return;
@@ -187,6 +105,7 @@ async function traiterFeuille(sheets, gid) {
 
   const entetes = lignes[0];
   const idxNom = indexColonne(entetes, 'Nom');
+  const idxQuartier = indexColonne(entetes, 'Quartier');
   const idxLocalisation = indexColonne(entetes, 'Localisation');
   let idxHoraires = indexColonne(entetes, COLONNE_HORAIRES);
 
@@ -208,6 +127,7 @@ async function traiterFeuille(sheets, gid) {
   for (let i = 1; i < lignes.length; i++) {
     const ligne = lignes[i];
     const nom = ligne[idxNom]?.trim();
+    const quartier = idxQuartier !== -1 ? ligne[idxQuartier]?.trim() : null;
     const localisation = ligne[idxLocalisation]?.trim();
     const horairesExistants = ligne[idxHoraires]?.trim();
 
@@ -220,18 +140,31 @@ async function traiterFeuille(sheets, gid) {
 
     try {
       const coordonnees = extraireCoordonnees(localisation);
-      const horaires = await recupererHoraires(nom, coordonnees);
+      if (!coordonnees) {
+        console.warn(`  ${nom} : coordonnées introuvables dans le lien (lien raccourci ?), recherche non biaisée par la position.`);
+      }
 
-      if (!horaires) {
-        console.warn(`  ${nom} : aucun horaire trouvé.`);
+      const etablissement = await chercherEtablissement(nom, quartier, coordonnees);
+
+      if (!etablissement) {
+        console.warn(`  ${nom} : aucun établissement trouvé sur Places.`);
       } else {
-        await sheets.spreadsheets.values.update({
-          spreadsheetId: SPREADSHEET_ID,
-          range: `${titre}!${lettreColonne(idxHoraires)}${i + 1}`,
-          valueInputOption: 'RAW',
-          requestBody: { values: [[horaires]] },
-        });
-        console.log(`  ${nom} : horaires mis à jour.`);
+        // Log le résultat matché pour permettre de vérifier que c'est la bonne succursale
+        // (les enseignes avec beaucoup de succursales, ex: Daiso, Uniqlo, sont ambiguës).
+        console.log(`  ${nom} -> ${etablissement.displayName?.text ?? '?'} (${etablissement.formattedAddress ?? 'adresse inconnue'})`);
+
+        const horaires = serialiserPeriodes(etablissement.regularOpeningHours?.periods);
+        if (!horaires) {
+          console.warn(`    aucun horaire renseigné sur cette fiche Google Maps.`);
+        } else {
+          await sheets.spreadsheets.values.update({
+            spreadsheetId: SPREADSHEET_ID,
+            range: `${titre}!${lettreColonne(idxHoraires)}${i + 1}`,
+            valueInputOption: 'RAW',
+            requestBody: { values: [[horaires]] },
+          });
+          console.log(`    horaires mis à jour.`);
+        }
       }
     } catch (erreur) {
       console.error(`  ${nom} : échec (${erreur.message})`);

@@ -15,7 +15,8 @@ import {
   businessOutline, fastFoodOutline, homeOutline,
   mapOutline, heartOutline, heart, refreshOutline, storefrontOutline,
   sunnyOutline, moonOutline, closeOutline, locationOutline,
-  openOutline, starOutline, star, starHalf, pricetagOutline, playOutline
+  openOutline, starOutline, star, starHalf, pricetagOutline, playOutline,
+  timeOutline
 } from 'ionicons/icons';
 
 import { RestaurantService } from '../service/restaurant/restaurant.service';
@@ -31,6 +32,7 @@ import { ActiviteModel } from '../models/activite.model';
 import { MagasinModel } from '../models/magasin.model';
 import { Plat, PlatCategory } from './plat/plat.component';
 import { emojiRestaurant, emojiActivite, emojiMagasin } from '../utils/emoji-lieu';
+import { estOuvertMaintenant, horairesAujourdhui, horairesSemaine } from '../utils/horaires';
 
 type DetailLieu =
   | { type: 'restaurant'; data: RestaurantModel }
@@ -166,7 +168,8 @@ export class HomeComponent implements OnInit {
       businessOutline, fastFoodOutline, homeOutline,
       mapOutline, heartOutline, heart, refreshOutline, storefrontOutline,
       sunnyOutline, moonOutline, closeOutline, locationOutline,
-      openOutline, starOutline, star, starHalf, pricetagOutline, playOutline
+      openOutline, starOutline, star, starHalf, pricetagOutline, playOutline,
+      timeOutline
     });
   }
 
@@ -201,7 +204,8 @@ export class HomeComponent implements OnInit {
             latitude: r.latitude,
             longitude: r.longitude,
             prixIndicatif: r.Prix,
-            estOuvert: true, //r.estOuvertMaintenant?.(),
+            estOuvert: estOuvertMaintenant(r.Horaires) ?? undefined,
+            horaireTexte: horairesAujourdhui(r.Horaires) ?? undefined,
             icone: emojiRestaurant(r),
             platsNoms: r.Plats.map(p => p.Nom)
           }));
@@ -214,6 +218,8 @@ export class HomeComponent implements OnInit {
             latitude: a.latitude,
             longitude: a.longitude,
             prixIndicatif: a.Prix,
+            estOuvert: estOuvertMaintenant(a.Horaires) ?? undefined,
+            horaireTexte: horairesAujourdhui(a.Horaires) ?? undefined,
             icone: emojiActivite(a)
           }));
 
@@ -224,6 +230,8 @@ export class HomeComponent implements OnInit {
             quartier: m.Quartier[0] ?? { Nom: '' },
             latitude: m.latitude,
             longitude: m.longitude,
+            estOuvert: estOuvertMaintenant(m.Horaires) ?? undefined,
+            horaireTexte: horairesAujourdhui(m.Horaires) ?? undefined,
             icone: emojiMagasin(m),
             typeMagasin: m.Type
           }));
@@ -306,6 +314,16 @@ export class HomeComponent implements OnInit {
       case 'activite': return emojiActivite(detail.data);
       case 'magasin': return emojiMagasin(detail.data);
     }
+  }
+
+  /** undefined = pas d'horaires renseignés (badge masqué), sinon ouvert/fermé à l'instant présent. */
+  estOuvertDetail(horaires?: string): boolean | undefined {
+    return estOuvertMaintenant(horaires) ?? undefined;
+  }
+
+  /** Horaires de la semaine (lundi -> dimanche) pour la popup de détails. */
+  horairesSemaineDetail(horaires?: string) {
+    return horairesSemaine(horaires);
   }
 
   /** Icônes (pleine/demie/vide) à afficher pour représenter une moyenne sur 5 sous forme d'étoiles. */

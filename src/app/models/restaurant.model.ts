@@ -21,6 +21,7 @@ export class RestaurantModel {
   longitude: number | null;
   Video: string;
   Menu: string;
+  Horaires?: string; // format compact JSON produit par scripts/fetch-horaires.mjs
 
 
   constructor(id: string, Ville: VilleModel, Liens: string, Quartier: QuartierModel, Nom: string, Description: string, Prix: string, Plats: Plat[], Commentaires: string, Avis: Avis, Localisation: string, Video: string, Menu: string) {
