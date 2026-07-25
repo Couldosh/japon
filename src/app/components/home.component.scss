@@ -1,27 +1,8 @@
 .entete {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-end;
   padding: 4px 16px 0;
-}
-
-.entete-sous-titre {
-  font-size: 13px;
-  color: var(--ion-color-medium);
-  margin: 0;
-}
-
-.entete-titre {
-  font-size: 16px;
-  font-weight: 500;
-  margin: 0;
-  display: flex;
-  align-items: center;
-  gap: 4px;
-
-  ion-icon {
-    font-size: 16px;
-  }
 }
 
 .filtres {

@@ -1,13 +1,9 @@
 <ion-header class="ion-no-border">
   <ion-toolbar>
     <div class="entete">
-      <div class="entete-zone">
-        <p class="entete-sous-titre">Vous êtes à</p>
-        <p class="entete-titre">
-          <ion-icon name="location-outline"></ion-icon>
-          {{ quartierCourant() }}
-        </p>
-      </div>
+      <ion-button fill="clear" (click)="themeService.basculer()" aria-label="Changer de thème">
+        <ion-icon slot="icon-only" [name]="themeService.theme() === 'dark' ? 'sunny-outline' : 'moon-outline'"></ion-icon>
+      </ion-button>
       <ion-button fill="clear" (click)="rafraichir()" [disabled]="chargement()" aria-label="Rafraîchir les données">
         <ion-icon slot="icon-only" name="refresh-outline"></ion-icon>
       </ion-button>

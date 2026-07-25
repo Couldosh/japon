@@ -1,3 +1,12 @@
+/* Ionic */
+@import "@ionic/angular/css/core.css";
+@import "@ionic/angular/css/normalize.css";
+@import "@ionic/angular/css/structure.css";
+@import "@ionic/angular/css/typography.css";
+
+/* Palette sombre Ionic activée manuellement via la classe .ion-palette-dark (cf. ThemeService) */
+@import "@ionic/angular/css/palettes/dark.class.css";
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;

@@ -10,15 +10,17 @@ import {
 } from '@ionic/angular/standalone';
 import { addIcons } from 'ionicons';
 import {
-  locationOutline, searchOutline, walkOutline, restaurantOutline,
+  searchOutline, walkOutline, restaurantOutline,
   businessOutline, fastFoodOutline, homeOutline, listOutline,
-  mapOutline, heartOutline, refreshOutline, storefrontOutline
+  mapOutline, heartOutline, refreshOutline, storefrontOutline,
+  sunnyOutline, moonOutline
 } from 'ionicons/icons';
 
 import { RestaurantService } from '../service/restaurant/restaurant.service';
 import { ActiviteService } from '../service/activite/activite.service';
 import { MagasinService } from '../service/magasin/magasin.service';
 import { GeolocationService } from '../service/geolocation/GeolocationService';
+import { ThemeService } from '../service/theme/theme.service';
 import { LieuAffichable, TypeLieu } from '../models/lieu-affichable.model';
 
 @Component({
@@ -40,6 +42,7 @@ export class HomeComponent implements OnInit {
   private readonly magasinService = inject(MagasinService);
   private readonly geoloc = inject(GeolocationService);
   private readonly destroyRef = inject(DestroyRef);
+  protected readonly themeService = inject(ThemeService);
 
   // Etat
   readonly chargement = signal(true);
@@ -79,26 +82,12 @@ export class HomeComponent implements OnInit {
     return resultat;
   });
 
-  readonly quartierCourant = computed(() => {
-    const pos = this.position();
-    if (!pos) {
-      return 'Localisation en cours...';
-    }
-
-    const lieuxTries = this.lieuxAffiches();
-    if (lieuxTries.length === 0) {
-      return 'Position inconnue';
-    }
-
-    // lieuxAffiches() est déjà trié par distance quand la position est dispo
-    return `${lieuxTries[0].quartier.Nom}`;
-  });
-
   constructor() {
     addIcons({
-      locationOutline, searchOutline, walkOutline, restaurantOutline,
+      searchOutline, walkOutline, restaurantOutline,
       businessOutline, fastFoodOutline, homeOutline, listOutline,
-      mapOutline, heartOutline, refreshOutline, storefrontOutline
+      mapOutline, heartOutline, refreshOutline, storefrontOutline,
+      sunnyOutline, moonOutline
     });
   }
 

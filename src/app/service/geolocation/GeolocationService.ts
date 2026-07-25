@@ -21,10 +21,12 @@ export class GeolocationService {
 
     navigator.geolocation.watchPosition(
       (pos) => {
-        this.position.set({
-          latitude: pos.coords.latitude,
-          longitude: pos.coords.longitude
-        });
+        const { latitude, longitude } = pos.coords;
+        if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
+          this.erreur.set('Position reçue invalide.');
+          return;
+        }
+        this.position.set({ latitude, longitude });
         this.erreur.set(null);
       },
       (err) => {
