@@ -13,8 +13,8 @@ export class PlatService {
 
   }
 
-  getPlats(): Observable<Plat[]> {
-    return this.sheetsApi.getCsv('2053739160').pipe(
+  getPlats(forceRefresh = false): Observable<Plat[]> {
+    return this.sheetsApi.getCsv('2053739160', forceRefresh).pipe(
       map(csv =>
         this.papa.parse(csv, {
           header: true,

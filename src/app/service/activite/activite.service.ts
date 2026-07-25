@@ -15,8 +15,8 @@ export class ActiviteService {
 
   }
 
-  getActivites(): Observable<ActiviteModel[]> {
-    return this.sheetsApi.getCsv('0').pipe(
+  getActivites(forceRefresh = false): Observable<ActiviteModel[]> {
+    return this.sheetsApi.getCsv('0', forceRefresh).pipe(
       map(csv => {
           const result = this.papa.parse(csv, {
             header: true,

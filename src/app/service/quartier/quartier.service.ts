@@ -10,8 +10,8 @@ import {QuartierModel} from '../../models/quartier.model';
 export class QuartierService {
   constructor(private sheetsApi: SheetsApi, private papa: Papa) {}
 
-  getQuartiers(): Observable<QuartierModel[]> {
-    return this.sheetsApi.getCsv('1855356526').pipe(
+  getQuartiers(forceRefresh = false): Observable<QuartierModel[]> {
+    return this.sheetsApi.getCsv('1855356526', forceRefresh).pipe(
       map(csv =>
         this.papa.parse(csv, {
           header: true,

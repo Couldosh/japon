@@ -5,6 +5,7 @@ import {map, Observable} from 'rxjs';
 import {Avis} from '../../models/avis.model';
 import {QuartierModel} from '../../models/quartier.model';
 import {MagasinModel} from '../../models/magasin.model';
+import {GeolocationService} from '../geolocation/GeolocationService';
 
 @Injectable({
   providedIn: 'root',
@@ -12,14 +13,14 @@ import {MagasinModel} from '../../models/magasin.model';
 export class MagasinService {
   constructor(private sheetsApi: SheetsApi, private papa: Papa) {}
 
-  getMagasins(): Observable<MagasinModel[]> {
-    return this.sheetsApi.getCsv('346756517').pipe(
+  getMagasins(forceRefresh = false): Observable<MagasinModel[]> {
+    return this.sheetsApi.getCsv('346756517', forceRefresh).pipe(
       map(csv => {
           const result = this.papa.parse(csv, {
             header: true,
             skipEmptyLines: true,
           })
-          return result.data.map((row: any) => {
+          return result.data.map((row: any, index: any) => {
             // 1. Parser les avis
             const avisData = new Avis({
               Valérian: Avis.countX(row.Valérian),
@@ -35,16 +36,20 @@ export class MagasinService {
             // 2. Calculer la moyenne automatiquement via la méthode de la classe
             avisData.calculerMoyenne();
 
-            // 3. Retourner l'objet restaurant complet
+            // 3. Retourner l'objet magasin complet
+            const coordonnees = GeolocationService.extraireCoordonnees(row.Localisation);
 
             return {
               ...row,
+              id: 'magasin_' + index,
               Avis: avisData,
               Quartier: row.Quartier
                 .split(',')
                 .map((p: string) => p.trim())
                 .filter(Boolean)
-                .map((nom: string) => ({Nom: nom}) as QuartierModel)
+                .map((nom: string) => ({Nom: nom}) as QuartierModel),
+              latitude: coordonnees?.latitude ?? null,
+              longitude: coordonnees?.longitude ?? null
             } as MagasinModel;
           })
         }

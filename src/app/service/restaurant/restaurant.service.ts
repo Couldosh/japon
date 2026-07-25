@@ -12,8 +12,8 @@ import {RestaurantModel} from '../../models/restaurant.model';
 export class RestaurantService {
   constructor(private sheetsApi: SheetsApi, private papa: Papa) {}
 
-  getRestaurants(): Observable<RestaurantModel[]> {
-    return this.sheetsApi.getCsv('892590698').pipe(
+  getRestaurants(forceRefresh = false): Observable<RestaurantModel[]> {
+    return this.sheetsApi.getCsv('892590698', forceRefresh).pipe(
       map((csv) => {
           const result = this.papa.parse(csv, {
             header: true,
