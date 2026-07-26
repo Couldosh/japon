@@ -332,6 +332,13 @@
   font-weight: 500;
 }
 
+.detail-badge-lien {
+  border: none;
+  font: inherit;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
 .detail-badge-ferme {
   background: var(--ion-color-medium);
   color: var(--ion-color-medium-contrast);

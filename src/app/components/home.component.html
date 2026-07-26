@@ -4,11 +4,9 @@
       <ion-button fill="clear" (click)="themeService.basculer()" aria-label="Changer de thème">
         <ion-icon slot="icon-only" [name]="themeService.theme() === 'dark' ? 'sunny-outline' : 'moon-outline'"></ion-icon>
       </ion-button>
-      @if (vue() !== 'planning') {
-        <ion-button fill="clear" (click)="rafraichir()" [disabled]="chargement()" aria-label="Rafraîchir les données">
-          <ion-icon slot="icon-only" name="refresh-outline"></ion-icon>
-        </ion-button>
-      }
+      <ion-button fill="clear" (click)="rafraichir()" [disabled]="rafraichissementEnCours()" aria-label="Rafraîchir les données">
+        <ion-icon slot="icon-only" name="refresh-outline"></ion-icon>
+      </ion-button>
     </div>
 
     @if (vue() !== 'planning') {
@@ -270,10 +268,10 @@
               @if (ouvert === false && prochaineReouvertureDetail(detail.data.Horaires); as reouverture) {
                 <span class="detail-badge"><ion-icon name="alarm-outline"></ion-icon>{{ reouverture }}</span>
               }
-              <span class="detail-badge">
+              <button class="detail-badge detail-badge-lien" (click)="voirQuartier(detail.data.Quartier.Nom)">
                 <ion-icon name="location-outline"></ion-icon>
                 {{ detail.data.Quartier.Nom }}@if (detail.data.Quartier.Ville.Nom) {, {{ detail.data.Quartier.Ville.Nom }}}
-              </span>
+              </button>
               @if (detail.data.Prix) {
                 <span class="detail-badge"><ion-icon name="pricetag-outline"></ion-icon>{{ detail.data.Prix }}</span>
               }
@@ -361,7 +359,9 @@
               @if (ouvert === false && prochaineReouvertureDetail(detail.data.Horaires); as reouverture) {
                 <span class="detail-badge"><ion-icon name="alarm-outline"></ion-icon>{{ reouverture }}</span>
               }
-              <span class="detail-badge"><ion-icon name="location-outline"></ion-icon>{{ detail.data.Quartier.Nom }}</span>
+              <button class="detail-badge detail-badge-lien" (click)="voirQuartier(detail.data.Quartier.Nom)">
+                <ion-icon name="location-outline"></ion-icon>{{ detail.data.Quartier.Nom }}
+              </button>
               @if (detail.data.Prix) {
                 <span class="detail-badge"><ion-icon name="pricetag-outline"></ion-icon>{{ detail.data.Prix }}</span>
               }
@@ -430,8 +430,10 @@
               @if (ouvert === false && prochaineReouvertureDetail(detail.data.Horaires); as reouverture) {
                 <span class="detail-badge"><ion-icon name="alarm-outline"></ion-icon>{{ reouverture }}</span>
               }
-              @if (detail.data.Quartier.length) {
-                <span class="detail-badge"><ion-icon name="location-outline"></ion-icon>{{ nomsQuartiers(detail.data.Quartier) }}</span>
+              @for (quartier of detail.data.Quartier; track quartier.Nom) {
+                <button class="detail-badge detail-badge-lien" (click)="voirQuartier(quartier.Nom)">
+                  <ion-icon name="location-outline"></ion-icon>{{ quartier.Nom }}
+                </button>
               }
               @if (detail.data.Type) {
                 <span class="detail-badge">{{ detail.data.Type }}</span>

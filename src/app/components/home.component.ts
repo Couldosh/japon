@@ -1,4 +1,4 @@
-import { Component, computed, DestroyRef, inject, OnInit, signal } from '@angular/core';
+import { Component, computed, DestroyRef, inject, OnInit, signal, ViewChild } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -85,6 +85,11 @@ export class HomeComponent implements OnInit {
   protected readonly themeService = inject(ThemeService);
   protected readonly favorisService = inject(FavorisService);
   protected readonly notesService = inject(NotesService);
+
+  // Le Planning charge ses données via son propre service/cache (Sheet distinct) :
+  // le bouton de rafraîchissement de l'en-tête doit donc lui déléguer l'action
+  // quand cette vue est active, plutôt que de rafraîchir restaurants/activités/magasins.
+  @ViewChild(PlanningComponent) private readonly planningComponent?: PlanningComponent;
 
   // Etat
   readonly chargement = signal(true);
@@ -259,7 +264,17 @@ export class HomeComponent implements OnInit {
 
   /** Force le rechargement des données depuis Google Sheets en ignorant le cache. */
   rafraichir(event?: CustomEvent): void {
-    this.chargerDonnees(true, () => (event?.target as HTMLIonRefresherElement | undefined)?.complete());
+    const termine = () => (event?.target as HTMLIonRefresherElement | undefined)?.complete();
+    if (this.vue() === 'planning') {
+      this.planningComponent?.charger(termine);
+      return;
+    }
+    this.chargerDonnees(true, termine);
+  }
+
+  /** Reflète le chargement de la vue active : Planning a son propre état, indépendant de celui-ci. */
+  rafraichissementEnCours(): boolean {
+    return this.vue() === 'planning' ? (this.planningComponent?.chargement() ?? false) : this.chargement();
   }
 
   private chargerDonnees(forceRefresh = false, onDone?: () => void): void {
@@ -416,8 +431,12 @@ export class HomeComponent implements OnInit {
     this.toastMessage.set(texte.trim() ? 'Note enregistrée' : 'Note supprimée');
   }
 
-  nomsQuartiers(quartiers: { Nom: string }[]): string {
-    return quartiers.map(q => q.Nom).join(', ');
+  /** Depuis le détail d'un lieu, retourne à la Liste filtrée sur ce quartier (tous types) pour explorer les alentours. */
+  voirQuartier(nomQuartier: string): void {
+    this.fermerDetails();
+    this.changerFiltre('tout');
+    this.choisirQuartier(nomQuartier);
+    this.changerVue('liste');
   }
 
   emojiDetail(detail: DetailLieu): string {

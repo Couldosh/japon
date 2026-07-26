@@ -1,5 +1,5 @@
-import { Component, OnInit, computed, effect, inject, input, output, signal } from '@angular/core';
-import { IonIcon, IonBadge, IonButton, IonRefresher, IonRefresherContent, IonSkeletonText } from '@ionic/angular/standalone';
+import { Component, ElementRef, OnInit, computed, effect, inject, input, output, signal } from '@angular/core';
+import { IonIcon, IonBadge, IonButton, IonChip, IonRefresher, IonRefresherContent, IonSkeletonText } from '@ionic/angular/standalone';
 import { addIcons } from 'ionicons';
 import {
   locationOutline, pricetagOutline, walkOutline,
@@ -25,12 +25,13 @@ interface GroupeJour {
 @Component({
   selector: 'app-planning',
   standalone: true,
-  imports: [IonIcon, IonBadge, IonButton, IonRefresher, IonRefresherContent, IonSkeletonText],
+  imports: [IonIcon, IonBadge, IonButton, IonChip, IonRefresher, IonRefresherContent, IonSkeletonText],
   templateUrl: './planning.component.html',
   styleUrl: './planning.component.scss'
 })
 export class PlanningComponent implements OnInit {
   private readonly planningService = inject(PlanningService);
+  private readonly elementRef = inject(ElementRef<HTMLElement>);
 
   /** Tous les lieux connus (non filtrés), pour retrouver la fiche détail d'une activité du planning. */
   readonly lieux = input<LieuAffichable[]>([]);
@@ -41,6 +42,36 @@ export class PlanningComponent implements OnInit {
   readonly activites = signal<PlanningActivite[]>([]);
   readonly depuisCache = signal(false);
   readonly derniereMiseAJour = signal<number | null>(null);
+  readonly filtreVille = signal<string | null>(null);
+
+  /** Villes distinctes du planning, dans leur ordre d'apparition chronologique (pas alphabétique). */
+  readonly villesDisponibles = computed(() => {
+    const villes: string[] = [];
+    for (const activite of this.activites()) {
+      const ville = activite.ville?.trim();
+      if (ville && !villes.includes(ville)) {
+        villes.push(ville);
+      }
+    }
+    return villes;
+  });
+
+  readonly activitesFiltrees = computed(() => {
+    const ville = this.filtreVille();
+    return ville ? this.activites().filter(a => a.ville === ville) : this.activites();
+  });
+
+  /** Nombre d'activités par ville, affiché sur chaque chip pour choisir en connaissance de cause. */
+  readonly comptesVilles = computed(() => {
+    const comptes = new Map<string, number>();
+    for (const activite of this.activites()) {
+      const ville = activite.ville?.trim();
+      if (ville) {
+        comptes.set(ville, (comptes.get(ville) ?? 0) + 1);
+      }
+    }
+    return comptes;
+  });
 
   // Index nom normalisé -> lieu, reconstruit seulement quand la liste de lieux change.
   private readonly lieuxParNom = computed(() => {
@@ -56,7 +87,7 @@ export class PlanningComponent implements OnInit {
   readonly groupesJour = computed((): GroupeJour[] => {
     const aujourdhui = dateISOAujourdhui();
     const groupes = new Map<string, PlanningActivite[]>();
-    for (const activite of this.activites()) {
+    for (const activite of this.activitesFiltrees()) {
       if (!groupes.has(activite.date)) {
         groupes.set(activite.date, []);
       }
@@ -149,6 +180,25 @@ export class PlanningComponent implements OnInit {
     }
 
     return null;
+  }
+
+  choisirVille(ville: string | null): void {
+    this.filtreVille.set(ville);
+    // Remonte en haut de la liste : sans ça, changer de filtre laisse le scroll
+    // à sa position précédente, potentiellement au milieu d'une liste filtrée
+    // devenue plus courte (ou vide), ce qui est déroutant.
+    const contenu = this.elementRef.nativeElement.closest('ion-content') as
+      (HTMLElement & { scrollToTop?: (duration?: number) => Promise<void> }) | null;
+    contenu?.scrollToTop?.(300);
+  }
+
+  /** Message de l'état vide : distingue une vraie erreur réseau d'un simple filtre ville sans résultat. */
+  messageVide(): string {
+    if (this.erreur()) {
+      return this.erreur()!;
+    }
+    const ville = this.filtreVille();
+    return ville ? `Aucune activité prévue à ${ville}.` : 'Aucune activité au programme.';
   }
 
   ouvrirLieu(lieu: LieuAffichable | null): void {

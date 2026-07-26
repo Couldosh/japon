@@ -9,6 +9,27 @@
   margin-bottom: 10px;
 }
 
+.planning-filtre-villes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding-bottom: 12px;
+
+  ion-chip {
+    margin: 0;
+    white-space: nowrap;
+  }
+
+  .filtre-actif {
+    --background: var(--ion-color-primary);
+    --color: var(--ion-color-primary-contrast);
+  }
+
+  ion-badge {
+    margin-left: 6px;
+  }
+}
+
 .planning-titre {
   font-size: 15px;
   font-weight: 500;
