@@ -1,22 +1,26 @@
 import {Injectable} from '@angular/core';
 import {SheetsApi} from '../google/sheets-api.service';
 import {Papa} from 'ngx-papaparse';
-import {map, Observable} from 'rxjs';
+import {combineLatest, map, Observable} from 'rxjs';
 import {ActiviteModel} from '../../models/activite.model';
 import {Avis} from '../../models/avis.model';
-import {QuartierModel} from '../../models/quartier.model';
+import {QuartierService} from '../quartier/quartier.service';
+import {resoudreQuartier} from '../../utils/quartier';
 
 @Injectable({
   providedIn: 'root',
 })
 export class ActiviteService {
-  constructor(private sheetsApi: SheetsApi, private papa: Papa) {
+  constructor(private sheetsApi: SheetsApi, private papa: Papa, private quartierService: QuartierService) {
 
   }
 
   getActivites(forceRefresh = false): Observable<ActiviteModel[]> {
-    return this.sheetsApi.getCsv('0', forceRefresh).pipe(
-      map(csv => {
+    return combineLatest([
+      this.sheetsApi.getCsv('0', forceRefresh),
+      this.quartierService.getQuartiers(forceRefresh)
+    ]).pipe(
+      map(([csv, quartiers]) => {
           const result = this.papa.parse(csv, {
             header: true,
             skipEmptyLines: 'greedy',
@@ -44,7 +48,7 @@ export class ActiviteService {
             return {
               ...row,
               Avis: avisData,
-              Quartier: ({Nom: row.Quartier}) as QuartierModel,
+              Quartier: resoudreQuartier(quartiers, row.Quartier),
               id: 'activite_' + index
             } as ActiviteModel;
           })

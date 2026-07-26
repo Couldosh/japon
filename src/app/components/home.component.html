@@ -39,19 +39,13 @@
     </div>
 
     <div class="sous-filtres">
-      <div class="filtre-pilule">
-        <ion-icon name="funnel-outline"></ion-icon>
-        <ion-select
-          interface="popover"
-          placeholder="Tous les quartiers"
-          [value]="filtreQuartier()"
-          (ionChange)="filtreQuartier.set($event.detail.value)">
-          <ion-select-option [value]="null">Tous les quartiers</ion-select-option>
-          @for (quartier of quartiersDisponibles(); track quartier) {
-            <ion-select-option [value]="quartier">{{ quartier }}</ion-select-option>
-          }
-        </ion-select>
-      </div>
+      @if (!affichageGroupe()) {
+        <button class="filtre-pilule filtre-pilule-bouton" (click)="pickerQuartierOuvert.set(true)">
+          <ion-icon name="funnel-outline"></ion-icon>
+          <span>{{ filtreQuartier() ?? 'Tous les quartiers' }}</span>
+          <ion-icon name="chevron-down-outline" class="filtre-pilule-chevron"></ion-icon>
+        </button>
+      }
 
       @if (filtreActif() === 'restaurant') {
         <div class="filtre-pilule">
@@ -122,7 +116,18 @@
 
   @if (vue() !== 'carte') {
     <div class="section">
-      <p class="section-titre">{{ vue() === 'favoris' ? 'Vos favoris' : 'Près de vous' }}</p>
+      <div class="section-entete">
+        @if (!affichageGroupe()) {
+          <p class="section-titre">{{ vue() === 'favoris' ? 'Vos favoris' : 'Près de vous' }}</p>
+        }
+        <ion-button
+          fill="clear"
+          size="small"
+          (click)="basculerGroupement()"
+          [attr.aria-label]="affichageGroupe() ? 'Afficher en liste' : 'Regrouper par ville et quartier'">
+          <ion-icon slot="icon-only" [name]="affichageGroupe() ? 'list-outline' : 'layers-outline'"></ion-icon>
+        </ion-button>
+      </div>
 
       @if (erreurChargement(); as erreur) {
         <p class="etat-vide">{{ erreur }}</p>
@@ -141,43 +146,57 @@
         <p class="etat-vide">
           {{ vue() === 'favoris' ? "Vous n'avez pas encore de favoris." : 'Aucun lieu ne correspond à votre recherche.' }}
         </p>
+      } @else if (affichageGroupe()) {
+        @for (groupeVille of groupesVille(); track groupeVille.ville) {
+          <p class="groupe-ville-titre">{{ groupeVille.ville }}</p>
+          @for (groupeQuartier of groupeVille.quartiers; track groupeQuartier.quartier) {
+            <p class="groupe-quartier-titre">{{ groupeQuartier.quartier }}</p>
+            @for (lieu of groupeQuartier.lieux; track lieu.id) {
+              <ng-container [ngTemplateOutlet]="carteLieuTpl" [ngTemplateOutletContext]="{ $implicit: lieu }"></ng-container>
+            }
+          }
+        }
       } @else {
         @for (lieu of lieuxAffiches(); track lieu.id) {
-          <div class="carte-lieu" (click)="ouvrirDetails(lieu)">
-            <div class="carte-lieu-icone">
-              <span class="carte-lieu-emoji">{{ lieu.icone }}</span>
-            </div>
-            <div class="carte-lieu-contenu">
-              <div class="carte-lieu-ligne">
-                <p class="carte-lieu-nom">{{ lieu.nom }}</p>
-                @if (favorisService.estFavori(lieu.id)) {
-                  <ion-icon class="carte-lieu-favori" name="heart"></ion-icon>
-                }
-                @if (lieu.estOuvert !== undefined) {
-                  <ion-badge [color]="lieu.estOuvert ? 'success' : 'medium'">
-                    {{ lieu.estOuvert ? 'Ouvert' : 'Fermé' }}
-                  </ion-badge>
-                }
-              </div>
-              <p class="carte-lieu-details">{{ lieu.quartier.Nom }}</p>
-              <div class="carte-lieu-meta">
-                @if (lieu.distanceMetres != null) {
-                  <span><ion-icon name="walk-outline"></ion-icon> {{ formaterDistance(lieu.distanceMetres) }}</span>
-                }
-                @if (lieu.prixIndicatif) {
-                  <span>{{ lieu.prixIndicatif }}</span>
-                }
-                @if (lieu.horaireTexte) {
-                  <span><ion-icon name="time-outline"></ion-icon> {{ lieu.horaireTexte }}</span>
-                }
-              </div>
-            </div>
-          </div>
+          <ng-container [ngTemplateOutlet]="carteLieuTpl" [ngTemplateOutletContext]="{ $implicit: lieu }"></ng-container>
         }
       }
     </div>
   }
 </ion-content>
+
+<ng-template #carteLieuTpl let-lieu>
+  <div class="carte-lieu" (click)="ouvrirDetails(lieu)">
+    <div class="carte-lieu-icone">
+      <span class="carte-lieu-emoji">{{ lieu.icone }}</span>
+    </div>
+    <div class="carte-lieu-contenu">
+      <div class="carte-lieu-ligne">
+        <p class="carte-lieu-nom">{{ lieu.nom }}</p>
+        @if (favorisService.estFavori(lieu.id)) {
+          <ion-icon class="carte-lieu-favori" name="heart"></ion-icon>
+        }
+        @if (lieu.estOuvert !== undefined) {
+          <ion-badge [color]="lieu.estOuvert ? 'success' : 'medium'">
+            {{ lieu.estOuvert ? 'Ouvert' : 'Fermé' }}
+          </ion-badge>
+        }
+      </div>
+      <p class="carte-lieu-details">{{ lieu.quartier.Nom }}</p>
+      <div class="carte-lieu-meta">
+        @if (lieu.distanceMetres != null) {
+          <span><ion-icon name="walk-outline"></ion-icon> {{ formaterDistance(lieu.distanceMetres) }}</span>
+        }
+        @if (lieu.prixIndicatif) {
+          <span>{{ lieu.prixIndicatif }}</span>
+        }
+        @if (lieu.horaireTexte) {
+          <span><ion-icon name="time-outline"></ion-icon> {{ lieu.horaireTexte }}</span>
+        }
+      </div>
+    </div>
+  </div>
+</ng-template>
 
 <ion-tab-bar slot="bottom">
   <ion-tab-button tab="liste" [selected]="vue() === 'liste'" (click)="changerVue('liste')">
@@ -226,7 +245,7 @@
               }
               <span class="detail-badge">
                 <ion-icon name="location-outline"></ion-icon>
-                {{ detail.data.Quartier.Nom }}@if (detail.data.Ville.Nom) {, {{ detail.data.Ville.Nom }}}
+                {{ detail.data.Quartier.Nom }}@if (detail.data.Quartier.Ville.Nom) {, {{ detail.data.Quartier.Ville.Nom }}}
               </span>
               @if (detail.data.Prix) {
                 <span class="detail-badge"><ion-icon name="pricetag-outline"></ion-icon>{{ detail.data.Prix }}</span>
@@ -470,5 +489,49 @@
         </div>
       </ion-content>
     }
+  </ng-template>
+</ion-modal>
+
+<ion-modal [isOpen]="pickerQuartierOuvert()" (didDismiss)="pickerQuartierOuvert.set(false)" [initialBreakpoint]="0.75" [breakpoints]="[0, 0.75, 1]">
+  <ng-template>
+    <ion-header class="ion-no-border">
+      <ion-toolbar>
+        <ion-title>Filtrer par quartier</ion-title>
+        <ion-buttons slot="end">
+          <ion-button (click)="pickerQuartierOuvert.set(false)" aria-label="Fermer">
+            <ion-icon slot="icon-only" name="close-outline"></ion-icon>
+          </ion-button>
+        </ion-buttons>
+      </ion-toolbar>
+    </ion-header>
+
+    <ion-content>
+      <div class="picker-quartier">
+        <button
+          class="picker-quartier-option picker-quartier-tous"
+          [class.picker-quartier-selectionne]="filtreQuartier() === null"
+          (click)="choisirQuartier(null)">
+          <span>Tous les quartiers</span>
+          @if (filtreQuartier() === null) {
+            <ion-icon name="checkmark-outline"></ion-icon>
+          }
+        </button>
+
+        @for (groupe of quartiersParVille(); track groupe.ville) {
+          <p class="picker-quartier-ville">{{ groupe.ville }}</p>
+          @for (quartier of groupe.quartiers; track quartier) {
+            <button
+              class="picker-quartier-option"
+              [class.picker-quartier-selectionne]="filtreQuartier() === quartier"
+              (click)="choisirQuartier(quartier)">
+              <span>{{ quartier }}</span>
+              @if (filtreQuartier() === quartier) {
+                <ion-icon name="checkmark-outline"></ion-icon>
+              }
+            </button>
+          }
+        }
+      </div>
+    </ion-content>
   </ng-template>
 </ion-modal>

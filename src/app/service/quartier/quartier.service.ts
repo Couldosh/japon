@@ -3,6 +3,7 @@ import {SheetsApi} from '../google/sheets-api.service';
 import {Papa} from 'ngx-papaparse';
 import {map, Observable} from 'rxjs';
 import {QuartierModel} from '../../models/quartier.model';
+import {VilleModel} from '../../models/ville.model';
 
 @Injectable({
   providedIn: 'root',
@@ -13,10 +14,15 @@ export class QuartierService {
   getQuartiers(forceRefresh = false): Observable<QuartierModel[]> {
     return this.sheetsApi.getCsv('1855356526', forceRefresh).pipe(
       map(csv =>
-        (this.papa.parse(csv, {
+        this.papa.parse(csv, {
           header: true,
           skipEmptyLines: 'greedy'
-        }).data as QuartierModel[]).filter(quartier => quartier.Nom?.trim())
+        }).data
+          .filter((row: any) => row.Nom?.trim())
+          .map((row: any) => ({
+            ...row,
+            Ville: ({Nom: row.Ville} as VilleModel)
+          } as QuartierModel))
       )
     );
   }

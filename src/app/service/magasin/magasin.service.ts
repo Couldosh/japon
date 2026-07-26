@@ -1,21 +1,25 @@
 import { Injectable } from '@angular/core';
 import {SheetsApi} from '../google/sheets-api.service';
 import {Papa} from 'ngx-papaparse';
-import {map, Observable} from 'rxjs';
+import {combineLatest, map, Observable} from 'rxjs';
 import {Avis} from '../../models/avis.model';
-import {QuartierModel} from '../../models/quartier.model';
 import {MagasinModel} from '../../models/magasin.model';
 import {GeolocationService} from '../geolocation/GeolocationService';
+import {QuartierService} from '../quartier/quartier.service';
+import {resoudreQuartier} from '../../utils/quartier';
 
 @Injectable({
   providedIn: 'root',
 })
 export class MagasinService {
-  constructor(private sheetsApi: SheetsApi, private papa: Papa) {}
+  constructor(private sheetsApi: SheetsApi, private papa: Papa, private quartierService: QuartierService) {}
 
   getMagasins(forceRefresh = false): Observable<MagasinModel[]> {
-    return this.sheetsApi.getCsv('346756517', forceRefresh).pipe(
-      map(csv => {
+    return combineLatest([
+      this.sheetsApi.getCsv('346756517', forceRefresh),
+      this.quartierService.getQuartiers(forceRefresh)
+    ]).pipe(
+      map(([csv, quartiers]) => {
           const result = this.papa.parse(csv, {
             header: true,
             skipEmptyLines: 'greedy',
@@ -49,7 +53,7 @@ export class MagasinService {
                 .split(',')
                 .map((p: string) => p.trim())
                 .filter(Boolean)
-                .map((nom: string) => ({Nom: nom}) as QuartierModel),
+                .map((nom: string) => resoudreQuartier(quartiers, nom)),
               latitude: coordonnees?.latitude ?? null,
               longitude: coordonnees?.longitude ?? null
             } as MagasinModel;

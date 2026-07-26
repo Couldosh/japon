@@ -1,6 +1,5 @@
 import {QuartierModel} from './quartier.model';
 import {Avis} from './avis.model';
-import {VilleModel} from './ville.model';
 
 export class MagasinModel {
   id: string;

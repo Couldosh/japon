@@ -2,12 +2,10 @@
 import {QuartierModel} from './quartier.model';
 import {Plat} from './plat.model';
 import {Avis} from './avis.model';
-import {VilleModel} from './ville.model';
 import {GeolocationService} from '../service/geolocation/GeolocationService';
 
 export class RestaurantModel {
   id: string;
-  Ville: VilleModel;
   Liens: string;
   Quartier: QuartierModel;
   Nom: string;
@@ -24,9 +22,8 @@ export class RestaurantModel {
   Horaires?: string; // format compact JSON produit par scripts/fetch-horaires.mjs
 
 
-  constructor(id: string, Ville: VilleModel, Liens: string, Quartier: QuartierModel, Nom: string, Description: string, Prix: string, Plats: Plat[], Commentaires: string, Avis: Avis, Localisation: string, Video: string, Menu: string) {
+  constructor(id: string, Liens: string, Quartier: QuartierModel, Nom: string, Description: string, Prix: string, Plats: Plat[], Commentaires: string, Avis: Avis, Localisation: string, Video: string, Menu: string) {
     this.id = id;
-    this.Ville = Ville;
     this.Liens = Liens;
     this.Quartier = Quartier;
     this.Nom = Nom;

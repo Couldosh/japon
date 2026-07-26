@@ -16,7 +16,7 @@ import {
   mapOutline, heartOutline, heart, refreshOutline, storefrontOutline,
   sunnyOutline, moonOutline, closeOutline, locationOutline,
   openOutline, starOutline, star, starHalf, pricetagOutline, playOutline,
-  timeOutline, funnelOutline
+  timeOutline, funnelOutline, layersOutline, chevronDownOutline, checkmarkOutline
 } from 'ionicons/icons';
 
 import { RestaurantService } from '../service/restaurant/restaurant.service';
@@ -36,6 +36,21 @@ import { estOuvertMaintenant, horairesAujourdhui, horairesSemaine } from '../uti
 import { CarteComponent } from './carte/carte.component';
 
 type Vue = 'liste' | 'carte' | 'favoris';
+
+interface GroupeQuartier {
+  quartier: string;
+  lieux: LieuAffichable[];
+}
+
+interface GroupeVille {
+  ville: string;
+  quartiers: GroupeQuartier[];
+}
+
+interface VilleQuartiers {
+  ville: string;
+  quartiers: string[];
+}
 
 type DetailLieu =
   | { type: 'restaurant'; data: RestaurantModel }
@@ -75,6 +90,7 @@ export class HomeComponent implements OnInit {
 
   // Filtre quartier, applicable à toutes les vues (Tout/Restaurants/Activités/Magasins)
   readonly filtreQuartier = signal<string | null>(null);
+  readonly pickerQuartierOuvert = signal(false);
 
   // Sous-filtres, spécifiques au type de lieu actif
   readonly filtrePlat = signal<string | null>(null);
@@ -82,6 +98,7 @@ export class HomeComponent implements OnInit {
   readonly filtreTypeMagasin = signal<string | null>(null);
   readonly lieux = signal<LieuAffichable[]>([]);
   readonly vue = signal<Vue>('liste');
+  readonly affichageGroupe = signal(false);
   readonly detailSelectionne = signal<DetailLieu | null>(null);
   readonly platSelectionne = signal<Plat | null>(null);
 
@@ -99,9 +116,27 @@ export class HomeComponent implements OnInit {
   readonly platsDisponibles = computed(() =>
     [...new Set(this.platsBruts().map(p => p.Nom).filter(Boolean))].sort((a, b) => a.localeCompare(b))
   );
-  readonly quartiersDisponibles = computed(() =>
-    [...new Set(this.lieux().map(l => l.quartier.Nom).filter(Boolean))].sort((a, b) => a.localeCompare(b))
-  );
+  readonly quartiersParVille = computed((): VilleQuartiers[] => {
+    const parVille = new Map<string, Set<string>>();
+
+    for (const lieu of this.lieux()) {
+      const quartier = lieu.quartier.Nom?.trim();
+      if (!quartier) continue;
+
+      const ville = lieu.quartier.Ville?.Nom?.trim() || 'Ville inconnue';
+      if (!parVille.has(ville)) {
+        parVille.set(ville, new Set());
+      }
+      parVille.get(ville)!.add(quartier);
+    }
+
+    return [...parVille.entries()]
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([ville, quartiers]) => ({
+        ville,
+        quartiers: [...quartiers].sort((a, b) => a.localeCompare(b))
+      }));
+  });
   readonly typesMagasins = computed(() =>
     [...new Set(this.magasinsBruts().map(m => m.Type).filter(Boolean))].sort((a, b) => a.localeCompare(b))
   );
@@ -169,6 +204,34 @@ export class HomeComponent implements OnInit {
     return [...resultat].sort((a, b) => a.nom.localeCompare(b.nom));
   });
 
+  // Regroupement Ville -> Quartier de la liste affichée, pour la vue groupée.
+  readonly groupesVille = computed((): GroupeVille[] => {
+    const parVille = new Map<string, Map<string, LieuAffichable[]>>();
+
+    for (const lieu of this.lieuxAffiches()) {
+      const ville = lieu.quartier.Ville?.Nom?.trim() || 'Ville inconnue';
+      const quartier = lieu.quartier.Nom?.trim() || 'Quartier inconnu';
+
+      if (!parVille.has(ville)) {
+        parVille.set(ville, new Map());
+      }
+      const parQuartier = parVille.get(ville)!;
+      if (!parQuartier.has(quartier)) {
+        parQuartier.set(quartier, []);
+      }
+      parQuartier.get(quartier)!.push(lieu);
+    }
+
+    return [...parVille.entries()]
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([ville, parQuartier]) => ({
+        ville,
+        quartiers: [...parQuartier.entries()]
+          .sort(([a], [b]) => a.localeCompare(b))
+          .map(([quartier, lieux]) => ({ quartier, lieux }))
+      }));
+  });
+
   constructor() {
     addIcons({
       searchOutline, walkOutline, restaurantOutline,
@@ -176,7 +239,7 @@ export class HomeComponent implements OnInit {
       mapOutline, heartOutline, heart, refreshOutline, storefrontOutline,
       sunnyOutline, moonOutline, closeOutline, locationOutline,
       openOutline, starOutline, star, starHalf, pricetagOutline, playOutline,
-      timeOutline, funnelOutline
+      timeOutline, funnelOutline, layersOutline, chevronDownOutline, checkmarkOutline
     });
   }
 
@@ -239,7 +302,7 @@ export class HomeComponent implements OnInit {
             id: m.id,
             type: 'magasin',
             nom: m.Nom,
-            quartier: m.Quartier[0] ?? { Nom: '' },
+            quartier: m.Quartier[0] ?? { Nom: '', Ville: { Nom: '' }, Mood: '' },
             latitude: m.latitude,
             longitude: m.longitude,
             estOuvert: estOuvertMaintenant(m.Horaires) ?? undefined,
@@ -271,7 +334,6 @@ export class HomeComponent implements OnInit {
     return GeolocationService.distanceMetres(pos, { latitude: lieu.latitude, longitude: lieu.longitude });
   }
 
-  /** Tri "distance" sans position connue : repli sur l'ordre alphabétique. */
   formaterDistance(metres?: number): string {
     return metres != null ? GeolocationService.formaterDistance(metres) : '';
   }
@@ -285,6 +347,15 @@ export class HomeComponent implements OnInit {
 
   changerVue(vue: Vue): void {
     this.vue.set(vue);
+  }
+
+  basculerGroupement(): void {
+    this.affichageGroupe.set(!this.affichageGroupe());
+  }
+
+  choisirQuartier(quartier: string | null): void {
+    this.filtreQuartier.set(quartier);
+    this.pickerQuartierOuvert.set(false);
   }
 
   onRecherche(valeur: string): void {
