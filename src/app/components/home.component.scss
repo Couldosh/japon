@@ -52,7 +52,7 @@
   flex: 0 1 auto;
   min-width: 0;
   max-width: 100%;
-  min-height: 32px;
+  min-height: 44px;
   background: var(--ion-color-light);
   border-radius: 16px;
   padding-left: 10px;
@@ -68,7 +68,7 @@
     width: auto;
     min-width: 0;
     max-width: 140px;
-    min-height: 32px;
+    min-height: 44px;
     font-size: 13px;
     --padding-start: 4px;
     --padding-end: 8px;
@@ -174,6 +174,8 @@
     margin: 0 0 0 auto;
     --padding-start: 4px;
     --padding-end: 4px;
+    min-width: 44px;
+    min-height: 44px;
   }
 }
 

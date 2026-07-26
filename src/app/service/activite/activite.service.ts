@@ -6,6 +6,7 @@ import {ActiviteModel} from '../../models/activite.model';
 import {Avis} from '../../models/avis.model';
 import {QuartierService} from '../quartier/quartier.service';
 import {resoudreQuartier} from '../../utils/quartier';
+import {GeolocationService} from '../geolocation/GeolocationService';
 
 @Injectable({
   providedIn: 'root',
@@ -44,11 +45,17 @@ export class ActiviteService {
             avisData.calculerMoyenne();
 
             // 3. Retourner l'objet activité complet
+            // Objet littéral (pas "new ActiviteModel(...)") : le calcul des
+            // coordonnées fait par le constructeur ne se déclenche jamais, il
+            // faut le refaire explicitement ici, comme pour les magasins.
+            const coordonnees = GeolocationService.extraireCoordonnees(row.Localisation);
 
             return {
               ...row,
               Avis: avisData,
               Quartier: resoudreQuartier(quartiers, row.Quartier),
+              latitude: coordonnees?.latitude ?? null,
+              longitude: coordonnees?.longitude ?? null,
               id: 'activite_' + index
             } as ActiviteModel;
           })

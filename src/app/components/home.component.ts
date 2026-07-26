@@ -7,7 +7,7 @@ import {
   IonHeader, IonToolbar, IonSearchbar, IonChip, IonIcon, IonButton, IonButtons,
   IonLabel, IonBadge, IonTabBar, IonTabButton,
   IonContent, IonSkeletonText, IonRefresher, IonRefresherContent,
-  IonModal, IonTitle, IonSelect, IonSelectOption, IonTextarea
+  IonModal, IonTitle, IonSelect, IonSelectOption, IonTextarea, IonToast
 } from '@ionic/angular/standalone';
 import { addIcons } from 'ionicons';
 import {
@@ -68,7 +68,7 @@ type DetailLieu =
     IonHeader, IonToolbar, IonSearchbar, IonChip, IonIcon, IonButton, IonButtons,
     IonLabel, IonBadge, IonTabBar, IonTabButton,
     IonContent, IonSkeletonText, IonRefresher, IonRefresherContent,
-    IonModal, IonTitle, IonSelect, IonSelectOption, IonTextarea,
+    IonModal, IonTitle, IonSelect, IonSelectOption, IonTextarea, IonToast,
     CarteComponent, PlanningComponent
   ],
   templateUrl: './home.component.html',
@@ -89,7 +89,10 @@ export class HomeComponent implements OnInit {
   // Etat
   readonly chargement = signal(true);
   readonly erreurChargement = signal<string | null>(null);
-  readonly filtreActif = signal<TypeLieu | 'tout'>('restaurant');
+  // 'tout' par défaut : ce filtre est partagé avec la Carte, qui doit montrer
+  // tous les types de lieux dès l'ouverture plutôt que masquer silencieusement
+  // activités/magasins tant qu'on n'a pas cliqué sur un autre chip.
+  readonly filtreActif = signal<TypeLieu | 'tout'>('tout');
   readonly recherche = signal('');
 
   // Filtre quartier, applicable à toutes les vues (Tout/Restaurants/Activités/Magasins)
@@ -105,6 +108,7 @@ export class HomeComponent implements OnInit {
   readonly affichageGroupe = signal(false);
   readonly detailSelectionne = signal<DetailLieu | null>(null);
   readonly platSelectionne = signal<Plat | null>(null);
+  readonly toastMessage = signal<string | null>(null);
 
   // Données brutes (issues des services) conservées pour alimenter la popup de détails,
   // qui a besoin de champs absents de la vue "LieuAffichable" (Description, Avis, Plats...).
@@ -397,6 +401,19 @@ export class HomeComponent implements OnInit {
 
   fermerDetails(): void {
     this.detailSelectionne.set(null);
+  }
+
+  /** Bascule le favori et confirme l'action par un toast, l'icône seule n'étant pas toujours assez visible. */
+  basculerFavori(id: string): void {
+    const etaitFavori = this.favorisService.estFavori(id);
+    this.favorisService.basculer(id);
+    this.toastMessage.set(etaitFavori ? 'Retiré des favoris' : 'Ajouté aux favoris');
+  }
+
+  /** Enregistre la note perso et confirme la sauvegarde, le champ ne donnant sinon aucun retour. */
+  enregistrerNote(id: string, texte: string): void {
+    this.notesService.definirNote(id, texte);
+    this.toastMessage.set(texte.trim() ? 'Note enregistrée' : 'Note supprimée');
   }
 
   nomsQuartiers(quartiers: { Nom: string }[]): string {

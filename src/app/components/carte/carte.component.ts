@@ -2,7 +2,7 @@ import {
   AfterViewInit, Component, ElementRef, OnDestroy, ViewChild,
   computed, effect, inject, input, output, signal
 } from '@angular/core';
-import { IonIcon } from '@ionic/angular/standalone';
+import { IonIcon, IonButton } from '@ionic/angular/standalone';
 import { addIcons } from 'ionicons';
 import { locateOutline, heart, heartOutline } from 'ionicons/icons';
 import * as L from 'leaflet';
@@ -19,7 +19,7 @@ const ZOOM_RECENTRAGE = 16;
 @Component({
   selector: 'app-carte',
   standalone: true,
-  imports: [IonIcon],
+  imports: [IonIcon, IonButton],
   templateUrl: './carte.component.html',
   styleUrl: './carte.component.scss'
 })
@@ -41,6 +41,9 @@ export class CarteComponent implements AfterViewInit, OnDestroy {
   private readonly lieuxFiltres = computed(() =>
     this.filtrerFavoris() ? this.lieux().filter(l => this.favorisService.estFavori(l.id)) : this.lieux()
   );
+
+  /** true si le filtre favoris est actif mais qu'aucun favori n'est à afficher (carte silencieusement vide sinon). */
+  readonly aucunFavoriAffiche = computed(() => this.filtrerFavoris() && this.lieuxFiltres().length === 0);
 
   @ViewChild('carteEl') private readonly carteEl!: ElementRef<HTMLDivElement>;
 
@@ -76,6 +79,31 @@ export class CarteComponent implements AfterViewInit, OnDestroy {
   }
 
   ngAfterViewInit(): void {
+    this.initialiserCarte();
+  }
+
+  ngOnDestroy(): void {
+    this.carte?.remove();
+  }
+
+  recentrer(): void {
+    const position = this.position();
+    if (position && this.carte) {
+      this.carte.setView([position.latitude, position.longitude], ZOOM_RECENTRAGE);
+    }
+  }
+
+  basculerFiltreFavoris(): void {
+    this.filtrerFavoris.set(!this.filtrerFavoris());
+  }
+
+  /** Relance l'initialisation après un échec. Un rAF laisse le temps au `@else` du template de remonter #carteEl. */
+  reessayer(): void {
+    this.erreur.set(null);
+    requestAnimationFrame(() => this.initialiserCarte());
+  }
+
+  private initialiserCarte(): void {
     try {
       this.carte = L.map(this.carteEl.nativeElement, {
         center: CENTRE_PAR_DEFAUT,
@@ -105,22 +133,10 @@ export class CarteComponent implements AfterViewInit, OnDestroy {
       this.erreur.set("Impossible d'afficher la carte. Vérifie que la clé MapTiler est valide.");
       this.carte?.remove();
       this.carte = undefined;
+      this.groupeMarqueurs = undefined;
+      this.signatureMarqueurs = '';
+      this.vueInitialeAjustee = false;
     }
-  }
-
-  ngOnDestroy(): void {
-    this.carte?.remove();
-  }
-
-  recentrer(): void {
-    const position = this.position();
-    if (position && this.carte) {
-      this.carte.setView([position.latitude, position.longitude], ZOOM_RECENTRAGE);
-    }
-  }
-
-  basculerFiltreFavoris(): void {
-    this.filtrerFavoris.set(!this.filtrerFavoris());
   }
 
   /** Cadrage initial une seule fois : sur la position si connue, sinon sur l'ensemble des marqueurs. */

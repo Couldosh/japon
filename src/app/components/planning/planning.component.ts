@@ -1,5 +1,5 @@
-import { Component, OnInit, computed, inject, input, output, signal } from '@angular/core';
-import { IonIcon, IonBadge, IonRefresher, IonRefresherContent, IonSkeletonText } from '@ionic/angular/standalone';
+import { Component, OnInit, computed, effect, inject, input, output, signal } from '@angular/core';
+import { IonIcon, IonBadge, IonButton, IonRefresher, IonRefresherContent, IonSkeletonText } from '@ionic/angular/standalone';
 import { addIcons } from 'ionicons';
 import {
   locationOutline, pricetagOutline, walkOutline,
@@ -25,7 +25,7 @@ interface GroupeJour {
 @Component({
   selector: 'app-planning',
   standalone: true,
-  imports: [IonIcon, IonBadge, IonRefresher, IonRefresherContent, IonSkeletonText],
+  imports: [IonIcon, IonBadge, IonButton, IonRefresher, IonRefresherContent, IonSkeletonText],
   templateUrl: './planning.component.html',
   styleUrl: './planning.component.scss'
 })
@@ -70,10 +70,25 @@ export class PlanningComponent implements OnInit {
     }));
   });
 
+  // Ne déclenche le scroll auto qu'une seule fois par ouverture de l'onglet (le
+  // composant est détruit/recréé à chaque changement de vue, donc ce flag ne
+  // survit pas entre deux visites, ce qui est le comportement voulu).
+  private dejaScrolleAujourdhui = false;
+
   constructor() {
     addIcons({
       locationOutline, pricetagOutline, walkOutline, alertCircleOutline,
       cloudOfflineOutline, calendarOutline, chevronForwardOutline
+    });
+
+    effect(() => {
+      if (this.chargement() || this.activites().length === 0 || this.dejaScrolleAujourdhui) {
+        return;
+      }
+      this.dejaScrolleAujourdhui = true;
+      setTimeout(() => {
+        document.querySelector('.planning-jour-groupe-aujourdhui')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 50);
     });
   }
 
@@ -85,7 +100,7 @@ export class PlanningComponent implements OnInit {
     this.charger(() => (event?.target as HTMLIonRefresherElement | undefined)?.complete());
   }
 
-  private charger(onDone?: () => void): void {
+  charger(onDone?: () => void): void {
     this.planningService.getPlanning().subscribe({
       next: resultat => {
         this.activites.set(resultat.activites);

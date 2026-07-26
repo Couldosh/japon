@@ -27,12 +27,16 @@
     <div class="planning-etat-vide">
       <ion-icon [name]="erreur() ? 'cloud-offline-outline' : 'calendar-outline'"></ion-icon>
       <p>{{ erreur() ?? 'Aucune activité au programme.' }}</p>
+      @if (erreur()) {
+        <ion-button fill="outline" size="small" (click)="charger()">Réessayer</ion-button>
+      }
     </div>
   } @else {
     @if (erreur()) {
       <div class="planning-bandeau-erreur">
         <ion-icon name="alert-circle-outline"></ion-icon>
         <span>{{ erreur() }}</span>
+        <ion-button fill="clear" size="small" (click)="charger()">Réessayer</ion-button>
       </div>
     }
 

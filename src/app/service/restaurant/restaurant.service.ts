@@ -6,6 +6,7 @@ import {Avis} from '../../models/avis.model';
 import {RestaurantModel} from '../../models/restaurant.model';
 import {QuartierService} from '../quartier/quartier.service';
 import {resoudreQuartier} from '../../utils/quartier';
+import {GeolocationService} from '../geolocation/GeolocationService';
 
 @Injectable({
   providedIn: 'root',
@@ -42,6 +43,10 @@ export class RestaurantService {
           avisData.calculerMoyenne();
 
           // 3. Retourner l'objet restaurant complet
+          // On construit un objet littéral (pas "new RestaurantModel(...)"), donc
+          // le calcul des coordonnées fait par le constructeur ne se déclenche
+          // jamais : il faut le refaire explicitement ici, comme pour les magasins.
+          const coordonnees = GeolocationService.extraireCoordonnees(row.Localisation);
 
           return {
             ...row,
@@ -52,6 +57,8 @@ export class RestaurantService {
               .filter(Boolean)
               .map((nom: string) => ({Nom: nom})),
             Quartier: resoudreQuartier(quartiers, row.Quartier),
+            latitude: coordonnees?.latitude ?? null,
+            longitude: coordonnees?.longitude ?? null,
             id: 'restaurant_' + index
           } as RestaurantModel;
           })

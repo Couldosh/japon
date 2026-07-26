@@ -1,7 +1,17 @@
 @if (erreur(); as message) {
-  <div class="carte-erreur">{{ message }}</div>
+  <div class="carte-erreur">
+    <p>{{ message }}</p>
+    <ion-button fill="outline" size="small" (click)="reessayer()">Réessayer</ion-button>
+  </div>
 } @else {
   <div #carteEl class="carte-conteneur"></div>
+
+  @if (aucunFavoriAffiche()) {
+    <div class="carte-etat-vide">
+      <p>Aucun favori à afficher sur la carte.</p>
+      <ion-button fill="outline" size="small" (click)="basculerFiltreFavoris()">Afficher tous les lieux</ion-button>
+    </div>
+  }
 
   <button
     class="bouton-favoris"
