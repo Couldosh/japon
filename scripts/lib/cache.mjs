@@ -9,7 +9,7 @@
 //    nouvel appel entre les deux qui pourrait renvoyer un résultat différent).
 //
 // Chaque script utilise son propre fichier de cache (un par nom de recherche :
-// horaires, quartiers, localisation), tous sous scripts/.cache/ (gitignoré).
+// horaires, quartiers, localisation, menu), tous sous scripts/.cache/ (gitignoré).
 
 import fs from 'fs/promises';
 import path from 'path';

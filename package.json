@@ -9,7 +9,8 @@
     "test": "ng test",
     "horaires": "node --env-file=.env scripts/fetch-horaires.mjs",
     "dupliquer-quartiers": "node --env-file=.env scripts/dupliquer-quartiers.mjs",
-    "localisation": "node --env-file=.env scripts/fetch-localisation.mjs"
+    "localisation": "node --env-file=.env scripts/fetch-localisation.mjs",
+    "menu": "node --env-file=.env scripts/fetch-menu.mjs"
   },
   "private": true,
   "dependencies": {

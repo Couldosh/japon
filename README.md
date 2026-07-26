@@ -71,12 +71,12 @@ Au premier lancement d'un script, une fenêtre de navigateur s'ouvre pour se con
 
 ### Cache local des recherches Places
 
-Les trois scripts qui appellent l'API Places mémorisent chaque résultat de recherche dans `scripts/.cache/` (non commité), par établissement (feuille + nom + quartier) :
+Les quatre scripts qui appellent l'API Places mémorisent chaque résultat de recherche dans `scripts/.cache/` (non commité), par établissement (feuille + nom + quartier) :
 
 - évite de repayer un appel API pour un établissement déjà cherché lors d'une exécution précédente ;
 - pour les scripts avec un mode aperçu, garantit que ce qui est écrit avec `--appliquer` est exactement ce qui a été vu à l'aperçu (pas de nouvel appel entre-temps qui pourrait renvoyer un résultat différent) ;
 - une interruption/erreur en cours de route ne fait pas perdre les recherches déjà faites (le cache est sauvegardé même en cas d'échec) ;
-- passer `--rafraichir` sur n'importe lequel des trois scripts ignore le cache et relance une recherche fraîche.
+- passer `--rafraichir` sur n'importe lequel des quatre scripts ignore le cache et relance une recherche fraîche.
 
 ### Liste des scripts
 
@@ -121,7 +121,20 @@ npm run localisation
 npm run localisation -- --appliquer
 ```
 
-> Les scripts avec un mode aperçu (`dupliquer-quartiers`, `fetch-localisation`) ne modifient jamais le Sheet sans `--appliquer` : relisez toujours l'aperçu (les enseignes à succursales multiples — Daiso, Uniqlo, Starbucks... — peuvent être ambiguës même avec le quartier en indice) avant d'appliquer.
+#### `fetch-menu.mjs` — retrouve les liens de menu des restaurants
+
+Pour les lignes de la feuille Restaurants dont la colonne "Menu" est vide, cherche l'établissement sur Places (par nom + quartier + position approximative extraite du lien "Localisation") et écrit le site web renseigné sur sa fiche Google Maps. Pour beaucoup de petits restaurants sans site officiel, ce champ pointe en réalité vers leur page Tabelog — ce qui correspond exactement au lien de menu recherché.
+
+```bash
+node --env-file=.env scripts/fetch-menu.mjs                 # aperçu, aucune écriture
+node --env-file=.env scripts/fetch-menu.mjs --appliquer     # écrit dans le Sheet
+node --env-file=.env scripts/fetch-menu.mjs --rafraichir    # ignore le cache de recherche
+
+npm run menu
+npm run menu -- --appliquer
+```
+
+> Les scripts avec un mode aperçu (`dupliquer-quartiers`, `fetch-localisation`, `fetch-menu`) ne modifient jamais le Sheet sans `--appliquer` : relisez toujours l'aperçu (les enseignes à succursales multiples — Daiso, Uniqlo, Starbucks... — peuvent être ambiguës même avec le quartier en indice) avant d'appliquer.
 
 ## Structure du projet
 
