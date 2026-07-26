@@ -40,28 +40,42 @@
 
 .sous-filtres {
   display: flex;
+  flex-wrap: wrap;
   gap: 8px;
-  overflow-x: auto;
   padding: 0 16px 12px;
-  scrollbar-width: none;
-  -ms-overflow-style: none;
+}
 
-  &::-webkit-scrollbar {
-    display: none;
+.filtre-pilule {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: 100%;
+  min-height: 32px;
+  background: var(--ion-color-light);
+  border-radius: 16px;
+  padding-left: 10px;
+
+  > ion-icon {
+    font-size: 14px;
+    color: var(--ion-color-medium);
+    flex-shrink: 0;
   }
 
   ion-select {
-    flex: 0 0 auto;
+    flex: 1 1 auto;
     width: auto;
-    max-width: none;
+    min-width: 0;
+    max-width: 140px;
     min-height: 32px;
     font-size: 13px;
-    background: var(--ion-color-light);
-    border-radius: 16px;
-    --padding-start: 12px;
+    --padding-start: 4px;
     --padding-end: 8px;
 
     &::part(text) {
+      overflow: hidden;
+      text-overflow: ellipsis;
       white-space: nowrap;
     }
   }

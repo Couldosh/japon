@@ -5,18 +5,18 @@ import { FormsModule } from '@angular/forms';
 import { combineLatest } from 'rxjs';
 import {
   IonHeader, IonToolbar, IonSearchbar, IonChip, IonIcon, IonButton, IonButtons,
-  IonList, IonItem, IonLabel, IonBadge, IonTabBar, IonTabButton,
+  IonLabel, IonBadge, IonTabBar, IonTabButton,
   IonContent, IonSkeletonText, IonRefresher, IonRefresherContent,
   IonModal, IonTitle, IonSelect, IonSelectOption
 } from '@ionic/angular/standalone';
 import { addIcons } from 'ionicons';
 import {
   searchOutline, walkOutline, restaurantOutline,
-  businessOutline, fastFoodOutline, homeOutline,
+  businessOutline, fastFoodOutline, listOutline,
   mapOutline, heartOutline, heart, refreshOutline, storefrontOutline,
   sunnyOutline, moonOutline, closeOutline, locationOutline,
   openOutline, starOutline, star, starHalf, pricetagOutline, playOutline,
-  timeOutline
+  timeOutline, funnelOutline
 } from 'ionicons/icons';
 
 import { RestaurantService } from '../service/restaurant/restaurant.service';
@@ -30,12 +30,12 @@ import { LieuAffichable, TypeLieu } from '../models/lieu-affichable.model';
 import { RestaurantModel } from '../models/restaurant.model';
 import { ActiviteModel } from '../models/activite.model';
 import { MagasinModel } from '../models/magasin.model';
-import { Plat, PlatCategory } from './plat/plat.component';
+import { Plat, PlatCategory } from '../models/plat.model';
 import { emojiRestaurant, emojiActivite, emojiMagasin } from '../utils/emoji-lieu';
 import { estOuvertMaintenant, horairesAujourdhui, horairesSemaine } from '../utils/horaires';
 import { CarteComponent } from './carte/carte.component';
 
-type Vue = 'accueil' | 'carte' | 'favoris';
+type Vue = 'liste' | 'carte' | 'favoris';
 
 type DetailLieu =
   | { type: 'restaurant'; data: RestaurantModel }
@@ -48,7 +48,7 @@ type DetailLieu =
   imports: [
     CommonModule, FormsModule,
     IonHeader, IonToolbar, IonSearchbar, IonChip, IonIcon, IonButton, IonButtons,
-    IonList, IonItem, IonLabel, IonBadge, IonTabBar, IonTabButton,
+    IonLabel, IonBadge, IonTabBar, IonTabButton,
     IonContent, IonSkeletonText, IonRefresher, IonRefresherContent,
     IonModal, IonTitle, IonSelect, IonSelectOption,
     CarteComponent
@@ -69,6 +69,7 @@ export class HomeComponent implements OnInit {
 
   // Etat
   readonly chargement = signal(true);
+  readonly erreurChargement = signal<string | null>(null);
   readonly filtreActif = signal<TypeLieu | 'tout'>('restaurant');
   readonly recherche = signal('');
 
@@ -80,7 +81,7 @@ export class HomeComponent implements OnInit {
   readonly filtreCategoriePlat = signal<PlatCategory | 'tout'>('tout');
   readonly filtreTypeMagasin = signal<string | null>(null);
   readonly lieux = signal<LieuAffichable[]>([]);
-  readonly vue = signal<Vue>('accueil');
+  readonly vue = signal<Vue>('liste');
   readonly detailSelectionne = signal<DetailLieu | null>(null);
   readonly platSelectionne = signal<Plat | null>(null);
 
@@ -152,28 +153,30 @@ export class HomeComponent implements OnInit {
     if (terme) {
       resultat = resultat.filter(l =>
         l.nom.toLowerCase().includes(terme) ||
-        l.quartier.Nom.toLowerCase().includes(terme)
+        l.quartier.Nom.toLowerCase().includes(terme) ||
+        l.description?.toLowerCase().includes(terme) ||
+        l.commentaires?.toLowerCase().includes(terme) ||
+        l.platsNoms?.some(nom => nom.toLowerCase().includes(terme))
       );
     }
 
     if (pos) {
-      resultat = resultat.map(l => ({
-        ...l,
-        distanceMetres: this.distanceVersLieu(l, pos)
-      })).sort((a, b) => (a.distanceMetres ?? Infinity) - (b.distanceMetres ?? Infinity));
+      return resultat
+        .map(l => ({ ...l, distanceMetres: this.distanceVersLieu(l, pos) }))
+        .sort((a, b) => (a.distanceMetres ?? Infinity) - (b.distanceMetres ?? Infinity));
     }
 
-    return resultat;
+    return [...resultat].sort((a, b) => a.nom.localeCompare(b.nom));
   });
 
   constructor() {
     addIcons({
       searchOutline, walkOutline, restaurantOutline,
-      businessOutline, fastFoodOutline, homeOutline,
+      businessOutline, fastFoodOutline, listOutline,
       mapOutline, heartOutline, heart, refreshOutline, storefrontOutline,
       sunnyOutline, moonOutline, closeOutline, locationOutline,
       openOutline, starOutline, star, starHalf, pricetagOutline, playOutline,
-      timeOutline
+      timeOutline, funnelOutline
     });
   }
 
@@ -189,6 +192,7 @@ export class HomeComponent implements OnInit {
 
   private chargerDonnees(forceRefresh = false, onDone?: () => void): void {
     this.chargement.set(true);
+    this.erreurChargement.set(null);
 
     // Adapter les noms de méthodes/champs à vos services et models réels
     combineLatest([
@@ -211,7 +215,9 @@ export class HomeComponent implements OnInit {
             estOuvert: estOuvertMaintenant(r.Horaires) ?? undefined,
             horaireTexte: horairesAujourdhui(r.Horaires) ?? undefined,
             icone: emojiRestaurant(r),
-            platsNoms: r.Plats.map(p => p.Nom)
+            platsNoms: r.Plats.map(p => p.Nom),
+            description: r.Description,
+            commentaires: r.Commentaires
           }));
 
           const lieuxActivites: LieuAffichable[] = activites.map(a => ({
@@ -224,7 +230,9 @@ export class HomeComponent implements OnInit {
             prixIndicatif: a.Prix,
             estOuvert: estOuvertMaintenant(a.Horaires) ?? undefined,
             horaireTexte: horairesAujourdhui(a.Horaires) ?? undefined,
-            icone: emojiActivite(a)
+            icone: emojiActivite(a),
+            description: a.Description,
+            commentaires: a.Commentaires
           }));
 
           const lieuxMagasins: LieuAffichable[] = magasins.map(m => ({
@@ -237,7 +245,8 @@ export class HomeComponent implements OnInit {
             estOuvert: estOuvertMaintenant(m.Horaires) ?? undefined,
             horaireTexte: horairesAujourdhui(m.Horaires) ?? undefined,
             icone: emojiMagasin(m),
-            typeMagasin: m.Type
+            typeMagasin: m.Type,
+            commentaires: m.Commentaires
           }));
 
           this.restaurantsBruts.set(restaurants);
@@ -251,6 +260,7 @@ export class HomeComponent implements OnInit {
         },
         error: () => {
           this.chargement.set(false);
+          this.erreurChargement.set('Impossible de charger les données. Vérifie ta connexion et réessaie.');
           onDone?.();
         }
       });
@@ -261,6 +271,7 @@ export class HomeComponent implements OnInit {
     return GeolocationService.distanceMetres(pos, { latitude: lieu.latitude, longitude: lieu.longitude });
   }
 
+  /** Tri "distance" sans position connue : repli sur l'ordre alphabétique. */
   formaterDistance(metres?: number): string {
     return metres != null ? GeolocationService.formaterDistance(metres) : '';
   }

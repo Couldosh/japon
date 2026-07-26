@@ -20,4 +20,6 @@ export interface LieuAffichable {
   icone: string;               // emoji représentatif du lieu (ex: '🍣' pour un restaurant de sushi)
   platsNoms?: string[];         // restaurant uniquement : noms des plats servis, pour le filtre par plat
   typeMagasin?: string;         // magasin uniquement : catégorie du magasin, pour le filtre par type
+  description?: string;        // restaurant/activité, pour la recherche élargie
+  commentaires?: string;        // restaurant/activité/magasin, pour la recherche élargie
 }

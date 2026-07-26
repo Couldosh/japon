@@ -1,6 +1,6 @@
 
 import {QuartierModel} from './quartier.model';
-import {Plat} from '../components/plat/plat.component';
+import {Plat} from './plat.model';
 import {Avis} from './avis.model';
 import {VilleModel} from './ville.model';
 import {GeolocationService} from '../service/geolocation/GeolocationService';

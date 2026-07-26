@@ -39,51 +39,63 @@
     </div>
 
     <div class="sous-filtres">
-      <ion-select
-        interface="popover"
-        placeholder="Tous les quartiers"
-        [value]="filtreQuartier()"
-        (ionChange)="filtreQuartier.set($event.detail.value)">
-        <ion-select-option [value]="null">Tous les quartiers</ion-select-option>
-        @for (quartier of quartiersDisponibles(); track quartier) {
-          <ion-select-option [value]="quartier">{{ quartier }}</ion-select-option>
-        }
-      </ion-select>
-
-      @if (filtreActif() === 'restaurant') {
+      <div class="filtre-pilule">
+        <ion-icon name="funnel-outline"></ion-icon>
         <ion-select
           interface="popover"
-          placeholder="Tous les plats"
-          [value]="filtrePlat()"
-          (ionChange)="filtrePlat.set($event.detail.value)">
-          <ion-select-option [value]="null">Tous les plats</ion-select-option>
-          @for (nom of platsDisponibles(); track nom) {
-            <ion-select-option [value]="nom">{{ nom }}</ion-select-option>
+          placeholder="Tous les quartiers"
+          [value]="filtreQuartier()"
+          (ionChange)="filtreQuartier.set($event.detail.value)">
+          <ion-select-option [value]="null">Tous les quartiers</ion-select-option>
+          @for (quartier of quartiersDisponibles(); track quartier) {
+            <ion-select-option [value]="quartier">{{ quartier }}</ion-select-option>
           }
         </ion-select>
+      </div>
 
-        <ion-select
-          interface="popover"
-          placeholder="Catégorie"
-          [value]="filtreCategoriePlat()"
-          (ionChange)="filtreCategoriePlat.set($event.detail.value)">
-          <ion-select-option value="tout">Plat ou snack</ion-select-option>
-          <ion-select-option value="Plat">Plat</ion-select-option>
-          <ion-select-option value="Snack">Snack</ion-select-option>
-        </ion-select>
+      @if (filtreActif() === 'restaurant') {
+        <div class="filtre-pilule">
+          <ion-icon name="funnel-outline"></ion-icon>
+          <ion-select
+            interface="popover"
+            placeholder="Tous les plats"
+            [value]="filtrePlat()"
+            (ionChange)="filtrePlat.set($event.detail.value)">
+            <ion-select-option [value]="null">Tous les plats</ion-select-option>
+            @for (nom of platsDisponibles(); track nom) {
+              <ion-select-option [value]="nom">{{ nom }}</ion-select-option>
+            }
+          </ion-select>
+        </div>
+
+        <div class="filtre-pilule">
+          <ion-icon name="funnel-outline"></ion-icon>
+          <ion-select
+            interface="popover"
+            placeholder="Catégorie"
+            [value]="filtreCategoriePlat()"
+            (ionChange)="filtreCategoriePlat.set($event.detail.value)">
+            <ion-select-option value="tout">Plat ou snack</ion-select-option>
+            <ion-select-option value="Plat">Plat</ion-select-option>
+            <ion-select-option value="Snack">Snack</ion-select-option>
+          </ion-select>
+        </div>
       }
 
       @if (filtreActif() === 'magasin') {
-        <ion-select
-          interface="popover"
-          placeholder="Tous les types"
-          [value]="filtreTypeMagasin()"
-          (ionChange)="filtreTypeMagasin.set($event.detail.value)">
-          <ion-select-option [value]="null">Tous les types</ion-select-option>
-          @for (type of typesMagasins(); track type) {
-            <ion-select-option [value]="type">{{ type }}</ion-select-option>
-          }
-        </ion-select>
+        <div class="filtre-pilule">
+          <ion-icon name="funnel-outline"></ion-icon>
+          <ion-select
+            interface="popover"
+            placeholder="Tous les types"
+            [value]="filtreTypeMagasin()"
+            (ionChange)="filtreTypeMagasin.set($event.detail.value)">
+            <ion-select-option [value]="null">Tous les types</ion-select-option>
+            @for (type of typesMagasins(); track type) {
+              <ion-select-option [value]="type">{{ type }}</ion-select-option>
+            }
+          </ion-select>
+        </div>
       }
     </div>
   </ion-toolbar>
@@ -112,7 +124,10 @@
     <div class="section">
       <p class="section-titre">{{ vue() === 'favoris' ? 'Vos favoris' : 'Près de vous' }}</p>
 
-      @if (chargement()) {
+      @if (erreurChargement(); as erreur) {
+        <p class="etat-vide">{{ erreur }}</p>
+        <ion-button expand="block" fill="outline" (click)="rafraichir()">Réessayer</ion-button>
+      } @else if (chargement()) {
         @for (i of [1, 2, 3]; track i) {
           <div class="carte-lieu">
             <ion-skeleton-text [animated]="true" style="width: 56px; height: 56px; border-radius: 10px;"></ion-skeleton-text>
@@ -165,9 +180,9 @@
 </ion-content>
 
 <ion-tab-bar slot="bottom">
-  <ion-tab-button tab="home" [selected]="vue() === 'accueil'" (click)="changerVue('accueil')">
-    <ion-icon name="home-outline"></ion-icon>
-    <ion-label>Accueil</ion-label>
+  <ion-tab-button tab="liste" [selected]="vue() === 'liste'" (click)="changerVue('liste')">
+    <ion-icon name="list-outline"></ion-icon>
+    <ion-label>Liste</ion-label>
   </ion-tab-button>
   <ion-tab-button tab="carte" [selected]="vue() === 'carte'" (click)="changerVue('carte')">
     <ion-icon name="map-outline"></ion-icon>
@@ -176,6 +191,9 @@
   <ion-tab-button tab="favoris" [selected]="vue() === 'favoris'" (click)="changerVue('favoris')">
     <ion-icon name="heart-outline"></ion-icon>
     <ion-label>Favoris</ion-label>
+    @if (favorisService.favoris().size > 0) {
+      <ion-badge>{{ favorisService.favoris().size }}</ion-badge>
+    }
   </ion-tab-button>
 </ion-tab-bar>
 

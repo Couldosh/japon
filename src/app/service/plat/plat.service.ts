@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import {SheetsApi} from '../google/sheets-api.service';
-import {Plat, PlatCategory} from '../../components/plat/plat.component';
+import {Plat, PlatCategory} from '../../models/plat.model';
 import {Papa} from 'ngx-papaparse';
 import {map, Observable} from 'rxjs';
 
