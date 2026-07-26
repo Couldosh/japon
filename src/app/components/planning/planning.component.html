@@ -1,0 +1,86 @@
+<ion-refresher slot="fixed" (ionRefresh)="rafraichir($event)">
+  <ion-refresher-content></ion-refresher-content>
+</ion-refresher>
+
+<div class="planning">
+  <div class="planning-entete">
+    <p class="planning-titre">Planning</p>
+    @if (depuisCache() && !chargement()) {
+      <p class="planning-maj">Mis à jour : {{ formaterMiseAJour(derniereMiseAJour()) }}</p>
+    }
+  </div>
+
+  @if (chargement()) {
+    @for (i of [1, 2]; track i) {
+      <div class="planning-jour-titre-squelette">
+        <ion-skeleton-text [animated]="true" style="width: 60%; height: 18px;"></ion-skeleton-text>
+      </div>
+      @for (j of [1, 2]; track j) {
+        <div class="planning-activite-carte">
+          <ion-skeleton-text [animated]="true" style="width: 40%;"></ion-skeleton-text>
+          <ion-skeleton-text [animated]="true" style="width: 70%;"></ion-skeleton-text>
+          <ion-skeleton-text [animated]="true" style="width: 50%;"></ion-skeleton-text>
+        </div>
+      }
+    }
+  } @else if (activites().length === 0) {
+    <div class="planning-etat-vide">
+      <ion-icon [name]="erreur() ? 'cloud-offline-outline' : 'calendar-outline'"></ion-icon>
+      <p>{{ erreur() ?? 'Aucune activité au programme.' }}</p>
+    </div>
+  } @else {
+    @if (erreur()) {
+      <div class="planning-bandeau-erreur">
+        <ion-icon name="alert-circle-outline"></ion-icon>
+        <span>{{ erreur() }}</span>
+      </div>
+    }
+
+    @for (groupe of groupesJour(); track groupe.date) {
+      <div class="planning-jour-groupe" [class.planning-jour-groupe-aujourdhui]="groupe.estAujourdhui">
+        <p class="planning-jour-titre" [class.planning-jour-titre-aujourdhui]="groupe.estAujourdhui">
+          {{ groupe.titre }}
+          @if (groupe.estAujourdhui) {
+            <span class="planning-badge-aujourdhui">Aujourd'hui</span>
+          }
+        </p>
+
+        @for (activite of groupe.activites; track $index) {
+          <div class="planning-activite-carte">
+            <div class="planning-activite-entete">
+              <span class="planning-activite-heure">
+                {{ activite.heureDebut }}@if (activite.heureFin) { – {{ activite.heureFin }} }
+              </span>
+              @if (statut(activite.reservation); as s) {
+                <ion-badge [color]="couleurStatut(s)">{{ activite.reservation }}</ion-badge>
+              }
+            </div>
+
+            <p class="planning-activite-titre">{{ activite.activite }}</p>
+
+            @if (activite.ville) {
+              <p class="planning-activite-ville">
+                <ion-icon name="location-outline"></ion-icon> {{ activite.ville }}
+              </p>
+            }
+
+            @if (activite.prix || activite.trajet) {
+              <div class="planning-activite-meta">
+                @if (activite.prix) {
+                  <span><ion-icon name="pricetag-outline"></ion-icon>{{ activite.prix }}</span>
+                }
+                @if (activite.trajet) {
+                  <span><ion-icon name="walk-outline"></ion-icon>{{ activite.trajet }}</span>
+                }
+              </div>
+            }
+
+            @if (activite.commentaires) {
+              <p class="planning-activite-commentaires">{{ activite.commentaires }}</p>
+            }
+          </div>
+        }
+      </div>
+    }
+  }
+</div>

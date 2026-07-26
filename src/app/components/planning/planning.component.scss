@@ -1,0 +1,174 @@
+.planning {
+  padding: 8px 16px 16px;
+}
+
+.planning-entete {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.planning-titre {
+  font-size: 15px;
+  font-weight: 500;
+  margin: 4px 0;
+}
+
+.planning-maj {
+  font-size: 11px;
+  color: var(--ion-color-medium);
+  margin: 0;
+}
+
+.planning-etat-vide {
+  text-align: center;
+  color: var(--ion-color-medium);
+  padding: 48px 16px;
+
+  ion-icon {
+    font-size: 40px;
+    margin-bottom: 12px;
+  }
+
+  p {
+    margin: 0;
+  }
+}
+
+.planning-bandeau-erreur {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--ion-color-warning-tint, #ffe8a8);
+  color: var(--ion-color-warning-shade, #7a5c00);
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-size: 12px;
+  margin-bottom: 12px;
+
+  ion-icon {
+    font-size: 16px;
+    flex-shrink: 0;
+  }
+}
+
+.planning-jour-titre {
+  font-size: 16px;
+  font-weight: 700;
+  margin: 18px 0 8px;
+
+  &:first-of-type {
+    margin-top: 0;
+  }
+}
+
+.planning-jour-titre-squelette {
+  margin: 18px 0 8px;
+
+  &:first-child {
+    margin-top: 0;
+  }
+}
+
+.planning-jour-groupe {
+  // Bordure transparente par défaut : réservée pour garder le même alignement
+  // que le groupe du jour, qui la colore au lieu d'en ajouter une (pas de
+  // décalage de contenu entre un jour normal et le jour en cours).
+  border-left: 3px solid transparent;
+  padding-left: 10px;
+  margin-left: -13px;
+}
+
+.planning-jour-groupe-aujourdhui {
+  border-left-color: var(--ion-color-primary);
+  background: color-mix(in srgb, var(--ion-color-primary) 6%, transparent);
+  border-radius: 0 10px 10px 0;
+  padding-top: 6px;
+  padding-bottom: 2px;
+}
+
+.planning-jour-titre-aujourdhui {
+  color: var(--ion-color-primary);
+}
+
+.planning-badge-aujourdhui {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 2px 8px;
+  border-radius: 10px;
+  background: var(--ion-color-primary);
+  color: var(--ion-color-primary-contrast);
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  vertical-align: middle;
+}
+
+.planning-activite-carte {
+  background: var(--ion-color-light);
+  border-radius: 12px;
+  padding: 12px;
+  margin-bottom: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.planning-activite-entete {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.planning-activite-heure {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ion-color-primary);
+}
+
+.planning-activite-titre {
+  font-size: 14px;
+  font-weight: 500;
+  margin: 0;
+}
+
+.planning-activite-ville {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--ion-color-medium);
+  margin: 0;
+
+  ion-icon {
+    font-size: 13px;
+  }
+}
+
+.planning-activite-meta {
+  display: flex;
+  gap: 12px;
+  font-size: 12px;
+  color: var(--ion-color-medium);
+
+  span {
+    display: flex;
+    align-items: center;
+    gap: 3px;
+  }
+
+  ion-icon {
+    font-size: 13px;
+  }
+}
+
+.planning-activite-commentaires {
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--ion-text-color);
+  margin: 4px 0 0;
+  white-space: pre-line;
+}

@@ -5,7 +5,7 @@ import {ThemeService} from './service/theme/theme.service';
 
 @Component({
   selector: 'app-root',
-  imports: [HomeComponent, IonApp, IonRouterOutlet],
+  imports: [IonApp, IonRouterOutlet],
   templateUrl: './app.component.html',
   styleUrl: './app.component.scss'
 })

@@ -16,7 +16,8 @@ import {
   mapOutline, heartOutline, heart, refreshOutline, storefrontOutline,
   sunnyOutline, moonOutline, closeOutline, locationOutline,
   openOutline, starOutline, star, starHalf, pricetagOutline, playOutline,
-  timeOutline, funnelOutline, layersOutline, chevronDownOutline, checkmarkOutline
+  timeOutline, funnelOutline, layersOutline, chevronDownOutline, checkmarkOutline,
+  calendarOutline
 } from 'ionicons/icons';
 
 import { RestaurantService } from '../service/restaurant/restaurant.service';
@@ -34,8 +35,9 @@ import { Plat, PlatCategory } from '../models/plat.model';
 import { emojiRestaurant, emojiActivite, emojiMagasin } from '../utils/emoji-lieu';
 import { estOuvertMaintenant, horairesAujourdhui, horairesSemaine } from '../utils/horaires';
 import { CarteComponent } from './carte/carte.component';
+import { PlanningComponent } from './planning/planning.component';
 
-type Vue = 'liste' | 'carte' | 'favoris';
+type Vue = 'liste' | 'carte' | 'favoris' | 'planning';
 
 interface GroupeQuartier {
   quartier: string;
@@ -66,7 +68,7 @@ type DetailLieu =
     IonLabel, IonBadge, IonTabBar, IonTabButton,
     IonContent, IonSkeletonText, IonRefresher, IonRefresherContent,
     IonModal, IonTitle, IonSelect, IonSelectOption,
-    CarteComponent
+    CarteComponent, PlanningComponent
   ],
   templateUrl: './home.component.html',
   styleUrl: './home.component.scss'
@@ -239,7 +241,8 @@ export class HomeComponent implements OnInit {
       mapOutline, heartOutline, heart, refreshOutline, storefrontOutline,
       sunnyOutline, moonOutline, closeOutline, locationOutline,
       openOutline, starOutline, star, starHalf, pricetagOutline, playOutline,
-      timeOutline, funnelOutline, layersOutline, chevronDownOutline, checkmarkOutline
+      timeOutline, funnelOutline, layersOutline, chevronDownOutline, checkmarkOutline,
+      calendarOutline
     });
   }
 
