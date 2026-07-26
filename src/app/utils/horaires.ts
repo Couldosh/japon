@@ -97,6 +97,83 @@ export function horairesAujourdhui(horairesJson: string | null | undefined, main
 }
 
 /**
+ * Minutes restantes avant fermeture si l'établissement est actuellement ouvert
+ * ET ferme dans les `seuilMinutes` à venir. Null sinon (fermé, pas d'info, ou
+ * ferme trop tard pour justifier une alerte). Les établissements ouverts en
+ * continu (jf/hf absents) ne déclenchent jamais cette alerte.
+ */
+export function fermetureImminente(
+  horairesJson: string | null | undefined,
+  seuilMinutes = 30,
+  maintenant = new Date()
+): number | null {
+  const periodes = parserPeriodes(horairesJson);
+  if (!periodes) {
+    return null;
+  }
+
+  const maintenantMin = maintenant.getDay() * MINUTES_PAR_JOUR + maintenant.getHours() * 60 + maintenant.getMinutes();
+
+  for (const periode of periodes) {
+    if (periode.jf == null || !periode.hf) {
+      continue; // ouvert en continu : jamais "bientôt fermé"
+    }
+
+    const debut = minutesDepuisDebutSemaine(periode.j, periode.h);
+    let fin = minutesDepuisDebutSemaine(periode.jf, periode.hf);
+    if (fin <= debut) {
+      fin += MINUTES_PAR_SEMAINE;
+    }
+    const duree = fin - debut;
+
+    for (const decalage of [debut - MINUTES_PAR_SEMAINE, debut, debut + MINUTES_PAR_SEMAINE]) {
+      if (maintenantMin >= decalage && maintenantMin < decalage + duree) {
+        const restant = decalage + duree - maintenantMin;
+        return restant <= seuilMinutes ? restant : null;
+      }
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Quand l'établissement est fermé, indique la prochaine réouverture connue
+ * ("Réouvre aujourd'hui à 18:00" / "demain à 09:00" / "mardi à 11:00").
+ * Null si pas d'info ou aucune période trouvée dans les 7 prochains jours.
+ */
+export function prochaineReouverture(horairesJson: string | null | undefined, maintenant = new Date()): string | null {
+  const periodes = parserPeriodes(horairesJson);
+  if (!periodes) {
+    return null;
+  }
+
+  const minutesActuelles = maintenant.getHours() * 60 + maintenant.getMinutes();
+
+  for (let decalageJour = 0; decalageJour < 7; decalageJour++) {
+    const jourCible = (maintenant.getDay() + decalageJour) % 7;
+    const heuresCandidates = periodes
+      .filter(p => p.j === jourCible)
+      .map(p => p.h)
+      .sort();
+
+    for (const heure of heuresCandidates) {
+      if (decalageJour === 0) {
+        const [h, m] = heure.split(':').map(Number);
+        if (h * 60 + m <= minutesActuelles) {
+          continue; // déjà passé aujourd'hui
+        }
+      }
+
+      const prefixe = decalageJour === 0 ? "aujourd'hui" : decalageJour === 1 ? 'demain' : NOMS_JOURS[jourCible].toLowerCase();
+      return `Réouvre ${prefixe} à ${heure}`;
+    }
+  }
+
+  return null;
+}
+
+/**
  * Horaires de la semaine complète (lundi -> dimanche), pour affichage détaillé.
  * Null si pas d'info.
  */

@@ -133,6 +133,18 @@
   font-size: 14px;
   font-weight: 500;
   margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.planning-activite-carte-liee {
+  cursor: pointer;
+}
+
+.planning-activite-lien-icone {
+  font-size: 13px;
+  color: var(--ion-color-primary);
 }
 
 .planning-activite-ville {

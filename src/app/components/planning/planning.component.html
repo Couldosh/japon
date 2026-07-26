@@ -46,7 +46,11 @@
         </p>
 
         @for (activite of groupe.activites; track $index) {
-          <div class="planning-activite-carte">
+          @let lieuLie = lieuPourActivite(activite);
+          <div
+            class="planning-activite-carte"
+            [class.planning-activite-carte-liee]="lieuLie"
+            (click)="ouvrirLieu(lieuLie)">
             <div class="planning-activite-entete">
               <span class="planning-activite-heure">
                 {{ activite.heureDebut }}@if (activite.heureFin) { – {{ activite.heureFin }} }
@@ -56,7 +60,12 @@
               }
             </div>
 
-            <p class="planning-activite-titre">{{ activite.activite }}</p>
+            <p class="planning-activite-titre">
+              {{ activite.activite }}
+              @if (lieuLie) {
+                <ion-icon name="chevron-forward-outline" class="planning-activite-lien-icone"></ion-icon>
+              }
+            </p>
 
             @if (activite.ville) {
               <p class="planning-activite-ville">

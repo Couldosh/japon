@@ -7,7 +7,7 @@ import {
   IonHeader, IonToolbar, IonSearchbar, IonChip, IonIcon, IonButton, IonButtons,
   IonLabel, IonBadge, IonTabBar, IonTabButton,
   IonContent, IonSkeletonText, IonRefresher, IonRefresherContent,
-  IonModal, IonTitle, IonSelect, IonSelectOption
+  IonModal, IonTitle, IonSelect, IonSelectOption, IonTextarea
 } from '@ionic/angular/standalone';
 import { addIcons } from 'ionicons';
 import {
@@ -17,7 +17,7 @@ import {
   sunnyOutline, moonOutline, closeOutline, locationOutline,
   openOutline, starOutline, star, starHalf, pricetagOutline, playOutline,
   timeOutline, funnelOutline, layersOutline, chevronDownOutline, checkmarkOutline,
-  calendarOutline
+  calendarOutline, alarmOutline, createOutline
 } from 'ionicons/icons';
 
 import { RestaurantService } from '../service/restaurant/restaurant.service';
@@ -27,13 +27,14 @@ import { PlatService } from '../service/plat/plat.service';
 import { GeolocationService } from '../service/geolocation/GeolocationService';
 import { ThemeService } from '../service/theme/theme.service';
 import { FavorisService } from '../service/favoris/favoris.service';
+import { NotesService } from '../service/notes/notes.service';
 import { LieuAffichable, TypeLieu } from '../models/lieu-affichable.model';
 import { RestaurantModel } from '../models/restaurant.model';
 import { ActiviteModel } from '../models/activite.model';
 import { MagasinModel } from '../models/magasin.model';
 import { Plat, PlatCategory } from '../models/plat.model';
 import { emojiRestaurant, emojiActivite, emojiMagasin } from '../utils/emoji-lieu';
-import { estOuvertMaintenant, horairesAujourdhui, horairesSemaine } from '../utils/horaires';
+import { estOuvertMaintenant, horairesAujourdhui, horairesSemaine, fermetureImminente, prochaineReouverture } from '../utils/horaires';
 import { CarteComponent } from './carte/carte.component';
 import { PlanningComponent } from './planning/planning.component';
 
@@ -67,7 +68,7 @@ type DetailLieu =
     IonHeader, IonToolbar, IonSearchbar, IonChip, IonIcon, IonButton, IonButtons,
     IonLabel, IonBadge, IonTabBar, IonTabButton,
     IonContent, IonSkeletonText, IonRefresher, IonRefresherContent,
-    IonModal, IonTitle, IonSelect, IonSelectOption,
+    IonModal, IonTitle, IonSelect, IonSelectOption, IonTextarea,
     CarteComponent, PlanningComponent
   ],
   templateUrl: './home.component.html',
@@ -83,6 +84,7 @@ export class HomeComponent implements OnInit {
   private readonly destroyRef = inject(DestroyRef);
   protected readonly themeService = inject(ThemeService);
   protected readonly favorisService = inject(FavorisService);
+  protected readonly notesService = inject(NotesService);
 
   // Etat
   readonly chargement = signal(true);
@@ -242,7 +244,7 @@ export class HomeComponent implements OnInit {
       sunnyOutline, moonOutline, closeOutline, locationOutline,
       openOutline, starOutline, star, starHalf, pricetagOutline, playOutline,
       timeOutline, funnelOutline, layersOutline, chevronDownOutline, checkmarkOutline,
-      calendarOutline
+      calendarOutline, alarmOutline, createOutline
     });
   }
 
@@ -280,26 +282,33 @@ export class HomeComponent implements OnInit {
             prixIndicatif: r.Prix,
             estOuvert: estOuvertMaintenant(r.Horaires) ?? undefined,
             horaireTexte: horairesAujourdhui(r.Horaires) ?? undefined,
+            horairesJson: r.Horaires ?? undefined,
             icone: emojiRestaurant(r),
             platsNoms: r.Plats.map(p => p.Nom),
             description: r.Description,
             commentaires: r.Commentaires
           }));
 
-          const lieuxActivites: LieuAffichable[] = activites.map(a => ({
-            id: a.id,
-            type: 'activite',
-            nom: a.Nom,
-            quartier: a.Quartier,
-            latitude: a.latitude,
-            longitude: a.longitude,
-            prixIndicatif: a.Prix,
-            estOuvert: estOuvertMaintenant(a.Horaires) ?? undefined,
-            horaireTexte: horairesAujourdhui(a.Horaires) ?? undefined,
-            icone: emojiActivite(a),
-            description: a.Description,
-            commentaires: a.Commentaires
-          }));
+          // "Trajet" est une activité technique (transit entre 2 villes), pas un vrai
+          // lieu à afficher : on l'exclut ici pour qu'elle disparaisse à la fois de la
+          // liste/carte et du lien Planning -> fiche lieu (qui se base sur ces lieux).
+          const lieuxActivites: LieuAffichable[] = activites
+            .filter(a => a.Nom?.trim().toLowerCase() !== 'trajet')
+            .map(a => ({
+              id: a.id,
+              type: 'activite',
+              nom: a.Nom,
+              quartier: a.Quartier,
+              latitude: a.latitude,
+              longitude: a.longitude,
+              prixIndicatif: a.Prix,
+              estOuvert: estOuvertMaintenant(a.Horaires) ?? undefined,
+              horaireTexte: horairesAujourdhui(a.Horaires) ?? undefined,
+              horairesJson: a.Horaires ?? undefined,
+              icone: emojiActivite(a),
+              description: a.Description,
+              commentaires: a.Commentaires
+            }));
 
           const lieuxMagasins: LieuAffichable[] = magasins.map(m => ({
             id: m.id,
@@ -310,6 +319,7 @@ export class HomeComponent implements OnInit {
             longitude: m.longitude,
             estOuvert: estOuvertMaintenant(m.Horaires) ?? undefined,
             horaireTexte: horairesAujourdhui(m.Horaires) ?? undefined,
+            horairesJson: m.Horaires ?? undefined,
             icone: emojiMagasin(m),
             typeMagasin: m.Type,
             commentaires: m.Commentaires
@@ -404,6 +414,16 @@ export class HomeComponent implements OnInit {
   /** undefined = pas d'horaires renseignés (badge masqué), sinon ouvert/fermé à l'instant présent. */
   estOuvertDetail(horaires?: string): boolean | undefined {
     return estOuvertMaintenant(horaires) ?? undefined;
+  }
+
+  /** Minutes avant fermeture si le lieu ferme bientôt (30 min), sinon null. */
+  fermetureImminenteDetail(horaires?: string): number | null {
+    return fermetureImminente(horaires, 30);
+  }
+
+  /** Prochaine réouverture connue quand le lieu est actuellement fermé, sinon null. */
+  prochaineReouvertureDetail(horaires?: string): string | null {
+    return prochaineReouverture(horaires);
   }
 
   /** Horaires de la semaine (lundi -> dimanche) pour la popup de détails. */

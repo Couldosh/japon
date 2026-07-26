@@ -3,6 +3,14 @@
 } @else {
   <div #carteEl class="carte-conteneur"></div>
 
+  <button
+    class="bouton-favoris"
+    [class.bouton-favoris-actif]="filtrerFavoris()"
+    (click)="basculerFiltreFavoris()"
+    [attr.aria-label]="filtrerFavoris() ? 'Afficher tous les lieux' : 'Afficher seulement mes favoris'">
+    <ion-icon [name]="filtrerFavoris() ? 'heart' : 'heart-outline'"></ion-icon>
+  </button>
+
   @if (position()) {
     <button class="bouton-recentrer" (click)="recentrer()" aria-label="Recentrer sur ma position">
       <ion-icon name="locate-outline"></ion-icon>

@@ -119,7 +119,7 @@
   </app-carte>
 
   @if (vue() === 'planning') {
-    <app-planning></app-planning>
+    <app-planning [lieux]="lieux()" (lieuClique)="ouvrirDetails($event)"></app-planning>
   }
 
   @if (vue() === 'liste' || vue() === 'favoris') {
@@ -184,10 +184,16 @@
         @if (favorisService.estFavori(lieu.id)) {
           <ion-icon class="carte-lieu-favori" name="heart"></ion-icon>
         }
+        @if (notesService.aUneNote(lieu.id)) {
+          <ion-icon class="carte-lieu-note" name="create-outline"></ion-icon>
+        }
         @if (lieu.estOuvert !== undefined) {
           <ion-badge [color]="lieu.estOuvert ? 'success' : 'medium'">
             {{ lieu.estOuvert ? 'Ouvert' : 'Fermé' }}
           </ion-badge>
+        }
+        @if (fermetureImminenteDetail(lieu.horairesJson); as minutes) {
+          <ion-badge color="warning">Ferme dans {{ minutes }} min</ion-badge>
         }
       </div>
       <p class="carte-lieu-details">{{ lieu.quartier.Nom }}</p>
@@ -200,6 +206,9 @@
         }
         @if (lieu.horaireTexte) {
           <span><ion-icon name="time-outline"></ion-icon> {{ lieu.horaireTexte }}</span>
+        }
+        @if (!lieu.estOuvert && prochaineReouvertureDetail(lieu.horairesJson); as reouverture) {
+          <span><ion-icon name="alarm-outline"></ion-icon> {{ reouverture }}</span>
         }
       </div>
     </div>
@@ -254,6 +263,12 @@
                 <span class="detail-badge" [class.detail-badge-ouvert]="ouvert" [class.detail-badge-ferme]="!ouvert">
                   {{ ouvert ? 'Ouvert' : 'Fermé' }}
                 </span>
+              }
+              @if (fermetureImminenteDetail(detail.data.Horaires); as minutes) {
+                <span class="detail-badge detail-badge-alerte"><ion-icon name="alarm-outline"></ion-icon>Ferme dans {{ minutes }} min</span>
+              }
+              @if (ouvert === false && prochaineReouvertureDetail(detail.data.Horaires); as reouverture) {
+                <span class="detail-badge"><ion-icon name="alarm-outline"></ion-icon>{{ reouverture }}</span>
               }
               <span class="detail-badge">
                 <ion-icon name="location-outline"></ion-icon>
@@ -340,6 +355,12 @@
                   {{ ouvert ? 'Ouvert' : 'Fermé' }}
                 </span>
               }
+              @if (fermetureImminenteDetail(detail.data.Horaires); as minutes) {
+                <span class="detail-badge detail-badge-alerte"><ion-icon name="alarm-outline"></ion-icon>Ferme dans {{ minutes }} min</span>
+              }
+              @if (ouvert === false && prochaineReouvertureDetail(detail.data.Horaires); as reouverture) {
+                <span class="detail-badge"><ion-icon name="alarm-outline"></ion-icon>{{ reouverture }}</span>
+              }
               <span class="detail-badge"><ion-icon name="location-outline"></ion-icon>{{ detail.data.Quartier.Nom }}</span>
               @if (detail.data.Prix) {
                 <span class="detail-badge"><ion-icon name="pricetag-outline"></ion-icon>{{ detail.data.Prix }}</span>
@@ -403,6 +424,12 @@
                   {{ ouvert ? 'Ouvert' : 'Fermé' }}
                 </span>
               }
+              @if (fermetureImminenteDetail(detail.data.Horaires); as minutes) {
+                <span class="detail-badge detail-badge-alerte"><ion-icon name="alarm-outline"></ion-icon>Ferme dans {{ minutes }} min</span>
+              }
+              @if (ouvert === false && prochaineReouvertureDetail(detail.data.Horaires); as reouverture) {
+                <span class="detail-badge"><ion-icon name="alarm-outline"></ion-icon>{{ reouverture }}</span>
+              }
               @if (detail.data.Quartier.length) {
                 <span class="detail-badge"><ion-icon name="location-outline"></ion-icon>{{ nomsQuartiers(detail.data.Quartier) }}</span>
               }
@@ -455,6 +482,15 @@
               }
             </div>
           }
+
+          <p class="detail-sous-titre">Ma note</p>
+          <ion-textarea
+            class="detail-note"
+            placeholder="Note personnelle, visible seulement sur cet appareil..."
+            [autoGrow]="true"
+            [value]="notesService.obtenirNote(detail.data.id)"
+            (ionChange)="notesService.definirNote(detail.data.id, $any($event.detail).value ?? '')">
+          </ion-textarea>
         </div>
       </ion-content>
     }

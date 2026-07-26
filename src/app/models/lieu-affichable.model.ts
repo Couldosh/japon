@@ -16,6 +16,7 @@ export interface LieuAffichable {
   prixIndicatif?: string;      // ex: '¥', '¥¥', 'Gratuit'
   estOuvert?: boolean;         // calculé à partir des horaires si dispo
   horaireTexte?: string;       // horaires du jour courant, ex: '09:00 - 18:00'
+  horairesJson?: string;       // horaires bruts (JSON périodes), pour calculs additionnels (fermeture imminente...)
   distanceMetres?: number | null;     // calculé côté client via géoloc
   icone: string;               // emoji représentatif du lieu (ex: '🍣' pour un restaurant de sushi)
   platsNoms?: string[];         // restaurant uniquement : noms des plats servis, pour le filtre par plat

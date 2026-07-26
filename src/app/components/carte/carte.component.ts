@@ -1,10 +1,10 @@
 import {
   AfterViewInit, Component, ElementRef, OnDestroy, ViewChild,
-  effect, inject, input, output, signal
+  computed, effect, inject, input, output, signal
 } from '@angular/core';
 import { IonIcon } from '@ionic/angular/standalone';
 import { addIcons } from 'ionicons';
-import { locateOutline } from 'ionicons/icons';
+import { locateOutline, heart, heartOutline } from 'ionicons/icons';
 import * as L from 'leaflet';
 import 'leaflet.markercluster';
 
@@ -35,6 +35,13 @@ export class CarteComponent implements AfterViewInit, OnDestroy {
   /** Non-null si l'initialisation de la carte a échoué. */
   readonly erreur = signal<string | null>(null);
 
+  /** N'affiche que les lieux favoris sur la carte quand actif. */
+  readonly filtrerFavoris = signal(false);
+
+  private readonly lieuxFiltres = computed(() =>
+    this.filtrerFavoris() ? this.lieux().filter(l => this.favorisService.estFavori(l.id)) : this.lieux()
+  );
+
   @ViewChild('carteEl') private readonly carteEl!: ElementRef<HTMLDivElement>;
 
   private carte?: L.Map;
@@ -52,9 +59,9 @@ export class CarteComponent implements AfterViewInit, OnDestroy {
   private vueInitialeAjustee = false;
 
   constructor() {
-    addIcons({ locateOutline });
+    addIcons({ locateOutline, heart, heartOutline });
 
-    effect(() => this.mettreAJourMarqueursLieux(this.lieux()));
+    effect(() => this.mettreAJourMarqueursLieux(this.lieuxFiltres()));
     effect(() => this.mettreAJourMarqueurPosition(this.position()));
 
     // Le composant reste monté même masqué (voir home.component.html) ; Leaflet
@@ -90,7 +97,7 @@ export class CarteComponent implements AfterViewInit, OnDestroy {
       this.groupeMarqueurs = L.markerClusterGroup();
       this.carte.addLayer(this.groupeMarqueurs);
 
-      this.mettreAJourMarqueursLieux(this.lieux());
+      this.mettreAJourMarqueursLieux(this.lieuxFiltres());
       this.mettreAJourMarqueurPosition(this.position());
       this.ajusterVueInitiale();
     } catch (e) {
@@ -110,6 +117,10 @@ export class CarteComponent implements AfterViewInit, OnDestroy {
     if (position && this.carte) {
       this.carte.setView([position.latitude, position.longitude], ZOOM_RECENTRAGE);
     }
+  }
+
+  basculerFiltreFavoris(): void {
+    this.filtrerFavoris.set(!this.filtrerFavoris());
   }
 
   /** Cadrage initial une seule fois : sur la position si connue, sinon sur l'ensemble des marqueurs. */
