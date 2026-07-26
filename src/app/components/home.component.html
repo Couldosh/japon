@@ -1,13 +1,12 @@
 <ion-header class="ion-no-border">
   <ion-toolbar>
     <div class="entete">
-      <div class="entete-zone">
-        <p class="entete-sous-titre">Vous êtes à</p>
-        <p class="entete-titre">
-          <ion-icon name="location-outline"></ion-icon>
-          {{ quartierCourant() }}
-        </p>
-      </div>
+      <ion-button fill="clear" (click)="themeService.basculer()" aria-label="Changer de thème">
+        <ion-icon slot="icon-only" [name]="themeService.theme() === 'dark' ? 'sunny-outline' : 'moon-outline'"></ion-icon>
+      </ion-button>
+      <ion-button fill="clear" (click)="rafraichir()" [disabled]="chargement()" aria-label="Rafraîchir les données">
+        <ion-icon slot="icon-only" name="refresh-outline"></ion-icon>
+      </ion-button>
     </div>
 
     <ion-searchbar
@@ -33,76 +32,506 @@
         Activités
       </ion-chip>
       <ion-chip
-        [class.filtre-actif]="filtreActif() === 'plat'"
-        (click)="changerFiltre('plat')">
-        Plats
+        [class.filtre-actif]="filtreActif() === 'magasin'"
+        (click)="changerFiltre('magasin')">
+        Magasins
       </ion-chip>
+    </div>
+
+    <div class="sous-filtres">
+      @if (!affichageGroupe()) {
+        <button class="filtre-pilule filtre-pilule-bouton" (click)="pickerQuartierOuvert.set(true)">
+          <ion-icon name="funnel-outline"></ion-icon>
+          <span>{{ filtreQuartier() ?? 'Tous les quartiers' }}</span>
+          <ion-icon name="chevron-down-outline" class="filtre-pilule-chevron"></ion-icon>
+        </button>
+      }
+
+      @if (filtreActif() === 'restaurant') {
+        <div class="filtre-pilule">
+          <ion-icon name="funnel-outline"></ion-icon>
+          <ion-select
+            interface="popover"
+            placeholder="Tous les plats"
+            [value]="filtrePlat()"
+            (ionChange)="filtrePlat.set($event.detail.value)">
+            <ion-select-option [value]="null">Tous les plats</ion-select-option>
+            @for (nom of platsDisponibles(); track nom) {
+              <ion-select-option [value]="nom">{{ nom }}</ion-select-option>
+            }
+          </ion-select>
+        </div>
+
+        <div class="filtre-pilule">
+          <ion-icon name="funnel-outline"></ion-icon>
+          <ion-select
+            interface="popover"
+            placeholder="Catégorie"
+            [value]="filtreCategoriePlat()"
+            (ionChange)="filtreCategoriePlat.set($event.detail.value)">
+            <ion-select-option value="tout">Plat ou snack</ion-select-option>
+            <ion-select-option value="Plat">Plat</ion-select-option>
+            <ion-select-option value="Snack">Snack</ion-select-option>
+          </ion-select>
+        </div>
+      }
+
+      @if (filtreActif() === 'magasin') {
+        <div class="filtre-pilule">
+          <ion-icon name="funnel-outline"></ion-icon>
+          <ion-select
+            interface="popover"
+            placeholder="Tous les types"
+            [value]="filtreTypeMagasin()"
+            (ionChange)="filtreTypeMagasin.set($event.detail.value)">
+            <ion-select-option [value]="null">Tous les types</ion-select-option>
+            @for (type of typesMagasins(); track type) {
+              <ion-select-option [value]="type">{{ type }}</ion-select-option>
+            }
+          </ion-select>
+        </div>
+      }
     </div>
   </ion-toolbar>
 </ion-header>
 
-<ion-content>
-  <div class="section">
-    <p class="section-titre">Près de vous</p>
+<ion-content [scrollY]="vue() !== 'carte'">
+  @if (vue() !== 'carte') {
+    <ion-refresher slot="fixed" (ionRefresh)="rafraichir($event)">
+      <ion-refresher-content></ion-refresher-content>
+    </ion-refresher>
+  }
 
-    @if (chargement()) {
-      @for (i of [1, 2, 3]; track i) {
-        <div class="carte-lieu">
-          <ion-skeleton-text [animated]="true" style="width: 56px; height: 56px; border-radius: 10px;"></ion-skeleton-text>
-          <div class="carte-lieu-contenu">
-            <ion-skeleton-text [animated]="true" style="width: 60%;"></ion-skeleton-text>
-            <ion-skeleton-text [animated]="true" style="width: 40%;"></ion-skeleton-text>
-          </div>
-        </div>
-      }
-    } @else if (lieuxAffiches().length === 0) {
-      <p class="etat-vide">Aucun lieu ne correspond à votre recherche.</p>
-    } @else {
-      @for (lieu of lieuxAffiches(); track lieu.id) {
-        <div class="carte-lieu">
-          <div class="carte-lieu-icone">
-            <ion-icon [name]="lieu.icone"></ion-icon>
-          </div>
-          <div class="carte-lieu-contenu">
-            <div class="carte-lieu-ligne">
-              <p class="carte-lieu-nom">{{ lieu.nom }}</p>
-              @if (lieu.estOuvert !== undefined) {
-                <ion-badge [color]="lieu.estOuvert ? 'success' : 'medium'">
-                  {{ lieu.estOuvert ? 'Ouvert' : 'Fermé' }}
-                </ion-badge>
-              }
+  <!-- Toujours présent (juste masqué) pour ne pas recréer la carte à chaque
+       passage sur l'onglet. [actif] déclenche le recalcul de taille Leaflet
+       au moment où le conteneur redevient visible. -->
+  <app-carte
+    class="vue-carte"
+    [class.masquee]="vue() !== 'carte'"
+    [actif]="vue() === 'carte'"
+    [lieux]="lieuxAffiches()"
+    [position]="position()"
+    (lieuClique)="ouvrirDetails($event)">
+  </app-carte>
+
+  @if (vue() !== 'carte') {
+    <div class="section">
+      <div class="section-entete">
+        @if (!affichageGroupe()) {
+          <p class="section-titre">{{ vue() === 'favoris' ? 'Vos favoris' : 'Près de vous' }}</p>
+        }
+        <ion-button
+          fill="clear"
+          size="small"
+          (click)="basculerGroupement()"
+          [attr.aria-label]="affichageGroupe() ? 'Afficher en liste' : 'Regrouper par ville et quartier'">
+          <ion-icon slot="icon-only" [name]="affichageGroupe() ? 'list-outline' : 'layers-outline'"></ion-icon>
+        </ion-button>
+      </div>
+
+      @if (erreurChargement(); as erreur) {
+        <p class="etat-vide">{{ erreur }}</p>
+        <ion-button expand="block" fill="outline" (click)="rafraichir()">Réessayer</ion-button>
+      } @else if (chargement()) {
+        @for (i of [1, 2, 3]; track i) {
+          <div class="carte-lieu">
+            <ion-skeleton-text [animated]="true" style="width: 56px; height: 56px; border-radius: 10px;"></ion-skeleton-text>
+            <div class="carte-lieu-contenu">
+              <ion-skeleton-text [animated]="true" style="width: 60%;"></ion-skeleton-text>
+              <ion-skeleton-text [animated]="true" style="width: 40%;"></ion-skeleton-text>
             </div>
-            <p class="carte-lieu-details">{{ lieu.quartier.Nom }}</p>
-            <div class="carte-lieu-meta">
-              @if (lieu.distanceMetres != null) {
-                <span><ion-icon name="walk-outline"></ion-icon> {{ formaterDistance(lieu.distanceMetres) }}</span>
-              }
-              @if (lieu.prixIndicatif) {
-                <span>{{ lieu.prixIndicatif }}</span>
-              }
-            </div>
           </div>
-        </div>
+        }
+      } @else if (lieuxAffiches().length === 0) {
+        <p class="etat-vide">
+          {{ vue() === 'favoris' ? "Vous n'avez pas encore de favoris." : 'Aucun lieu ne correspond à votre recherche.' }}
+        </p>
+      } @else if (affichageGroupe()) {
+        @for (groupeVille of groupesVille(); track groupeVille.ville) {
+          <p class="groupe-ville-titre">{{ groupeVille.ville }}</p>
+          @for (groupeQuartier of groupeVille.quartiers; track groupeQuartier.quartier) {
+            <p class="groupe-quartier-titre">{{ groupeQuartier.quartier }}</p>
+            @for (lieu of groupeQuartier.lieux; track lieu.id) {
+              <ng-container [ngTemplateOutlet]="carteLieuTpl" [ngTemplateOutletContext]="{ $implicit: lieu }"></ng-container>
+            }
+          }
+        }
+      } @else {
+        @for (lieu of lieuxAffiches(); track lieu.id) {
+          <ng-container [ngTemplateOutlet]="carteLieuTpl" [ngTemplateOutletContext]="{ $implicit: lieu }"></ng-container>
+        }
       }
-    }
-  </div>
+    </div>
+  }
 </ion-content>
 
+<ng-template #carteLieuTpl let-lieu>
+  <div class="carte-lieu" (click)="ouvrirDetails(lieu)">
+    <div class="carte-lieu-icone">
+      <span class="carte-lieu-emoji">{{ lieu.icone }}</span>
+    </div>
+    <div class="carte-lieu-contenu">
+      <div class="carte-lieu-ligne">
+        <p class="carte-lieu-nom">{{ lieu.nom }}</p>
+        @if (favorisService.estFavori(lieu.id)) {
+          <ion-icon class="carte-lieu-favori" name="heart"></ion-icon>
+        }
+        @if (lieu.estOuvert !== undefined) {
+          <ion-badge [color]="lieu.estOuvert ? 'success' : 'medium'">
+            {{ lieu.estOuvert ? 'Ouvert' : 'Fermé' }}
+          </ion-badge>
+        }
+      </div>
+      <p class="carte-lieu-details">{{ lieu.quartier.Nom }}</p>
+      <div class="carte-lieu-meta">
+        @if (lieu.distanceMetres != null) {
+          <span><ion-icon name="walk-outline"></ion-icon> {{ formaterDistance(lieu.distanceMetres) }}</span>
+        }
+        @if (lieu.prixIndicatif) {
+          <span>{{ lieu.prixIndicatif }}</span>
+        }
+        @if (lieu.horaireTexte) {
+          <span><ion-icon name="time-outline"></ion-icon> {{ lieu.horaireTexte }}</span>
+        }
+      </div>
+    </div>
+  </div>
+</ng-template>
+
 <ion-tab-bar slot="bottom">
-  <ion-tab-button tab="home" [selected]="true">
-    <ion-icon name="home-outline"></ion-icon>
-    <ion-label>Accueil</ion-label>
-  </ion-tab-button>
-  <ion-tab-button tab="liste">
+  <ion-tab-button tab="liste" [selected]="vue() === 'liste'" (click)="changerVue('liste')">
     <ion-icon name="list-outline"></ion-icon>
     <ion-label>Liste</ion-label>
   </ion-tab-button>
-  <ion-tab-button tab="carte">
+  <ion-tab-button tab="carte" [selected]="vue() === 'carte'" (click)="changerVue('carte')">
     <ion-icon name="map-outline"></ion-icon>
     <ion-label>Carte</ion-label>
   </ion-tab-button>
-  <ion-tab-button tab="favoris">
+  <ion-tab-button tab="favoris" [selected]="vue() === 'favoris'" (click)="changerVue('favoris')">
     <ion-icon name="heart-outline"></ion-icon>
     <ion-label>Favoris</ion-label>
+    @if (favorisService.favoris().size > 0) {
+      <ion-badge>{{ favorisService.favoris().size }}</ion-badge>
+    }
   </ion-tab-button>
 </ion-tab-bar>
+
+<ion-modal [isOpen]="detailSelectionne() !== null" (didDismiss)="fermerDetails()">
+  <ng-template>
+    @if (detailSelectionne(); as detail) {
+      <ion-header class="ion-no-border">
+        <ion-toolbar>
+          <ion-title>{{ detail.data.Nom }} {{ emojiDetail(detail) }}</ion-title>
+          <ion-buttons slot="end">
+            <ion-button (click)="favorisService.basculer(detail.data.id)" aria-label="Ajouter aux favoris">
+              <ion-icon slot="icon-only" [name]="favorisService.estFavori(detail.data.id) ? 'heart' : 'heart-outline'" [color]="favorisService.estFavori(detail.data.id) ? 'danger' : undefined"></ion-icon>
+            </ion-button>
+            <ion-button (click)="fermerDetails()" aria-label="Fermer">
+              <ion-icon slot="icon-only" name="close-outline"></ion-icon>
+            </ion-button>
+          </ion-buttons>
+        </ion-toolbar>
+      </ion-header>
+
+      <ion-content>
+        <div class="detail-section">
+          @if (detail.type === 'restaurant') {
+            @let ouvert = estOuvertDetail(detail.data.Horaires);
+            <div class="detail-badges">
+              @if (ouvert !== undefined) {
+                <span class="detail-badge" [class.detail-badge-ouvert]="ouvert" [class.detail-badge-ferme]="!ouvert">
+                  {{ ouvert ? 'Ouvert' : 'Fermé' }}
+                </span>
+              }
+              <span class="detail-badge">
+                <ion-icon name="location-outline"></ion-icon>
+                {{ detail.data.Quartier.Nom }}@if (detail.data.Quartier.Ville.Nom) {, {{ detail.data.Quartier.Ville.Nom }}}
+              </span>
+              @if (detail.data.Prix) {
+                <span class="detail-badge"><ion-icon name="pricetag-outline"></ion-icon>{{ detail.data.Prix }}</span>
+              }
+              @if (distanceDetail(detail.data.latitude, detail.data.longitude); as distance) {
+                <span class="detail-badge"><ion-icon name="walk-outline"></ion-icon>{{ formaterDistance(distance) }}</span>
+              }
+            </div>
+
+            @if (detail.data.Avis.moyenne) {
+              <div class="detail-etoiles">
+                @for (icone of etoiles(detail.data.Avis.moyenne); track $index) {
+                  <ion-icon [name]="icone"></ion-icon>
+                }
+                <span class="detail-etoiles-valeur">{{ detail.data.Avis.moyenne | number:'1.1-1' }} / 5</span>
+              </div>
+            }
+
+            @if (horairesSemaineDetail(detail.data.Horaires); as semaine) {
+              <p class="detail-sous-titre">Horaires</p>
+              <div class="detail-horaires">
+                @for (jour of semaine; track jour.jour) {
+                  <div class="detail-horaires-ligne" [class.detail-horaires-aujourdhui]="jour.aujourdhui">
+                    <span>{{ jour.jour }}</span>
+                    <span>{{ jour.horaires }}</span>
+                  </div>
+                }
+              </div>
+            }
+
+            @if (detail.data.Description) {
+              <p class="detail-texte">{{ detail.data.Description }}</p>
+            }
+
+            @if (detail.data.Plats.length) {
+              <p class="detail-sous-titre">Plats</p>
+              <div class="detail-chips">
+                @for (plat of detail.data.Plats; track plat.Nom) {
+                  <ion-chip [color]="couleurPlat(plat.Nom)" (click)="ouvrirPlat(plat.Nom)">{{ plat.Nom }}</ion-chip>
+                }
+              </div>
+            }
+
+            @if (detail.data.Commentaires) {
+              <p class="detail-sous-titre">Commentaires</p>
+              <p class="detail-texte">{{ detail.data.Commentaires }}</p>
+            }
+
+            <div class="detail-actions">
+              @if (detail.data.Localisation) {
+                <a class="action-icone action-icone-principale" [href]="detail.data.Localisation" target="_blank" rel="noopener">
+                  <span class="action-icone-cercle"><ion-icon name="location-outline"></ion-icon></span>
+                  <span class="action-icone-label">Maps</span>
+                </a>
+              }
+              @if (detail.data.Menu) {
+                <a class="action-icone" [href]="detail.data.Menu" target="_blank" rel="noopener">
+                  <span class="action-icone-cercle"><ion-icon name="restaurant-outline"></ion-icon></span>
+                  <span class="action-icone-label">Menu</span>
+                </a>
+              }
+              @if (detail.data.Video) {
+                <a class="action-icone" [href]="detail.data.Video" target="_blank" rel="noopener">
+                  <span class="action-icone-cercle"><ion-icon name="play-outline"></ion-icon></span>
+                  <span class="action-icone-label">Vidéo</span>
+                </a>
+              }
+              @if (detail.data.Liens) {
+                <a class="action-icone" [href]="detail.data.Liens" target="_blank" rel="noopener">
+                  <span class="action-icone-cercle"><ion-icon name="open-outline"></ion-icon></span>
+                  <span class="action-icone-label">Plus d'infos</span>
+                </a>
+              }
+            </div>
+          } @else if (detail.type === 'activite') {
+            @let ouvert = estOuvertDetail(detail.data.Horaires);
+            <div class="detail-badges">
+              @if (ouvert !== undefined) {
+                <span class="detail-badge" [class.detail-badge-ouvert]="ouvert" [class.detail-badge-ferme]="!ouvert">
+                  {{ ouvert ? 'Ouvert' : 'Fermé' }}
+                </span>
+              }
+              <span class="detail-badge"><ion-icon name="location-outline"></ion-icon>{{ detail.data.Quartier.Nom }}</span>
+              @if (detail.data.Prix) {
+                <span class="detail-badge"><ion-icon name="pricetag-outline"></ion-icon>{{ detail.data.Prix }}</span>
+              }
+              @if (detail.data.Temps) {
+                <span class="detail-badge"><ion-icon name="walk-outline"></ion-icon>{{ detail.data.Temps }}</span>
+              }
+              @if (distanceDetail(detail.data.latitude, detail.data.longitude); as distance) {
+                <span class="detail-badge"><ion-icon name="walk-outline"></ion-icon>{{ formaterDistance(distance) }}</span>
+              }
+            </div>
+
+            @if (detail.data.Avis.moyenne) {
+              <div class="detail-etoiles">
+                @for (icone of etoiles(detail.data.Avis.moyenne); track $index) {
+                  <ion-icon [name]="icone"></ion-icon>
+                }
+                <span class="detail-etoiles-valeur">{{ detail.data.Avis.moyenne | number:'1.1-1' }} / 5</span>
+              </div>
+            }
+
+            @if (horairesSemaineDetail(detail.data.Horaires); as semaine) {
+              <p class="detail-sous-titre">Horaires</p>
+              <div class="detail-horaires">
+                @for (jour of semaine; track jour.jour) {
+                  <div class="detail-horaires-ligne" [class.detail-horaires-aujourdhui]="jour.aujourdhui">
+                    <span>{{ jour.jour }}</span>
+                    <span>{{ jour.horaires }}</span>
+                  </div>
+                }
+              </div>
+            }
+
+            @if (detail.data.Description) {
+              <p class="detail-texte">{{ detail.data.Description }}</p>
+            }
+            @if (detail.data.Commentaires) {
+              <p class="detail-sous-titre">Commentaires</p>
+              <p class="detail-texte">{{ detail.data.Commentaires }}</p>
+            }
+
+            <div class="detail-actions">
+              @if (detail.data.Localisation) {
+                <a class="action-icone action-icone-principale" [href]="detail.data.Localisation" target="_blank" rel="noopener">
+                  <span class="action-icone-cercle"><ion-icon name="location-outline"></ion-icon></span>
+                  <span class="action-icone-label">Maps</span>
+                </a>
+              }
+              @if (detail.data.Liens) {
+                <a class="action-icone" [href]="detail.data.Liens" target="_blank" rel="noopener">
+                  <span class="action-icone-cercle"><ion-icon name="open-outline"></ion-icon></span>
+                  <span class="action-icone-label">Plus d'infos</span>
+                </a>
+              }
+            </div>
+          } @else {
+            @let ouvert = estOuvertDetail(detail.data.Horaires);
+            <div class="detail-badges">
+              @if (ouvert !== undefined) {
+                <span class="detail-badge" [class.detail-badge-ouvert]="ouvert" [class.detail-badge-ferme]="!ouvert">
+                  {{ ouvert ? 'Ouvert' : 'Fermé' }}
+                </span>
+              }
+              @if (detail.data.Quartier.length) {
+                <span class="detail-badge"><ion-icon name="location-outline"></ion-icon>{{ nomsQuartiers(detail.data.Quartier) }}</span>
+              }
+              @if (detail.data.Type) {
+                <span class="detail-badge">{{ detail.data.Type }}</span>
+              }
+              @if (distanceDetail(detail.data.latitude, detail.data.longitude); as distance) {
+                <span class="detail-badge"><ion-icon name="walk-outline"></ion-icon>{{ formaterDistance(distance) }}</span>
+              }
+            </div>
+
+            @if (detail.data.Avis.moyenne) {
+              <div class="detail-etoiles">
+                @for (icone of etoiles(detail.data.Avis.moyenne); track $index) {
+                  <ion-icon [name]="icone"></ion-icon>
+                }
+                <span class="detail-etoiles-valeur">{{ detail.data.Avis.moyenne | number:'1.1-1' }} / 5</span>
+              </div>
+            }
+
+            @if (horairesSemaineDetail(detail.data.Horaires); as semaine) {
+              <p class="detail-sous-titre">Horaires</p>
+              <div class="detail-horaires">
+                @for (jour of semaine; track jour.jour) {
+                  <div class="detail-horaires-ligne" [class.detail-horaires-aujourdhui]="jour.aujourdhui">
+                    <span>{{ jour.jour }}</span>
+                    <span>{{ jour.horaires }}</span>
+                  </div>
+                }
+              </div>
+            }
+
+            @if (detail.data.Commentaires) {
+              <p class="detail-sous-titre">Commentaires</p>
+              <p class="detail-texte">{{ detail.data.Commentaires }}</p>
+            }
+
+            <div class="detail-actions">
+              @if (detail.data.Localisation) {
+                <a class="action-icone action-icone-principale" [href]="detail.data.Localisation" target="_blank" rel="noopener">
+                  <span class="action-icone-cercle"><ion-icon name="location-outline"></ion-icon></span>
+                  <span class="action-icone-label">Maps</span>
+                </a>
+              }
+              @if (detail.data.Liens) {
+                <a class="action-icone" [href]="detail.data.Liens" target="_blank" rel="noopener">
+                  <span class="action-icone-cercle"><ion-icon name="open-outline"></ion-icon></span>
+                  <span class="action-icone-label">Plus d'infos</span>
+                </a>
+              }
+            </div>
+          }
+        </div>
+      </ion-content>
+    }
+  </ng-template>
+</ion-modal>
+
+<ion-modal [isOpen]="platSelectionne() !== null" (didDismiss)="fermerPlat()">
+  <ng-template>
+    @if (platSelectionne(); as plat) {
+      <ion-header class="ion-no-border">
+        <ion-toolbar>
+          <ion-title>{{ plat.Nom }}</ion-title>
+          <ion-buttons slot="end">
+            <ion-button (click)="fermerPlat()" aria-label="Fermer">
+              <ion-icon slot="icon-only" name="close-outline"></ion-icon>
+            </ion-button>
+          </ion-buttons>
+        </ion-toolbar>
+      </ion-header>
+
+      <ion-content>
+        <div class="detail-section">
+          @if (plat.Categorie) {
+            <ion-badge [color]="severitePlat(plat.Categorie)">{{ plat.Categorie }}</ion-badge>
+          }
+          @if (plat.Description) {
+            <p class="detail-texte">{{ plat.Description }}</p>
+          }
+          @if (plat.Commentaires) {
+            <p class="detail-sous-titre">Commentaires</p>
+            <p class="detail-texte">{{ plat.Commentaires }}</p>
+          }
+          @if (!plat.Categorie && !plat.Description && !plat.Commentaires) {
+            <p class="etat-vide">Aucun détail disponible pour ce plat.</p>
+          }
+          @if (plat.Wiki) {
+            <div class="detail-actions">
+              <a class="action-icone action-icone-principale" [href]="plat.Wiki" target="_blank" rel="noopener">
+                <span class="action-icone-cercle"><ion-icon name="open-outline"></ion-icon></span>
+                <span class="action-icone-label">En savoir plus</span>
+              </a>
+            </div>
+          }
+        </div>
+      </ion-content>
+    }
+  </ng-template>
+</ion-modal>
+
+<ion-modal [isOpen]="pickerQuartierOuvert()" (didDismiss)="pickerQuartierOuvert.set(false)" [initialBreakpoint]="0.75" [breakpoints]="[0, 0.75, 1]">
+  <ng-template>
+    <ion-header class="ion-no-border">
+      <ion-toolbar>
+        <ion-title>Filtrer par quartier</ion-title>
+        <ion-buttons slot="end">
+          <ion-button (click)="pickerQuartierOuvert.set(false)" aria-label="Fermer">
+            <ion-icon slot="icon-only" name="close-outline"></ion-icon>
+          </ion-button>
+        </ion-buttons>
+      </ion-toolbar>
+    </ion-header>
+
+    <ion-content>
+      <div class="picker-quartier">
+        <button
+          class="picker-quartier-option picker-quartier-tous"
+          [class.picker-quartier-selectionne]="filtreQuartier() === null"
+          (click)="choisirQuartier(null)">
+          <span>Tous les quartiers</span>
+          @if (filtreQuartier() === null) {
+            <ion-icon name="checkmark-outline"></ion-icon>
+          }
+        </button>
+
+        @for (groupe of quartiersParVille(); track groupe.ville) {
+          <p class="picker-quartier-ville">{{ groupe.ville }}</p>
+          @for (quartier of groupe.quartiers; track quartier) {
+            <button
+              class="picker-quartier-option"
+              [class.picker-quartier-selectionne]="filtreQuartier() === quartier"
+              (click)="choisirQuartier(quartier)">
+              <span>{{ quartier }}</span>
+              @if (filtreQuartier() === quartier) {
+                <ion-icon name="checkmark-outline"></ion-icon>
+              }
+            </button>
+          }
+        }
+      </div>
+    </ion-content>
+  </ng-template>
+</ion-modal>

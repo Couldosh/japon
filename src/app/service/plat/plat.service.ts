@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import {SheetsApi} from '../google/sheets-api.service';
-import {Plat, PlatCategory} from '../../components/plat/plat.component';
+import {Plat, PlatCategory} from '../../models/plat.model';
 import {Papa} from 'ngx-papaparse';
 import {map, Observable} from 'rxjs';
 
@@ -13,13 +13,13 @@ export class PlatService {
 
   }
 
-  getPlats(): Observable<Plat[]> {
-    return this.sheetsApi.getCsv('2053739160').pipe(
+  getPlats(forceRefresh = false): Observable<Plat[]> {
+    return this.sheetsApi.getCsv('2053739160', forceRefresh).pipe(
       map(csv =>
-        this.papa.parse(csv, {
+        (this.papa.parse(csv, {
           header: true,
-          skipEmptyLines: true
-        }).data as Plat[]
+          skipEmptyLines: 'greedy'
+        }).data as Plat[]).filter(plat => plat.Nom?.trim())
       )
     );
   }

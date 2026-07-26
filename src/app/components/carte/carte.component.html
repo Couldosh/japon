@@ -1,0 +1,11 @@
+@if (erreur(); as message) {
+  <div class="carte-erreur">{{ message }}</div>
+} @else {
+  <div #carteEl class="carte-conteneur"></div>
+
+  @if (position()) {
+    <button class="bouton-recentrer" (click)="recentrer()" aria-label="Recentrer sur ma position">
+      <ion-icon name="locate-outline"></ion-icon>
+    </button>
+  }
+}

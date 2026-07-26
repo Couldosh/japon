@@ -1,3 +1,12 @@
+/* Ionic */
+@import "@ionic/angular/css/core.css";
+@import "@ionic/angular/css/normalize.css";
+@import "@ionic/angular/css/structure.css";
+@import "@ionic/angular/css/typography.css";
+
+/* Palette sombre Ionic activée manuellement via la classe .ion-palette-dark (cf. ThemeService) */
+@import "@ionic/angular/css/palettes/dark.class.css";
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -7,6 +16,44 @@
 
 /* FontAwesome */
 @import "@fortawesome/fontawesome-free/css/all.min.css";
+
+/* Leaflet (onglet Carte) */
+@import "leaflet/dist/leaflet.css";
+@import "leaflet.markercluster/dist/MarkerCluster.css";
+@import "leaflet.markercluster/dist/MarkerCluster.Default.css";
+
+/* Marqueurs custom de app-carte : générés par Leaflet en dehors du template
+   Angular, donc non atteignables par le style scopé du composant. */
+.marqueur-conteneur {
+  background: transparent;
+  border: none;
+}
+
+.marqueur-emoji {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: var(--ion-color-light, #fff);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  line-height: 1;
+}
+
+.marqueur-favori {
+  box-shadow: 0 0 0 2px var(--ion-color-danger, #eb445a), 0 1px 4px rgba(0, 0, 0, 0.35);
+}
+
+.marqueur-position {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--ion-color-primary, #3880ff);
+  border: 3px solid white;
+  box-shadow: 0 0 0 2px var(--ion-color-primary, #3880ff);
+}
 
 
 

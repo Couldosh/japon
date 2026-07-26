@@ -15,6 +15,7 @@ export class ActiviteModel {
   latitude: number | null;
   longitude: number | null;
   Liens: string;
+  Horaires?: string; // format compact JSON produit par scripts/fetch-horaires.mjs
 
 
   constructor(id: string, Quartier: QuartierModel, Nom: string, Description: string, Prix: string, Temps: string, Commentaires: string, Avis: Avis, Localisation: string, Liens: string) {
