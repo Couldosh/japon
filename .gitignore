@@ -45,3 +45,6 @@ Thumbs.db
 .env
 credentials.json
 token.json
+
+# Cache local des scripts de maintenance du Sheet (résultats Places API)
+/scripts/.cache/

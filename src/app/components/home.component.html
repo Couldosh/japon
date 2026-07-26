@@ -126,6 +126,15 @@
         @if (!affichageGroupe()) {
           <p class="section-titre">{{ vue() === 'favoris' ? 'Vos favoris' : 'Près de vous' }}</p>
         }
+        @if (filtreQuartier()) {
+          <ion-button
+            fill="clear"
+            size="small"
+            (click)="voirQuartierSurCarte()"
+            aria-label="Voir ce quartier sur la carte">
+            <ion-icon slot="icon-only" name="map-outline"></ion-icon>
+          </ion-button>
+        }
         <ion-button
           fill="clear"
           size="small"

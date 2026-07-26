@@ -12,6 +12,13 @@
  * Ce script est indépendant de l'app Angular : il s'exécute une fois (ou de
  * temps en temps) pour compléter le Sheet, jamais depuis le navigateur.
  *
+ * Cache local (scripts/.cache/horaires.json) : chaque résultat de recherche
+ * Places est mémorisé par (feuille, nom, quartier) et réutilisé tel quel lors
+ * des exécutions suivantes, sans rappeler l'API. Relancer le script (ex: après
+ * une interruption, ou avec --force sur d'autres lignes) ne recoûte donc aucun
+ * appel API pour les établissements déjà cherchés. Passer --rafraichir pour
+ * ignorer le cache et relancer une recherche fraîche partout.
+ *
  * Voir scripts/lib/google-sheets.mjs pour les prérequis d'authentification.
  * Variables d'environnement (via un fichier .env non commité) :
  *   SPREADSHEET_ID  - ID du Google Sheet (dans l'URL d'édition, entre "/d/" et "/edit")
@@ -19,8 +26,9 @@
  *
  * Usage :
  *   node --env-file=.env scripts/fetch-horaires.mjs
- *   node --env-file=.env scripts/fetch-horaires.mjs --force   (réécrit aussi
+ *   node --env-file=.env scripts/fetch-horaires.mjs --force       (réécrit aussi
  *   les lignes où la colonne "Horaires" est déjà remplie)
+ *   node --env-file=.env scripts/fetch-horaires.mjs --rafraichir  (ignore le cache)
  */
 
 import {
@@ -28,16 +36,19 @@ import {
   connexionSheets, trouverTitreOnglet, lireFeuille,
   indexColonne, lettreColonne,
 } from './lib/google-sheets.mjs';
+import { cheminCache, chargerCache, sauvegarderCache, cleCache } from './lib/cache.mjs';
 
 const SPREADSHEET_ID = requireEnv('SPREADSHEET_ID');
 const PLACES_API_KEY = requireEnv('PLACES_API_KEY');
 const FORCER = process.argv.includes('--force');
+const RAFRAICHIR = process.argv.includes('--rafraichir');
 
 // gid des onglets, repris de src/app/service/*/*.service.ts
 const GIDS_FEUILLES = [892590698, 0, 346756517]; // Restaurants, Activités, Magasins
 
 const COLONNE_HORAIRES = 'Horaires';
 const DELAI_ENTRE_APPELS_MS = 300; // reste sous les limites de quota par défaut de Places API
+const CACHE_PATH = cheminCache('horaires.json');
 
 function formaterHeureMinute({ hour, minute }) {
   return `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
@@ -93,7 +104,7 @@ async function chercherEtablissement(nomEtablissement, quartier, coordonnees) {
   return places?.[0] ?? null;
 }
 
-async function traiterFeuille(sheets, gid) {
+async function traiterFeuille(sheets, gid, cache) {
   const titre = await trouverTitreOnglet(sheets, SPREADSHEET_ID, gid);
   console.log(`\n--- ${titre} ---`);
 
@@ -138,20 +149,30 @@ async function traiterFeuille(sheets, gid) {
       continue;
     }
 
+    const cle = cleCache(titre, nom, quartier);
+    const entreeCache = !RAFRAICHIR ? cache[cle] : undefined;
+
     try {
       const coordonnees = extraireCoordonnees(localisation);
-      if (!coordonnees) {
+      if (!coordonnees && !entreeCache) {
         console.warn(`  ${nom} : coordonnées introuvables dans le lien (lien raccourci ?), recherche non biaisée par la position.`);
       }
 
-      const etablissement = await chercherEtablissement(nom, quartier, coordonnees);
+      let etablissement;
+      if (entreeCache) {
+        etablissement = entreeCache.etablissement;
+      } else {
+        etablissement = await chercherEtablissement(nom, quartier, coordonnees);
+        cache[cle] = { etablissement, recherche: new Date().toISOString() };
+        await attendre(DELAI_ENTRE_APPELS_MS);
+      }
 
       if (!etablissement) {
-        console.warn(`  ${nom} : aucun établissement trouvé sur Places.`);
+        console.warn(`  ${nom} : aucun établissement trouvé sur Places.${entreeCache ? ' (depuis le cache)' : ''}`);
       } else {
         // Log le résultat matché pour permettre de vérifier que c'est la bonne succursale
         // (les enseignes avec beaucoup de succursales, ex: Daiso, Uniqlo, sont ambiguës).
-        console.log(`  ${nom} -> ${etablissement.displayName?.text ?? '?'} (${etablissement.formattedAddress ?? 'adresse inconnue'})`);
+        console.log(`  ${nom} -> ${etablissement.displayName?.text ?? '?'} (${etablissement.formattedAddress ?? 'adresse inconnue'})${entreeCache ? ' (depuis le cache)' : ''}`);
 
         const horaires = serialiserPeriodes(etablissement.regularOpeningHours?.periods);
         if (!horaires) {
@@ -169,16 +190,23 @@ async function traiterFeuille(sheets, gid) {
     } catch (erreur) {
       console.error(`  ${nom} : échec (${erreur.message})`);
     }
-
-    await attendre(DELAI_ENTRE_APPELS_MS);
   }
 }
 
 async function main() {
   const sheets = await connexionSheets();
-  for (const gid of GIDS_FEUILLES) {
-    await traiterFeuille(sheets, gid);
+  const cache = await chargerCache(CACHE_PATH);
+
+  try {
+    for (const gid of GIDS_FEUILLES) {
+      await traiterFeuille(sheets, gid, cache);
+    }
+  } finally {
+    // Sauvegardé même en cas d'erreur en cours de route : les recherches déjà
+    // faites avant le crash ne sont pas reperdues au prochain lancement.
+    await sauvegarderCache(CACHE_PATH, cache);
   }
+
   console.log('\nTerminé.');
 }
 

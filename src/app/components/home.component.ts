@@ -91,6 +91,10 @@ export class HomeComponent implements OnInit {
   // quand cette vue est active, plutôt que de rafraîchir restaurants/activités/magasins.
   @ViewChild(PlanningComponent) private readonly planningComponent?: PlanningComponent;
 
+  // La Carte reste montée en permanence (voir template), la référence est donc
+  // toujours disponible dès le premier rendu, contrairement au Planning ci-dessus.
+  @ViewChild(CarteComponent) private readonly carteComponent?: CarteComponent;
+
   // Etat
   readonly chargement = signal(true);
   readonly erreurChargement = signal<string | null>(null);
@@ -379,6 +383,18 @@ export class HomeComponent implements OnInit {
 
   changerVue(vue: Vue): void {
     this.vue.set(vue);
+  }
+
+  /**
+   * Depuis la Liste filtrée sur un quartier, bascule sur la Carte en la recentrant
+   * sur ces lieux. La Carte reste montée en permanence et reçoit déjà la liste
+   * filtrée (`lieuxAffiches`), il ne manque que le recadrage de la vue : le rAF
+   * laisse le temps à l'effet `actif` de la carte (invalidateSize) de s'exécuter
+   * en premier, sans quoi fitBounds calculerait sur une taille de conteneur périmée.
+   */
+  voirQuartierSurCarte(): void {
+    this.changerVue('carte');
+    requestAnimationFrame(() => this.carteComponent?.recentrerSurMarqueurs());
   }
 
   basculerGroupement(): void {

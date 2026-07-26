@@ -97,6 +97,17 @@ export class CarteComponent implements AfterViewInit, OnDestroy {
     this.filtrerFavoris.set(!this.filtrerFavoris());
   }
 
+  /**
+   * Recentre la carte sur les marqueurs actuellement affichés, indépendamment du
+   * cadrage initial déjà effectué (contrairement à `ajusterVueInitiale`, qui ne
+   * joue qu'une seule fois). Utilisé quand on arrive depuis un filtre quartier.
+   */
+  recentrerSurMarqueurs(): void {
+    if (this.carte && this.groupeMarqueurs && this.groupeMarqueurs.getLayers().length > 0) {
+      this.carte.fitBounds(this.groupeMarqueurs.getBounds(), { padding: [40, 40], maxZoom: 16 });
+    }
+  }
+
   /** Relance l'initialisation après un échec. Un rAF laisse le temps au `@else` du template de remonter #carteEl. */
   reessayer(): void {
     this.erreur.set(null);

@@ -8,7 +8,8 @@
     "watch": "ng build --watch --configuration development",
     "test": "ng test",
     "horaires": "node --env-file=.env scripts/fetch-horaires.mjs",
-    "dupliquer-quartiers": "node --env-file=.env scripts/dupliquer-quartiers.mjs"
+    "dupliquer-quartiers": "node --env-file=.env scripts/dupliquer-quartiers.mjs",
+    "localisation": "node --env-file=.env scripts/fetch-localisation.mjs"
   },
   "private": true,
   "dependencies": {
