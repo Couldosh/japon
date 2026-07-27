@@ -7,6 +7,7 @@ import {MagasinModel} from '../../models/magasin.model';
 import {GeolocationService} from '../geolocation/GeolocationService';
 import {QuartierService} from '../quartier/quartier.service';
 import {resoudreQuartier} from '../../utils/quartier';
+import {genererIdLieu} from '../../utils/lieu-id';
 
 @Injectable({
   providedIn: 'root',
@@ -26,7 +27,7 @@ export class MagasinService {
           })
           return result.data
             .filter((row: any) => row.Nom?.trim())
-            .map((row: any, index: any) => {
+            .map((row: any) => {
             // 1. Parser les avis
             const avisData = new Avis({
               Valérian: Avis.countX(row.Valérian),
@@ -47,7 +48,7 @@ export class MagasinService {
 
             return {
               ...row,
-              id: 'magasin_' + index,
+              id: genererIdLieu('magasin', row.Nom, row.Quartier),
               Avis: avisData,
               Quartier: row.Quartier
                 .split(',')

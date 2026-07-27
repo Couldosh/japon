@@ -24,7 +24,7 @@ Modale en bottom-sheet swipeable (`[breakpoints]="[0,1]"`), commune aux 3 types 
 - Étoiles (moyenne `Avis`, 8 votants nommés dans le Sheet — pas de notation utilisateur, uniquement affichage).
 - Horaires de la semaine, description, commentaires.
 - Restaurant uniquement : liste de plats en chips colorées (vert = Plat, rouge = Snack), cliquables → popup détail du plat.
-- Note personnelle : `ion-textarea` avec auto-save (`NotesService`, localStorage, device-only) + toast de confirmation.
+- Note personnelle : `ion-textarea` avec auto-save debounced (~600ms après la fin de la frappe, `HomeComponent.enregistrerNote()`/`flusherNote()`) + toast de confirmation. Un flush immédiat est forcé à la fermeture de la popup (bouton, swipe ou tap sur le fond) pour ne pas perdre une saisie récente si elle survient avant la fin du debounce.
 - Bouton favori (cœur) avec toast de confirmation.
 - Liens d'action : Maps, Menu, Vidéo, Plus d'infos (selon ce qui est renseigné).
 - Magasin : un quartier peut avoir plusieurs valeurs (colonne "Quartier" à virgules) → un badge cliquable par quartier.
@@ -53,14 +53,30 @@ Modale en bottom-sheet swipeable (`[breakpoints]="[0,1]"`), commune aux 3 types 
 - Bouton Réessayer sur erreur réseau (bandeau discret si des données en cache restent affichées, état vide dédié sinon).
 - Le bouton de rafraîchissement de l'en-tête (commun à tous les onglets) délègue au chargement propre du Planning quand cet onglet est actif (`HomeComponent` a une `@ViewChild(PlanningComponent)`).
 
+## Ajouter un lieu (`components/ajout-lieu/`)
+
+- Bouton "+" dans l'en-tête (visible sur toutes les vues) ouvre une modale bottom-sheet plein écran.
+- Écrit **directement dans le Google Sheet** (pas de brouillon/validation intermédiaire) via l'API Sheets v4, authentifié avec le compte Google de l'utilisateur (OAuth2 côté navigateur, scope `spreadsheets`) — voir `docs/architecture-et-pieges.md` pour le détail du canal d'écriture et ses limites (token en mémoire, non persisté).
+- Sélecteur de type (Restaurant / Activité / Magasin / **Plat**), champs communs aux 3 lieux (Nom, Quartier, Lien, Localisation, Commentaires) + champs spécifiques par type (Description/Prix pour Restaurant et Activité, Vidéo/Menu pour Restaurant, Temps pour Activité, Type pour Magasin).
+- **Plat** n'est pas un lieu : pas de Quartier/Localisation dans le formulaire, mais Catégorie (Plat/Snack, mêmes valeurs que `PlatCategory`) et Wiki/lien à la place. Écrit dans l'onglet de référence "Plats" (gid `2053739160`, `PlatService`), pas dans un onglet de lieu.
+- Champ "Plats" du formulaire Restaurant : chips colorées (vert/rouge, même code que le badge du détail restaurant — `PlatService.getSeverity`), sélection/désélection au tap, alimentées par `PlatService.getPlats()`. Depuis que la modale reste ouverte après un ajout (voir ci-dessous), un plat tout juste créé via le type "Plat" apparaît directement dans cette liste sans avoir à fermer/rouvrir.
+- Quartier choisi via un picker bottom-sheet groupé par ville, alimenté par la liste exhaustive de `QuartierService` (contrairement au picker de filtre de la Liste, qui ne connaît que les quartiers déjà présents dans les lieux chargés).
+- Bouton "Rechercher sur Google Places" (Restaurant/Activité/Magasin, pas Plat) : recherche l'établissement via Places API (New) à partir de Nom + Quartier, préremplit Lien (site web) et Localisation (badge "auto" sur les champs concernés, retiré dès que l'utilisateur les retouche à la main). Si l'un de ces champs contient déjà une valeur, demande confirmation avant de l'écraser. Pour un Restaurant, tente aussi de présélectionner des plats déjà connus dont le nom apparaît dans le résumé Google de l'établissement — best-effort, Places ne fournissant pas de vraie liste de plats, à vérifier avant d'ajouter.
+- Un compte Google connecté à l'app mais sans accès Éditeur sur le Sheet peut se connecter mais pas écrire (erreur 403 explicite).
+- Après un ajout réussi, **la modale reste ouverte** (formulaire vidé, même type sélectionné) pour enchaîner plusieurs ajouts sans la rouvrir à chaque fois ; un toast confirme chaque ajout. Fermeture manuelle via le bouton "×".
+- Fermeture accidentelle de la modale (swipe, tap sur le fond, bouton "×") bloquée par une confirmation tant que le formulaire contient une saisie non vide (`AjoutLieuComponent.confirmerAbandon()`, appelé par `HomeComponent` via `[canDismiss]` sur la `ion-modal`).
+- Messages d'erreur et de résultat de recherche Places sont dismissables (bouton "×" dédié) plutôt que de rester affichés jusqu'au prochain essai ; un texte d'aide sous le bouton "Ajouter au Sheet" explique pourquoi il est désactivé quand le formulaire est invalide.
+- Après ajout réussi : toast de confirmation, fermeture de la modale, rechargement des données pour que le nouveau lieu/plat apparaisse immédiatement.
+- Limitation connue (v1) : un magasin ne peut avoir qu'un seul quartier depuis ce formulaire, même si la colonne "Quartier" des magasins supporte plusieurs valeurs dans le Sheet — éditable ensuite directement dans le Sheet si besoin.
+
 ## Notes et Favoris (services)
 
-- `FavorisService` (`Set<string>`) et `NotesService` (`Map<string,string>`), tous deux localStorage, **100% locaux à l'appareil** — pas de compte, pas de synchronisation entre les membres du groupe.
+- `FavorisService` (`Set<string>`) et `NotesService` (`Map<string,string>`), tous deux localStorage, **100% locaux à l'appareil** — pas de compte, pas de synchronisation entre les membres du groupe. Indexés par l'id de lieu généré par `genererIdLieu()` (`utils/lieu-id.ts`, nom + quartier normalisés) — voir `docs/architecture-et-pieges.md` pour le piège corrigé (ancien id basé sur la position dans le Sheet, instable dès qu'une ligne est ajoutée/supprimée par un autre membre du groupe).
 
 ## UX transverse
 
-- Toasts de confirmation (favori ajouté/retiré, note enregistrée/supprimée).
-- Thème clair/sombre (bouton dans l'en-tête), lu une seule fois au chargement depuis la préférence système (pas de suivi live des changements système en cours d'usage — piste d'amélioration non implémentée).
+- Toasts de confirmation (favori ajouté/retiré, note enregistrée/supprimée) — reflètent l'échec réel si la sauvegarde localStorage échoue (quota dépassé, navigation privée), pas juste une confirmation optimiste.
+- Thème clair/sombre (bouton dans l'en-tête) : suit la préférence système en direct pendant la session tant que l'utilisateur n'a jamais basculé le thème manuellement (`ThemeService`) ; dès qu'il le fait une fois, son choix explicite est mémorisé et n'est plus jamais écrasé par un changement système.
 - Zones de tap ≥ 44px sur les filtres et boutons de section.
 - Pull-to-refresh sur Liste/Favoris et sur Planning (pas sur Carte).
 

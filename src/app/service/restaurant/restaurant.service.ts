@@ -7,6 +7,7 @@ import {RestaurantModel} from '../../models/restaurant.model';
 import {QuartierService} from '../quartier/quartier.service';
 import {resoudreQuartier} from '../../utils/quartier';
 import {GeolocationService} from '../geolocation/GeolocationService';
+import {genererIdLieu} from '../../utils/lieu-id';
 
 @Injectable({
   providedIn: 'root',
@@ -26,7 +27,7 @@ export class RestaurantService {
           })
         return result.data
           .filter((row: any) => row.Nom?.trim())
-          .map((row: any, index: any) => {
+          .map((row: any) => {
           // 1. Parser les avis
           const avisData = new Avis({
             Valérian: Avis.countX(row.Valérian),
@@ -59,7 +60,7 @@ export class RestaurantService {
             Quartier: resoudreQuartier(quartiers, row.Quartier),
             latitude: coordonnees?.latitude ?? null,
             longitude: coordonnees?.longitude ?? null,
-            id: 'restaurant_' + index
+            id: genererIdLieu('restaurant', row.Nom, row.Quartier)
           } as RestaurantModel;
           })
         }
