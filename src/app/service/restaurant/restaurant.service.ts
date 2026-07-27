@@ -1,25 +1,32 @@
 import {Injectable} from '@angular/core';
 import {SheetsApi} from '../google/sheets-api.service';
 import {Papa} from 'ngx-papaparse';
-import {map, Observable} from 'rxjs';
+import {combineLatest, map, Observable} from 'rxjs';
 import {Avis} from '../../models/avis.model';
-import {QuartierModel} from '../../models/quartier.model';
 import {RestaurantModel} from '../../models/restaurant.model';
+import {QuartierService} from '../quartier/quartier.service';
+import {resoudreQuartier} from '../../utils/quartier';
+import {GeolocationService} from '../geolocation/GeolocationService';
 
 @Injectable({
   providedIn: 'root',
 })
 export class RestaurantService {
-  constructor(private sheetsApi: SheetsApi, private papa: Papa) {}
+  constructor(private sheetsApi: SheetsApi, private papa: Papa, private quartierService: QuartierService) {}
 
-  getRestaurants(): Observable<RestaurantModel[]> {
-    return this.sheetsApi.getCsv('892590698').pipe(
-      map(csv => {
+  getRestaurants(forceRefresh = false): Observable<RestaurantModel[]> {
+    return combineLatest([
+      this.sheetsApi.getCsv('892590698', forceRefresh),
+      this.quartierService.getQuartiers(forceRefresh)
+    ]).pipe(
+      map(([csv, quartiers]) => {
           const result = this.papa.parse(csv, {
             header: true,
-            skipEmptyLines: true,
+            skipEmptyLines: 'greedy',
           })
-        return result.data.map((row: any) => {
+        return result.data
+          .filter((row: any) => row.Nom?.trim())
+          .map((row: any, index: any) => {
           // 1. Parser les avis
           const avisData = new Avis({
             Valérian: Avis.countX(row.Valérian),
@@ -36,6 +43,10 @@ export class RestaurantService {
           avisData.calculerMoyenne();
 
           // 3. Retourner l'objet restaurant complet
+          // On construit un objet littéral (pas "new RestaurantModel(...)"), donc
+          // le calcul des coordonnées fait par le constructeur ne se déclenche
+          // jamais : il faut le refaire explicitement ici, comme pour les magasins.
+          const coordonnees = GeolocationService.extraireCoordonnees(row.Localisation);
 
           return {
             ...row,
@@ -45,11 +56,10 @@ export class RestaurantService {
               .map((p: string) => p.trim())
               .filter(Boolean)
               .map((nom: string) => ({Nom: nom})),
-            Quartier: row.Quartier
-              .split(',')
-              .map((p: string) => p.trim())
-              .filter(Boolean)
-              .map((nom: string) => ({Nom: nom}) as QuartierModel)
+            Quartier: resoudreQuartier(quartiers, row.Quartier),
+            latitude: coordonnees?.latitude ?? null,
+            longitude: coordonnees?.longitude ?? null,
+            id: 'restaurant_' + index
           } as RestaurantModel;
           })
         }

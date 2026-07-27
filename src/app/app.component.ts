@@ -1,43 +1,15 @@
-import {Component} from '@angular/core';
-import {AppTopbar} from './components/app.topbar';
-import {AppFooter} from "./components/app.footer";
-import {MenuItem} from 'primeng/api';
-import {RouterOutlet} from '@angular/router';
-import {Menubar} from 'primeng/menubar';
-import {FontAwesomeModule} from '@fortawesome/angular-fontawesome';
+import {Component, inject} from '@angular/core';
+import {HomeComponent} from './components/home.component';
+import {IonApp, IonRouterOutlet} from '@ionic/angular/standalone';
+import {ThemeService} from './service/theme/theme.service';
 
 @Component({
   selector: 'app-root',
-  imports: [AppTopbar, AppFooter, RouterOutlet, Menubar, FontAwesomeModule],
+  imports: [IonApp, IonRouterOutlet],
   templateUrl: './app.component.html',
   styleUrl: './app.component.scss'
 })
 export class AppComponent {
-  items: MenuItem[] = [
-    {
-      label: 'Quartier',
-      icon: 'fa-solid fa-map-location',
-      routerLink: '/quartiers'
-    },
-    {
-      label: 'Restaurants',
-      icon: 'fa-solid fa-utensils',
-      routerLink: '/restaurants'
-    },
-    {
-      label: 'Activités',
-      icon: 'fa-solid fa-palette',
-      routerLink: '/activites'
-    },
-    {
-      label: 'Magasins',
-      icon: 'fa-solid fa-store',
-      routerLink: '/magasins'
-    },
-    {
-      label: 'Plats',
-      icon: 'fa-solid fa-pizza-slice',
-      routerLink: '/plats'
-    }
-  ];
+  // Injecté ici pour appliquer le thème (localStorage / préférence système) dès le démarrage.
+  private readonly themeService = inject(ThemeService);
 }
