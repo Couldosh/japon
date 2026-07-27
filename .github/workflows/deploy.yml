@@ -31,6 +31,6 @@ jobs:
           server: ${{ secrets.FTP_SERVER }}
           username: ${{ secrets.FTP_USER }}
           password: ${{ secrets.FTP_PASSWORD }}
-          local-dir: ./dist/japon/    # Chemin généré par le build, à adapter
+          local-dir: ./dist/primeng-quickstart/    # Chemin généré par le build, à adapter
           server-dir: /
 
