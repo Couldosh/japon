@@ -129,7 +129,9 @@
       @if (!affichageGroupe() || filtreQuartier()) {
         <div class="section-entete">
           @if (!affichageGroupe()) {
-            <p class="section-titre">{{ vue() === 'favoris' ? 'Vos favoris' : 'Près de vous' }}</p>
+            <p class="section-titre">
+              {{ filtreQuartier() ?? (vue() === 'favoris' ? 'Vos favoris' : 'Près de vous') }}
+            </p>
           }
           @if (filtreQuartier()) {
             <ion-button
@@ -137,10 +139,11 @@
               size="small"
               (click)="voirQuartierSurCarte()"
               aria-label="Voir ce quartier sur la carte">
-              <ion-icon slot="icon-only" name="map-outline"></ion-icon>
+              <ion-icon slot="start" name="map-outline"></ion-icon>
+              Voir sur la carte
             </ion-button>
           }
-          @if (!affichageGroupe()) {
+          @if (!affichageGroupe() && !filtreQuartier()) {
             <ion-button
               fill="clear"
               size="small"
@@ -350,10 +353,16 @@
             }
 
             <div class="detail-actions">
+              @if (detail.data.latitude != null && detail.data.longitude != null) {
+                <button class="action-icone action-icone-bouton" (click)="voirLieuSurCarte(detail.data.latitude, detail.data.longitude)">
+                  <span class="action-icone-cercle"><ion-icon name="map-outline"></ion-icon></span>
+                  <span class="action-icone-label">Voir sur la carte</span>
+                </button>
+              }
               @if (detail.data.Localisation) {
                 <a class="action-icone action-icone-principale" [href]="detail.data.Localisation" target="_blank" rel="noopener">
                   <span class="action-icone-cercle"><ion-icon name="location-outline"></ion-icon></span>
-                  <span class="action-icone-label">Maps</span>
+                  <span class="action-icone-label">Google Maps</span>
                 </a>
               }
               @if (detail.data.Menu) {
@@ -433,10 +442,16 @@
             }
 
             <div class="detail-actions">
+              @if (detail.data.latitude != null && detail.data.longitude != null) {
+                <button class="action-icone action-icone-bouton" (click)="voirLieuSurCarte(detail.data.latitude, detail.data.longitude)">
+                  <span class="action-icone-cercle"><ion-icon name="map-outline"></ion-icon></span>
+                  <span class="action-icone-label">Voir sur la carte</span>
+                </button>
+              }
               @if (detail.data.Localisation) {
                 <a class="action-icone action-icone-principale" [href]="detail.data.Localisation" target="_blank" rel="noopener">
                   <span class="action-icone-cercle"><ion-icon name="location-outline"></ion-icon></span>
-                  <span class="action-icone-label">Maps</span>
+                  <span class="action-icone-label">Google Maps</span>
                 </a>
               }
               @if (detail.data.Liens) {
@@ -500,10 +515,16 @@
             }
 
             <div class="detail-actions">
+              @if (detail.data.latitude != null && detail.data.longitude != null) {
+                <button class="action-icone action-icone-bouton" (click)="voirLieuSurCarte(detail.data.latitude, detail.data.longitude)">
+                  <span class="action-icone-cercle"><ion-icon name="map-outline"></ion-icon></span>
+                  <span class="action-icone-label">Voir sur la carte</span>
+                </button>
+              }
               @if (detail.data.Localisation) {
                 <a class="action-icone action-icone-principale" [href]="detail.data.Localisation" target="_blank" rel="noopener">
                   <span class="action-icone-cercle"><ion-icon name="location-outline"></ion-icon></span>
-                  <span class="action-icone-label">Maps</span>
+                  <span class="action-icone-label">Google Maps</span>
                 </a>
               }
               @if (detail.data.Liens) {

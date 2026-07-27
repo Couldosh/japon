@@ -13,7 +13,7 @@ L'app a 4 onglets, pilotés par un signal `vue` dans `HomeComponent` (`'liste' |
 - Bouton "regrouper" : bascule liste plate / groupée par Ville → Quartier.
 - Tri : par distance si la position est connue, sinon alphabétique. Pas de sélecteur de tri manuel (retiré sur demande explicite : distance-ou-alphabétique suffit).
 - Chaque carte de lieu affiche : emoji (heuristique par mot-clé, voir `utils/emoji-lieu.ts`), cœur si favori, icône crayon si une note perso existe, badge Ouvert/Fermé, badge "Ferme dans X min" si pertinent, distance, prix, horaires du jour.
-- Bouton "voir sur la carte" (icône carte) dans l'en-tête de section, visible seulement si un quartier est filtré : bascule sur la Carte et la recentre/zoome sur les lieux de ce quartier (`CarteComponent.recentrerSurMarqueurs()`).
+- Bouton "Voir sur la carte" (icône + label) dans l'en-tête de section, visible seulement si un quartier est filtré : bascule sur la Carte et la recentre/zoome sur les lieux de ce quartier (`CarteComponent.recentrerSurMarqueurs()`). Même intitulé que le bouton équivalent de la popup détail (voir plus bas), qui centre lui sur un lieu précis (`CarteComponent.centrerSurPoint()`).
 - États : squelettes de chargement, message d'erreur + bouton Réessayer, état vide.
 
 ### Popup de détail d'un lieu
@@ -26,7 +26,7 @@ Modale en bottom-sheet swipeable (`[breakpoints]="[0,1]"`), commune aux 3 types 
 - Restaurant uniquement : liste de plats en chips colorées (vert = Plat, rouge = Snack), cliquables → popup détail du plat.
 - Note personnelle : `ion-textarea` avec auto-save debounced (~600ms après la fin de la frappe, `HomeComponent.enregistrerNote()`/`flusherNote()`) + toast de confirmation. Un flush immédiat est forcé à la fermeture de la popup (bouton, swipe ou tap sur le fond) pour ne pas perdre une saisie récente si elle survient avant la fin du debounce.
 - Bouton favori (cœur) avec toast de confirmation.
-- Liens d'action : Maps, Menu, Vidéo, Plus d'infos (selon ce qui est renseigné).
+- Liens d'action : Voir sur la carte (interne à l'app, ferme la popup et centre `CarteComponent` sur ce lieu — visible si latitude/longitude connues), Maps (lien externe), Menu, Vidéo, Plus d'infos (selon ce qui est renseigné).
 - Magasin : un quartier peut avoir plusieurs valeurs (colonne "Quartier" à virgules) → un badge cliquable par quartier.
 
 ## Carte (`components/carte/`)

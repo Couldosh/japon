@@ -439,6 +439,16 @@ export class HomeComponent implements OnInit {
     requestAnimationFrame(() => this.carteComponent?.recentrerSurMarqueurs());
   }
 
+  /** Depuis la popup détail d'un lieu, ferme la popup et bascule sur la Carte centrée sur ce lieu précis. */
+  voirLieuSurCarte(latitude: number | null, longitude: number | null): void {
+    if (latitude == null || longitude == null) {
+      return;
+    }
+    this.fermerDetails();
+    this.changerVue('carte');
+    requestAnimationFrame(() => this.carteComponent?.centrerSurPoint(latitude, longitude));
+  }
+
   basculerGroupement(): void {
     this.affichageGroupe.set(!this.affichageGroupe());
   }

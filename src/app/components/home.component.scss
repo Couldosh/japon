@@ -478,6 +478,16 @@
   color: var(--ion-text-color);
 }
 
+// Modificateur pour un <button> (au lieu d'un <a href> externe) dans .detail-actions,
+// ex: "Voir sur la carte" qui navigue dans l'app plutôt que d'ouvrir un lien.
+.action-icone-bouton {
+  border: none;
+  background: transparent;
+  font: inherit;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
 .action-icone-cercle {
   width: 48px;
   height: 48px;

@@ -114,6 +114,11 @@ export class CarteComponent implements AfterViewInit, OnDestroy {
     }
   }
 
+  /** Centre la carte sur un point précis (ex: depuis le bouton "Voir sur la carte" de la popup détail d'un lieu). */
+  centrerSurPoint(latitude: number, longitude: number): void {
+    this.carte?.setView([latitude, longitude], ZOOM_RECENTRAGE);
+  }
+
   basculerFiltreFavoris(): void {
     this.filtrerFavoris.set(!this.filtrerFavoris());
   }
