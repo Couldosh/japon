@@ -180,6 +180,18 @@
   }
 }
 
+.groupe-ville-titre {
+  font-size: 16px;
+  font-weight: 700;
+  margin: 18px 0 6px;
+
+  &:first-child {
+    margin-top: 0;
+  }
+}
+
+// Enrobe le nom de la première ville avec le bouton "Afficher en liste", pour
+// qu'il soit sur la même ligne plutôt que flottant seul dans l'en-tête de section.
 .groupe-ville-entete {
   display: flex;
   align-items: center;
@@ -190,12 +202,17 @@
   &:first-child {
     margin-top: 0;
   }
-}
 
-.groupe-ville-titre {
-  font-size: 16px;
-  font-weight: 700;
-  margin: 0;
+  .groupe-ville-titre {
+    margin: 0;
+  }
+
+  ion-button {
+    margin: 0 0 0 auto;
+    --padding-start: 4px;
+    --padding-end: 8px;
+    flex-shrink: 0;
+  }
 }
 
 .groupe-quartier-titre {
@@ -205,23 +222,6 @@
   letter-spacing: 0.03em;
   color: var(--ion-color-medium);
   margin: 10px 0 6px;
-}
-
-.groupe-quartier-toggle {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  width: 28px;
-  height: 28px;
-  border: none;
-  background: transparent;
-  color: var(--ion-color-medium);
-  cursor: pointer;
-
-  ion-icon {
-    font-size: 16px;
-  }
 }
 
 .etat-vide {

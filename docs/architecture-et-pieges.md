@@ -13,7 +13,7 @@ Choses non évidentes en lisant juste le code — à vérifier avant de "corrige
   2. `?q=<lat>,<lng>` — format qu'on écrit nous-mêmes depuis les scripts de maintenance.
   3. `@<lat>,<lng>` — centre de la vue au moment du partage, peut être décalé, donc vérifié en dernier.
 - **`filtreActif`** (`HomeComponent`) défaut à `'tout'`, pas à `'restaurant'`. Ce filtre est partagé entre Liste et Carte (la Carte reçoit `lieuxAffiches()`, déjà filtré) : un défaut restrictif masquait silencieusement activités et magasins sur la carte tant qu'on n'avait pas cliqué un autre chip.
-- **`Trajet`** est une valeur spéciale de `ActiviteModel.Nom` : une activité "technique" représentant un trajet entre deux villes, sans intérêt à afficher comme un lieu. Exclue explicitement à la construction de `lieuxActivites` dans `HomeComponent.chargerDonnees()` — donc absente de la Liste, de la Carte, et du matching Planning→lieu (qui se base sur `lieux()`).
+- **`Trajet`** et **`Free`** sont des valeurs spéciales de `ActiviteModel.Nom` (`NOMS_ACTIVITES_TECHNIQUES`, `HomeComponent.chargerDonnees()`) : des activités "techniques" (trajet entre deux villes, temps libre) sans intérêt à afficher comme un lieu. Exclues explicitement à la construction de `lieuxActivites` — donc absentes de la Liste, de la Carte, des Favoris, et du matching Planning→lieu (qui se base sur `lieux()`). Elles restent affichées normalement dans le Planning lui-même (onglet Sheet indépendant, `PlanningService`), juste sans lien cliquable vers une fiche lieu puisqu'elles n'existent pas dans `lieux()`.
 
 ## Planning : ville inférée, pas toujours lue directement
 

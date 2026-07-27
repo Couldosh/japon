@@ -126,34 +126,33 @@
 
   @if (vue() === 'liste' || vue() === 'favoris') {
     <div class="section">
-      @if (!affichageGroupe() || filtreQuartier()) {
-        <div class="section-entete">
-          @if (!affichageGroupe()) {
-            <p class="section-titre">
-              {{ filtreQuartier() ?? (vue() === 'favoris' ? 'Vos favoris' : 'Près de vous') }}
-            </p>
-          }
-          @if (filtreQuartier()) {
-            <ion-button
-              fill="clear"
-              size="small"
-              (click)="voirQuartierSurCarte()"
-              aria-label="Voir ce quartier sur la carte">
-              <ion-icon slot="start" name="map-outline"></ion-icon>
-              Voir sur la carte
-            </ion-button>
-          }
-          @if (!affichageGroupe() && !filtreQuartier()) {
-            <ion-button
-              fill="clear"
-              size="small"
-              (click)="basculerGroupement()"
-              aria-label="Regrouper par ville et quartier">
-              <ion-icon slot="icon-only" name="layers-outline"></ion-icon>
-            </ion-button>
-          }
-        </div>
-      }
+      <div class="section-entete">
+        @if (!affichageGroupe()) {
+          <p class="section-titre">
+            {{ filtreQuartier() ?? (vue() === 'favoris' ? 'Vos favoris' : 'Près de vous') }}
+          </p>
+        }
+        @if (filtreQuartier()) {
+          <ion-button
+            fill="clear"
+            size="small"
+            (click)="voirQuartierSurCarte()"
+            aria-label="Voir ce quartier sur la carte">
+            <ion-icon slot="start" name="map-outline"></ion-icon>
+            Voir sur la carte
+          </ion-button>
+        }
+        @if (!affichageGroupe() && !filtreQuartier()) {
+          <ion-button
+            fill="clear"
+            size="small"
+            (click)="basculerGroupement()"
+            aria-label="Regrouper par ville et quartier">
+            <ion-icon slot="start" name="layers-outline"></ion-icon>
+            Regrouper
+          </ion-button>
+        }
+      </div>
 
       @if (erreurChargement(); as erreur) {
         <p class="etat-vide">{{ erreur }}</p>
@@ -178,14 +177,29 @@
             Aucun lieu ne correspond à votre recherche.
           }
         </p>
+        @if (affichageGroupe()) {
+          <ion-button expand="block" fill="outline" (click)="basculerGroupement()">
+            <ion-icon slot="start" name="list-outline"></ion-icon>
+            Afficher en liste
+          </ion-button>
+        }
       } @else if (affichageGroupe()) {
-        @for (groupeVille of groupesVille(); track groupeVille.ville) {
-          <div class="groupe-ville-entete">
+        @for (groupeVille of groupesVille(); track groupeVille.ville; let premiere = $first) {
+          @if (premiere) {
+            <div class="groupe-ville-entete">
+              <p class="groupe-ville-titre">{{ groupeVille.ville }}</p>
+              <ion-button
+                fill="clear"
+                size="small"
+                (click)="basculerGroupement()"
+                aria-label="Afficher en liste">
+                <ion-icon slot="start" name="list-outline"></ion-icon>
+                Afficher en liste
+              </ion-button>
+            </div>
+          } @else {
             <p class="groupe-ville-titre">{{ groupeVille.ville }}</p>
-            <button class="groupe-quartier-toggle" (click)="basculerGroupement()" aria-label="Afficher en liste">
-              <ion-icon name="list-outline"></ion-icon>
-            </button>
-          </div>
+          }
           @for (groupeQuartier of groupeVille.quartiers; track groupeQuartier.quartier) {
             <p class="groupe-quartier-titre">{{ groupeQuartier.quartier }}</p>
             @for (lieu of groupeQuartier.lieux; track lieu.id) {

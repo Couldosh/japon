@@ -354,11 +354,14 @@ export class HomeComponent implements OnInit {
             commentaires: r.Commentaires
           }));
 
-          // "Trajet" est une activité technique (transit entre 2 villes), pas un vrai
-          // lieu à afficher : on l'exclut ici pour qu'elle disparaisse à la fois de la
-          // liste/carte et du lien Planning -> fiche lieu (qui se base sur ces lieux).
+          // "Trajet" et "Free" sont des activités techniques (transit entre 2 villes,
+          // temps libre) sans intérêt à afficher comme un vrai lieu : on les exclut ici
+          // pour qu'elles disparaissent à la fois de la liste/carte et du lien Planning
+          // -> fiche lieu (qui se base sur ces lieux). Elles restent visibles dans le
+          // Planning lui-même, qui lit l'onglet Planning indépendamment de cette liste.
+          const NOMS_ACTIVITES_TECHNIQUES = ['trajet', 'free'];
           const lieuxActivites: LieuAffichable[] = activites
-            .filter(a => a.Nom?.trim().toLowerCase() !== 'trajet')
+            .filter(a => !NOMS_ACTIVITES_TECHNIQUES.includes(a.Nom?.trim().toLowerCase() ?? ''))
             .map(a => ({
               id: a.id,
               type: 'activite',
