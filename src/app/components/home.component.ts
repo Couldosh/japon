@@ -17,7 +17,7 @@ import {
   sunnyOutline, moonOutline, closeOutline, locationOutline,
   openOutline, starOutline, star, starHalf, pricetagOutline, playOutline,
   timeOutline, funnelOutline, layersOutline, chevronDownOutline, checkmarkOutline,
-  calendarOutline, alarmOutline, createOutline
+  calendarOutline, alarmOutline, createOutline, addOutline
 } from 'ionicons/icons';
 
 import { RestaurantService } from '../service/restaurant/restaurant.service';
@@ -37,6 +37,7 @@ import { emojiRestaurant, emojiActivite, emojiMagasin } from '../utils/emoji-lie
 import { estOuvertMaintenant, horairesAujourdhui, horairesSemaine, fermetureImminente, prochaineReouverture } from '../utils/horaires';
 import { CarteComponent } from './carte/carte.component';
 import { PlanningComponent } from './planning/planning.component';
+import { AjoutLieuComponent } from './ajout-lieu/ajout-lieu.component';
 
 type Vue = 'liste' | 'carte' | 'favoris' | 'planning';
 
@@ -69,7 +70,7 @@ type DetailLieu =
     IonLabel, IonBadge, IonTabBar, IonTabButton,
     IonContent, IonSkeletonText, IonRefresher, IonRefresherContent,
     IonModal, IonTitle, IonSelect, IonSelectOption, IonTextarea, IonToast,
-    CarteComponent, PlanningComponent
+    CarteComponent, PlanningComponent, AjoutLieuComponent
   ],
   templateUrl: './home.component.html',
   styleUrl: './home.component.scss'
@@ -95,6 +96,11 @@ export class HomeComponent implements OnInit {
   // toujours disponible dès le premier rendu, contrairement au Planning ci-dessus.
   @ViewChild(CarteComponent) private readonly carteComponent?: CarteComponent;
 
+  // Uniquement disponible pendant que la modale d'ajout est ouverte (contenu
+  // paresseux de ion-modal). Utilisé pour bloquer une fermeture accidentelle
+  // (swipe, tap sur le fond) tant que le formulaire contient une saisie non vide.
+  @ViewChild(AjoutLieuComponent) private readonly ajoutLieuComponent?: AjoutLieuComponent;
+
   // Etat
   readonly chargement = signal(true);
   readonly erreurChargement = signal<string | null>(null);
@@ -107,6 +113,14 @@ export class HomeComponent implements OnInit {
   // Filtre quartier, applicable à toutes les vues (Tout/Restaurants/Activités/Magasins)
   readonly filtreQuartier = signal<string | null>(null);
   readonly pickerQuartierOuvert = signal(false);
+  readonly afficherModaleAjout = signal(false);
+
+  // Callback [canDismiss] de la modale d'ajout : arrow function (pas une méthode
+  // liée par le binding Angular) pour garder un `this` correct quand Ionic
+  // l'appelle directement. Délègue à AjoutLieuComponent, seul à savoir si son
+  // formulaire contient une saisie non vide à confirmer avant de perdre.
+  protected readonly verifierFermetureAjout = async (): Promise<boolean> =>
+    (await this.ajoutLieuComponent?.confirmerAbandon()) ?? true;
 
   // Sous-filtres, spécifiques au type de lieu actif
   readonly filtrePlat = signal<string | null>(null);
@@ -257,7 +271,7 @@ export class HomeComponent implements OnInit {
       sunnyOutline, moonOutline, closeOutline, locationOutline,
       openOutline, starOutline, star, starHalf, pricetagOutline, playOutline,
       timeOutline, funnelOutline, layersOutline, chevronDownOutline, checkmarkOutline,
-      calendarOutline, alarmOutline, createOutline
+      calendarOutline, alarmOutline, createOutline, addOutline
     });
   }
 
@@ -279,6 +293,16 @@ export class HomeComponent implements OnInit {
   /** Reflète le chargement de la vue active : Planning a son propre état, indépendant de celui-ci. */
   rafraichissementEnCours(): boolean {
     return this.vue() === 'planning' ? (this.planningComponent?.chargement() ?? false) : this.chargement();
+  }
+
+  /**
+   * Le lieu vient d'être écrit dans le Sheet : on recharge pour l'afficher, mais on
+   * laisse la modale ouverte (AjoutLieuComponent vide déjà son formulaire) pour
+   * permettre d'en saisir un autre à la suite sans la rouvrir à chaque fois.
+   */
+  onLieuAjoute(): void {
+    this.toastMessage.set('Lieu ajouté au Sheet');
+    this.chargerDonnees(true);
   }
 
   private chargerDonnees(forceRefresh = false, onDone?: () => void): void {
