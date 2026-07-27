@@ -9,7 +9,7 @@
         </ion-searchbar>
       }
       <div class="entete-boutons">
-        <ion-button fill="clear" (click)="afficherModaleAjout.set(true)" aria-label="Ajouter un lieu">
+        <ion-button fill="clear" (click)="ouvrirModaleAjout()" aria-label="Ajouter un lieu">
           <ion-icon slot="icon-only" name="add-outline"></ion-icon>
         </ion-button>
         <ion-button fill="clear" (click)="themeService.basculer()" aria-label="Changer de thème">
@@ -43,9 +43,7 @@
           (click)="changerFiltre('magasin')">
           Magasins
         </ion-chip>
-      </div>
 
-      <div class="sous-filtres">
         @if (!affichageGroupe()) {
           <button class="filtre-pilule filtre-pilule-bouton" (click)="pickerQuartierOuvert.set(true)">
             <ion-icon name="funnel-outline"></ion-icon>

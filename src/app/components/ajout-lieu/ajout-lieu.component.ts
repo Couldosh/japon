@@ -154,7 +154,10 @@ export class AjoutLieuComponent implements OnInit {
   }
 
   ngOnInit(): void {
-    this.googleAuth.tenterReconnexionSilencieuse();
+    // La reconnexion silencieuse est déclenchée par HomeComponent.ouvrirModaleAjout(),
+    // depuis le clic sur le bouton "+" — pas ici : au moment où ce composant se
+    // monte, on est déjà hors du geste utilisateur synchrone, et le popup GIS
+    // (même en mode silencieux) est alors bloqué par le navigateur.
     this.rafraichirListesReference(false);
   }
 

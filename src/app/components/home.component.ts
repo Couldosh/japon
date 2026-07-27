@@ -38,6 +38,7 @@ import { estOuvertMaintenant, horairesAujourdhui, horairesSemaine, fermetureImmi
 import { CarteComponent } from './carte/carte.component';
 import { PlanningComponent } from './planning/planning.component';
 import { AjoutLieuComponent } from './ajout-lieu/ajout-lieu.component';
+import { GoogleAuthService } from '../service/google/google-auth.service';
 
 type Vue = 'liste' | 'carte' | 'favoris' | 'planning';
 
@@ -86,6 +87,7 @@ export class HomeComponent implements OnInit {
   protected readonly themeService = inject(ThemeService);
   protected readonly favorisService = inject(FavorisService);
   protected readonly notesService = inject(NotesService);
+  private readonly googleAuth = inject(GoogleAuthService);
 
   // Le Planning charge ses données via son propre service/cache (Sheet distinct) :
   // le bouton de rafraîchissement de l'en-tête doit donc lui déléguer l'action
@@ -293,6 +295,18 @@ export class HomeComponent implements OnInit {
   /** Reflète le chargement de la vue active : Planning a son propre état, indépendant de celui-ci. */
   rafraichissementEnCours(): boolean {
     return this.vue() === 'planning' ? (this.planningComponent?.chargement() ?? false) : this.chargement();
+  }
+
+  /**
+   * Ouvre la modale d'ajout et tente dans la foulée une reconnexion Google
+   * silencieuse (GoogleAuthService.tenterReconnexionSilencieuse()). Doit
+   * rester synchrone et appelée directement depuis ce (click) : le popup GIS,
+   * même en mode silencieux, est bloqué par le navigateur s'il n'est pas
+   * ouvert dans le prolongement immédiat d'un geste utilisateur.
+   */
+  ouvrirModaleAjout(): void {
+    this.afficherModaleAjout.set(true);
+    this.googleAuth.tenterReconnexionSilencieuse();
   }
 
   /**

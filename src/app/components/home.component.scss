@@ -30,15 +30,10 @@
 
 .filtres {
   display: flex;
+  flex-wrap: wrap;
+  align-items: center;
   gap: 8px;
-  overflow-x: auto;
   padding: 8px 16px 12px;
-  scrollbar-width: none;
-  -ms-overflow-style: none;
-
-  &::-webkit-scrollbar {
-    display: none;
-  }
 
   ion-chip {
     margin: 0;
@@ -49,13 +44,6 @@
     --background: var(--ion-color-primary);
     --color: var(--ion-color-primary-contrast);
   }
-}
-
-.sous-filtres {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  padding: 0 16px 12px;
 }
 
 .filtre-pilule {

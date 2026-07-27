@@ -15,10 +15,8 @@ const CONSENTEMENT_KEY = 'google_auth_deja_consenti';
  * clic explicite à chaque rechargement de page/expiration, on mémorise dans
  * localStorage (CONSENTEMENT_KEY, un simple booléen — jamais le token) le
  * fait que l'utilisateur a déjà accordé le scope une fois sur cet appareil,
- * et on tente ensuite un requestAccessToken({prompt: ''}) silencieux (pas de
- * popup) à chaque ouverture du formulaire. Ça ne fonctionne que si la session
- * Google du navigateur est toujours active ; sinon ça échoue silencieusement
- * et l'écran de connexion habituel reprend la main.
+ * et on tente ensuite un requestAccessToken({prompt: ''}) sans écran de
+ * consentement forcé (tenterReconnexionSilencieuse()).
  *
  * Écrire réellement dans le Sheet ne dépend pas que de cette connexion : le
  * compte Google utilisé doit aussi avoir un accès Éditeur sur le Sheet
@@ -48,13 +46,18 @@ export class GoogleAuthService {
   }
 
   /**
-   * Tente d'obtenir un nouveau token sans popup, en s'appuyant sur le
-   * consentement déjà accordé lors d'une connexion précédente sur cet
-   * appareil. Ne fait rien si l'utilisateur ne s'est jamais connecté ici, ou
-   * si une session est déjà active. Appelée à l'ouverture du formulaire
-   * d'ajout pour éviter d'avoir à cliquer "Se connecter" à chaque fois ;
-   * un échec silencieux (session Google expirée, cookies tiers bloqués...)
-   * laisse simplement l'écran de connexion habituel s'afficher.
+   * Tente d'obtenir un nouveau token sans écran de consentement forcé, en
+   * s'appuyant sur le consentement déjà accordé lors d'une connexion
+   * précédente sur cet appareil.
+   *
+   * IMPORTANT : `requestAccessToken()` ouvre un popup vers accounts.google.com
+   * en interne (GIS n'a pas de mode "iframe silencieuse" comme l'ancienne
+   * gapi auth2) — un popup ouvert hors d'un vrai geste utilisateur (clic) est
+   * bloqué par la plupart des navigateurs. Cette méthode doit donc être
+   * appelée de façon synchrone depuis un handler `(click)`, jamais depuis
+   * `ngOnInit()` d'un composant qui vient de se monter (c'était le bug
+   * précédent : appelée après coup, hors du geste, le popup silencieux ne
+   * s'ouvrait jamais et échouait sans bruit). Voir `HomeComponent.ouvrirModaleAjout()`.
    */
   tenterReconnexionSilencieuse(): void {
     if (this.estConnecte() || !this.dejaConsenti() || !window.google?.accounts?.oauth2) {
@@ -103,7 +106,11 @@ export class GoogleAuthService {
         callback: (reponse) => {
           this._reconnexionSilencieuseEnCours.set(false);
           if (reponse.error) {
-            if (!this.silencieux) {
+            if (this.silencieux) {
+              // Jamais montré à l'utilisateur (tentative en arrière-plan), mais utile en
+              // debug : popup bloqué par le navigateur, session Google expirée, etc.
+              console.warn('[GoogleAuthService] Reconnexion silencieuse refusée :', reponse.error);
+            } else {
               this._erreur.set('Connexion Google refusée ou annulée.');
             }
             return;
