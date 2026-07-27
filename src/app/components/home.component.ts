@@ -17,7 +17,7 @@ import {
   sunnyOutline, moonOutline, closeOutline, locationOutline,
   openOutline, starOutline, star, starHalf, pricetagOutline, playOutline,
   timeOutline, funnelOutline, layersOutline, chevronDownOutline, checkmarkOutline,
-  calendarOutline, alarmOutline, createOutline
+  calendarOutline, alarmOutline, createOutline, addOutline
 } from 'ionicons/icons';
 
 import { RestaurantService } from '../service/restaurant/restaurant.service';
@@ -37,6 +37,8 @@ import { emojiRestaurant, emojiActivite, emojiMagasin } from '../utils/emoji-lie
 import { estOuvertMaintenant, horairesAujourdhui, horairesSemaine, fermetureImminente, prochaineReouverture } from '../utils/horaires';
 import { CarteComponent } from './carte/carte.component';
 import { PlanningComponent } from './planning/planning.component';
+import { AjoutLieuComponent } from './ajout-lieu/ajout-lieu.component';
+import { GoogleAuthService } from '../service/google/google-auth.service';
 
 type Vue = 'liste' | 'carte' | 'favoris' | 'planning';
 
@@ -69,7 +71,7 @@ type DetailLieu =
     IonLabel, IonBadge, IonTabBar, IonTabButton,
     IonContent, IonSkeletonText, IonRefresher, IonRefresherContent,
     IonModal, IonTitle, IonSelect, IonSelectOption, IonTextarea, IonToast,
-    CarteComponent, PlanningComponent
+    CarteComponent, PlanningComponent, AjoutLieuComponent
   ],
   templateUrl: './home.component.html',
   styleUrl: './home.component.scss'
@@ -85,6 +87,7 @@ export class HomeComponent implements OnInit {
   protected readonly themeService = inject(ThemeService);
   protected readonly favorisService = inject(FavorisService);
   protected readonly notesService = inject(NotesService);
+  private readonly googleAuth = inject(GoogleAuthService);
 
   // Le Planning charge ses données via son propre service/cache (Sheet distinct) :
   // le bouton de rafraîchissement de l'en-tête doit donc lui déléguer l'action
@@ -94,6 +97,11 @@ export class HomeComponent implements OnInit {
   // La Carte reste montée en permanence (voir template), la référence est donc
   // toujours disponible dès le premier rendu, contrairement au Planning ci-dessus.
   @ViewChild(CarteComponent) private readonly carteComponent?: CarteComponent;
+
+  // Uniquement disponible pendant que la modale d'ajout est ouverte (contenu
+  // paresseux de ion-modal). Utilisé pour bloquer une fermeture accidentelle
+  // (swipe, tap sur le fond) tant que le formulaire contient une saisie non vide.
+  @ViewChild(AjoutLieuComponent) private readonly ajoutLieuComponent?: AjoutLieuComponent;
 
   // Etat
   readonly chargement = signal(true);
@@ -107,6 +115,14 @@ export class HomeComponent implements OnInit {
   // Filtre quartier, applicable à toutes les vues (Tout/Restaurants/Activités/Magasins)
   readonly filtreQuartier = signal<string | null>(null);
   readonly pickerQuartierOuvert = signal(false);
+  readonly afficherModaleAjout = signal(false);
+
+  // Callback [canDismiss] de la modale d'ajout : arrow function (pas une méthode
+  // liée par le binding Angular) pour garder un `this` correct quand Ionic
+  // l'appelle directement. Délègue à AjoutLieuComponent, seul à savoir si son
+  // formulaire contient une saisie non vide à confirmer avant de perdre.
+  protected readonly verifierFermetureAjout = async (): Promise<boolean> =>
+    (await this.ajoutLieuComponent?.confirmerAbandon()) ?? true;
 
   // Sous-filtres, spécifiques au type de lieu actif
   readonly filtrePlat = signal<string | null>(null);
@@ -118,6 +134,10 @@ export class HomeComponent implements OnInit {
   readonly detailSelectionne = signal<DetailLieu | null>(null);
   readonly platSelectionne = signal<Plat | null>(null);
   readonly toastMessage = signal<string | null>(null);
+
+  // Debounce de la note perso (voir enregistrerNote()/flusherNote()).
+  private noteEnAttente: { id: string; texte: string } | null = null;
+  private noteDebounceTimer: ReturnType<typeof setTimeout> | null = null;
 
   // Données brutes (issues des services) conservées pour alimenter la popup de détails,
   // qui a besoin de champs absents de la vue "LieuAffichable" (Description, Avis, Plats...).
@@ -257,7 +277,7 @@ export class HomeComponent implements OnInit {
       sunnyOutline, moonOutline, closeOutline, locationOutline,
       openOutline, starOutline, star, starHalf, pricetagOutline, playOutline,
       timeOutline, funnelOutline, layersOutline, chevronDownOutline, checkmarkOutline,
-      calendarOutline, alarmOutline, createOutline
+      calendarOutline, alarmOutline, createOutline, addOutline
     });
   }
 
@@ -279,6 +299,28 @@ export class HomeComponent implements OnInit {
   /** Reflète le chargement de la vue active : Planning a son propre état, indépendant de celui-ci. */
   rafraichissementEnCours(): boolean {
     return this.vue() === 'planning' ? (this.planningComponent?.chargement() ?? false) : this.chargement();
+  }
+
+  /**
+   * Ouvre la modale d'ajout et tente dans la foulée une reconnexion Google
+   * silencieuse (GoogleAuthService.tenterReconnexionSilencieuse()). Doit
+   * rester synchrone et appelée directement depuis ce (click) : le popup GIS,
+   * même en mode silencieux, est bloqué par le navigateur s'il n'est pas
+   * ouvert dans le prolongement immédiat d'un geste utilisateur.
+   */
+  ouvrirModaleAjout(): void {
+    this.afficherModaleAjout.set(true);
+    this.googleAuth.tenterReconnexionSilencieuse();
+  }
+
+  /**
+   * Le lieu vient d'être écrit dans le Sheet : on recharge pour l'afficher, mais on
+   * laisse la modale ouverte (AjoutLieuComponent vide déjà son formulaire) pour
+   * permettre d'en saisir un autre à la suite sans la rouvrir à chaque fois.
+   */
+  onLieuAjoute(): void {
+    this.toastMessage.set('Lieu ajouté au Sheet');
+    this.chargerDonnees(true);
   }
 
   private chargerDonnees(forceRefresh = false, onDone?: () => void): void {
@@ -431,20 +473,49 @@ export class HomeComponent implements OnInit {
   }
 
   fermerDetails(): void {
+    this.flusherNote();
     this.detailSelectionne.set(null);
   }
 
-  /** Bascule le favori et confirme l'action par un toast, l'icône seule n'étant pas toujours assez visible. */
+  /** Bascule le favori et confirme l'action par un toast, l'icône seule n'étant pas toujours assez visible.
+   * Le toast reflète le résultat réel de la sauvegarde (localStorage peut échouer silencieusement en
+   * navigation privée ou quota dépassé) plutôt que de confirmer à tort une action non persistée. */
   basculerFavori(id: string): void {
     const etaitFavori = this.favorisService.estFavori(id);
-    this.favorisService.basculer(id);
-    this.toastMessage.set(etaitFavori ? 'Retiré des favoris' : 'Ajouté aux favoris');
+    const succes = this.favorisService.basculer(id);
+    this.toastMessage.set(
+      succes ? (etaitFavori ? 'Retiré des favoris' : 'Ajouté aux favoris') : "Impossible d'enregistrer (stockage indisponible)"
+    );
   }
 
-  /** Enregistre la note perso et confirme la sauvegarde, le champ ne donnant sinon aucun retour. */
+  /**
+   * Enregistre la note perso avec un léger debounce pendant la frappe (au lieu du seul
+   * (ionChange), déclenché sur perte de focus : fermer la popup par swipe/tap sur le fond sans
+   * avoir quitté le champ pouvait perdre la saisie en cours). `fermerDetails()` force un flush
+   * immédiat pour ne rien perdre si la modale se ferme avant la fin du debounce.
+   */
   enregistrerNote(id: string, texte: string): void {
-    this.notesService.definirNote(id, texte);
-    this.toastMessage.set(texte.trim() ? 'Note enregistrée' : 'Note supprimée');
+    this.noteEnAttente = { id, texte };
+    if (this.noteDebounceTimer) {
+      clearTimeout(this.noteDebounceTimer);
+    }
+    this.noteDebounceTimer = setTimeout(() => this.flusherNote(), 600);
+  }
+
+  private flusherNote(): void {
+    if (this.noteDebounceTimer) {
+      clearTimeout(this.noteDebounceTimer);
+      this.noteDebounceTimer = null;
+    }
+    if (!this.noteEnAttente) {
+      return;
+    }
+    const { id, texte } = this.noteEnAttente;
+    this.noteEnAttente = null;
+    const succes = this.notesService.definirNote(id, texte);
+    this.toastMessage.set(
+      succes ? (texte.trim() ? 'Note enregistrée' : 'Note supprimée') : "Impossible d'enregistrer la note (stockage indisponible)"
+    );
   }
 
   /** Depuis le détail d'un lieu, retourne à la Liste filtrée sur ce quartier (tous types) pour explorer les alentours. */

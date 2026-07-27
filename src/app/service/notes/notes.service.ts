@@ -14,7 +14,9 @@ export class NotesService {
     return !!this.notes().get(id);
   }
 
-  definirNote(id: string, texte: string): void {
+  /** Retourne false si la sauvegarde localStorage a échoué (quota dépassé, navigation privée...),
+   * pour que l'appelant puisse le signaler plutôt que d'afficher une confirmation trompeuse. */
+  definirNote(id: string, texte: string): boolean {
     const nouvelles = new Map(this.notes());
     const nettoye = texte.trim();
     if (nettoye) {
@@ -23,7 +25,7 @@ export class NotesService {
       nouvelles.delete(id);
     }
     this.notes.set(nouvelles);
-    this.sauvegarder(nouvelles);
+    return this.sauvegarder(nouvelles);
   }
 
   private lireNotes(): Map<string, string> {
@@ -35,11 +37,12 @@ export class NotesService {
     }
   }
 
-  private sauvegarder(notes: ReadonlyMap<string, string>): void {
+  private sauvegarder(notes: ReadonlyMap<string, string>): boolean {
     try {
       localStorage.setItem(CLE_STOCKAGE, JSON.stringify(Object.fromEntries(notes)));
+      return true;
     } catch {
-      // localStorage indisponible ou quota dépassé : les notes perso sont best-effort.
+      return false;
     }
   }
 }

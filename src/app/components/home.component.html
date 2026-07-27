@@ -1,21 +1,27 @@
 <ion-header class="ion-no-border">
   <ion-toolbar>
     <div class="entete">
-      <ion-button fill="clear" (click)="themeService.basculer()" aria-label="Changer de thème">
-        <ion-icon slot="icon-only" [name]="themeService.theme() === 'dark' ? 'sunny-outline' : 'moon-outline'"></ion-icon>
-      </ion-button>
-      <ion-button fill="clear" (click)="rafraichir()" [disabled]="rafraichissementEnCours()" aria-label="Rafraîchir les données">
-        <ion-icon slot="icon-only" name="refresh-outline"></ion-icon>
-      </ion-button>
+      @if (vue() !== 'planning') {
+        <ion-searchbar
+          placeholder="Rechercher un plat, un lieu..."
+          [debounce]="250"
+          (ionInput)="onRecherche($any($event.detail).value)">
+        </ion-searchbar>
+      }
+      <div class="entete-boutons">
+        <ion-button fill="clear" (click)="ouvrirModaleAjout()" aria-label="Ajouter un lieu">
+          <ion-icon slot="icon-only" name="add-outline"></ion-icon>
+        </ion-button>
+        <ion-button fill="clear" (click)="themeService.basculer()" aria-label="Changer de thème">
+          <ion-icon slot="icon-only" [name]="themeService.theme() === 'dark' ? 'sunny-outline' : 'moon-outline'"></ion-icon>
+        </ion-button>
+        <ion-button fill="clear" (click)="rafraichir()" [disabled]="rafraichissementEnCours()" aria-label="Rafraîchir les données">
+          <ion-icon slot="icon-only" name="refresh-outline"></ion-icon>
+        </ion-button>
+      </div>
     </div>
 
     @if (vue() !== 'planning') {
-      <ion-searchbar
-        placeholder="Rechercher un plat, un lieu..."
-        [debounce]="250"
-        (ionInput)="onRecherche($any($event.detail).value)">
-      </ion-searchbar>
-
       <div class="filtres">
         <ion-chip
           [class.filtre-actif]="filtreActif() === 'tout'"
@@ -37,9 +43,7 @@
           (click)="changerFiltre('magasin')">
           Magasins
         </ion-chip>
-      </div>
 
-      <div class="sous-filtres">
         @if (!affichageGroupe()) {
           <button class="filtre-pilule filtre-pilule-bouton" (click)="pickerQuartierOuvert.set(true)">
             <ion-icon name="funnel-outline"></ion-icon>
@@ -122,27 +126,31 @@
 
   @if (vue() === 'liste' || vue() === 'favoris') {
     <div class="section">
-      <div class="section-entete">
-        @if (!affichageGroupe()) {
-          <p class="section-titre">{{ vue() === 'favoris' ? 'Vos favoris' : 'Près de vous' }}</p>
-        }
-        @if (filtreQuartier()) {
-          <ion-button
-            fill="clear"
-            size="small"
-            (click)="voirQuartierSurCarte()"
-            aria-label="Voir ce quartier sur la carte">
-            <ion-icon slot="icon-only" name="map-outline"></ion-icon>
-          </ion-button>
-        }
-        <ion-button
-          fill="clear"
-          size="small"
-          (click)="basculerGroupement()"
-          [attr.aria-label]="affichageGroupe() ? 'Afficher en liste' : 'Regrouper par ville et quartier'">
-          <ion-icon slot="icon-only" [name]="affichageGroupe() ? 'list-outline' : 'layers-outline'"></ion-icon>
-        </ion-button>
-      </div>
+      @if (!affichageGroupe() || filtreQuartier()) {
+        <div class="section-entete">
+          @if (!affichageGroupe()) {
+            <p class="section-titre">{{ vue() === 'favoris' ? 'Vos favoris' : 'Près de vous' }}</p>
+          }
+          @if (filtreQuartier()) {
+            <ion-button
+              fill="clear"
+              size="small"
+              (click)="voirQuartierSurCarte()"
+              aria-label="Voir ce quartier sur la carte">
+              <ion-icon slot="icon-only" name="map-outline"></ion-icon>
+            </ion-button>
+          }
+          @if (!affichageGroupe()) {
+            <ion-button
+              fill="clear"
+              size="small"
+              (click)="basculerGroupement()"
+              aria-label="Regrouper par ville et quartier">
+              <ion-icon slot="icon-only" name="layers-outline"></ion-icon>
+            </ion-button>
+          }
+        </div>
+      }
 
       @if (erreurChargement(); as erreur) {
         <p class="etat-vide">{{ erreur }}</p>
@@ -159,11 +167,22 @@
         }
       } @else if (lieuxAffiches().length === 0) {
         <p class="etat-vide">
-          {{ vue() === 'favoris' ? "Vous n'avez pas encore de favoris." : 'Aucun lieu ne correspond à votre recherche.' }}
+          @if (vue() === 'favoris' && favorisService.favoris().size === 0) {
+            Vous n'avez pas encore de favoris.
+          } @else if (vue() === 'favoris') {
+            Aucun favori ne correspond aux filtres actuels (quartier, recherche...).
+          } @else {
+            Aucun lieu ne correspond à votre recherche.
+          }
         </p>
       } @else if (affichageGroupe()) {
         @for (groupeVille of groupesVille(); track groupeVille.ville) {
-          <p class="groupe-ville-titre">{{ groupeVille.ville }}</p>
+          <div class="groupe-ville-entete">
+            <p class="groupe-ville-titre">{{ groupeVille.ville }}</p>
+            <button class="groupe-quartier-toggle" (click)="basculerGroupement()" aria-label="Afficher en liste">
+              <ion-icon name="list-outline"></ion-icon>
+            </button>
+          </div>
           @for (groupeQuartier of groupeVille.quartiers; track groupeQuartier.quartier) {
             <p class="groupe-quartier-titre">{{ groupeQuartier.quartier }}</p>
             @for (lieu of groupeQuartier.lieux; track lieu.id) {
@@ -203,7 +222,9 @@
           <ion-badge color="warning">Ferme dans {{ minutes }} min</ion-badge>
         }
       </div>
-      <p class="carte-lieu-details">{{ lieu.quartier.Nom }}</p>
+      @if (!affichageGroupe()) {
+        <p class="carte-lieu-details">{{ lieu.quartier.Nom }}</p>
+      }
       <div class="carte-lieu-meta">
         @if (lieu.distanceMetres != null) {
           <span><ion-icon name="walk-outline"></ion-icon> {{ formaterDistance(lieu.distanceMetres) }}</span>
@@ -214,7 +235,7 @@
         @if (lieu.horaireTexte) {
           <span><ion-icon name="time-outline"></ion-icon> {{ lieu.horaireTexte }}</span>
         }
-        @if (!lieu.estOuvert && prochaineReouvertureDetail(lieu.horairesJson); as reouverture) {
+        @if (lieu.estOuvert === false && prochaineReouvertureDetail(lieu.horairesJson); as reouverture) {
           <span><ion-icon name="alarm-outline"></ion-icon> {{ reouverture }}</span>
         }
       </div>
@@ -251,7 +272,7 @@
         <ion-toolbar>
           <ion-title>{{ detail.data.Nom }} {{ emojiDetail(detail) }}</ion-title>
           <ion-buttons slot="end">
-            <ion-button (click)="basculerFavori(detail.data.id)" aria-label="Ajouter aux favoris">
+            <ion-button (click)="basculerFavori(detail.data.id)" [attr.aria-label]="favorisService.estFavori(detail.data.id) ? 'Retirer des favoris' : 'Ajouter aux favoris'">
               <ion-icon slot="icon-only" [name]="favorisService.estFavori(detail.data.id) ? 'heart' : 'heart-outline'" [color]="favorisService.estFavori(detail.data.id) ? 'danger' : undefined"></ion-icon>
             </ion-button>
             <ion-button (click)="fermerDetails()" aria-label="Fermer">
@@ -500,7 +521,7 @@
             placeholder="Note personnelle, visible seulement sur cet appareil..."
             [autoGrow]="true"
             [value]="notesService.obtenirNote(detail.data.id)"
-            (ionChange)="enregistrerNote(detail.data.id, $any($event.detail).value ?? '')">
+            (ionInput)="enregistrerNote(detail.data.id, $any($event.detail).value ?? '')">
           </ion-textarea>
         </div>
       </ion-content>
@@ -592,6 +613,12 @@
         }
       </div>
     </ion-content>
+  </ng-template>
+</ion-modal>
+
+<ion-modal [isOpen]="afficherModaleAjout()" (didDismiss)="afficherModaleAjout.set(false)" [canDismiss]="verifierFermetureAjout" [initialBreakpoint]="1" [breakpoints]="[0, 1]">
+  <ng-template>
+    <app-ajout-lieu (ferme)="afficherModaleAjout.set(false)" (ajoute)="onLieuAjoute()"></app-ajout-lieu>
   </ng-template>
 </ion-modal>
 

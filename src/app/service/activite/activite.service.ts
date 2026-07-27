@@ -7,6 +7,7 @@ import {Avis} from '../../models/avis.model';
 import {QuartierService} from '../quartier/quartier.service';
 import {resoudreQuartier} from '../../utils/quartier';
 import {GeolocationService} from '../geolocation/GeolocationService';
+import {genererIdLieu} from '../../utils/lieu-id';
 
 @Injectable({
   providedIn: 'root',
@@ -28,7 +29,7 @@ export class ActiviteService {
           })
           return result.data
             .filter((row: any) => row.Nom?.trim())
-            .map((row: any, index: any) => {
+            .map((row: any) => {
             // 1. Parser les avis
             const avisData = new Avis({
               Valérian: Avis.countX(row.Valérian),
@@ -56,7 +57,7 @@ export class ActiviteService {
               Quartier: resoudreQuartier(quartiers, row.Quartier),
               latitude: coordonnees?.latitude ?? null,
               longitude: coordonnees?.longitude ?? null,
-              id: 'activite_' + index
+              id: genererIdLieu('activite', row.Nom, row.Quartier)
             } as ActiviteModel;
           })
         }

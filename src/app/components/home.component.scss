@@ -2,7 +2,20 @@
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  padding: 4px 16px 0;
+  gap: 4px;
+  padding: 4px 8px 0 16px;
+
+  ion-searchbar {
+    flex: 1 1 auto;
+    min-width: 0;
+    padding: 0;
+  }
+}
+
+.entete-boutons {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
 }
 
 .vue-carte {
@@ -17,15 +30,10 @@
 
 .filtres {
   display: flex;
+  flex-wrap: wrap;
+  align-items: center;
   gap: 8px;
-  overflow-x: auto;
   padding: 8px 16px 12px;
-  scrollbar-width: none;
-  -ms-overflow-style: none;
-
-  &::-webkit-scrollbar {
-    display: none;
-  }
 
   ion-chip {
     margin: 0;
@@ -36,13 +44,6 @@
     --background: var(--ion-color-primary);
     --color: var(--ion-color-primary-contrast);
   }
-}
-
-.sous-filtres {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  padding: 0 16px 12px;
 }
 
 .filtre-pilule {
@@ -179,14 +180,22 @@
   }
 }
 
-.groupe-ville-titre {
-  font-size: 16px;
-  font-weight: 700;
+.groupe-ville-entete {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
   margin: 18px 0 6px;
 
   &:first-child {
     margin-top: 0;
   }
+}
+
+.groupe-ville-titre {
+  font-size: 16px;
+  font-weight: 700;
+  margin: 0;
 }
 
 .groupe-quartier-titre {
@@ -196,6 +205,23 @@
   letter-spacing: 0.03em;
   color: var(--ion-color-medium);
   margin: 10px 0 6px;
+}
+
+.groupe-quartier-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  border: none;
+  background: transparent;
+  color: var(--ion-color-medium);
+  cursor: pointer;
+
+  ion-icon {
+    font-size: 16px;
+  }
 }
 
 .etat-vide {
@@ -233,6 +259,12 @@
 .carte-lieu-contenu {
   flex: 1;
   min-width: 0;
+  display: flex;
+  flex-direction: column;
+  // gap plutôt que des margins sur chaque enfant : garde un espacement
+  // constant que .carte-lieu-details (quartier) soit présent ou non (masqué
+  // en vue groupée, déjà porté par le titre de section au-dessus).
+  gap: 6px;
 }
 
 .carte-lieu-ligne {
@@ -268,7 +300,7 @@
 .carte-lieu-details {
   font-size: 12px;
   color: var(--ion-color-medium);
-  margin: 2px 0 6px;
+  margin: 0;
 }
 
 .carte-lieu-meta {

@@ -46,6 +46,16 @@ function formaterPeriode(periode: PeriodeHoraire): string {
   return periode.jf == null || !periode.hf ? 'Ouvert 24h/24' : `${periode.h} - ${periode.hf}`;
 }
 
+// Une période sans jf/hf (ouverte en continu, ex: établissement 24h/24 et 7j/7)
+// n'a qu'un seul `j` dans le JSON produit par fetch-horaires.mjs, mais concerne
+// tous les jours de la semaine pour l'affichage — sans ce cas particulier,
+// horairesAujourdhui()/horairesSemaine() ne la matchaient que sur ce seul jour
+// et affichaient "Fermé" partout ailleurs (bug : 24h/24-7j/7 semblait fermé
+// tous les jours sauf celui indiqué par `j`).
+function periodeConcerneJour(periode: PeriodeHoraire, jour: number): boolean {
+  return periode.jf == null || !periode.hf ? true : periode.j === jour;
+}
+
 /**
  * Indique si un établissement est ouvert à l'instant donné, à partir des
  * horaires stockés dans la colonne "Horaires" du Google Sheet.
@@ -88,7 +98,7 @@ export function horairesAujourdhui(horairesJson: string | null | undefined, main
     return null;
   }
 
-  const periodesDuJour = periodes.filter(p => p.j === maintenant.getDay());
+  const periodesDuJour = periodes.filter(p => periodeConcerneJour(p, maintenant.getDay()));
   if (periodesDuJour.length === 0) {
     return "Fermé aujourd'hui";
   }
@@ -186,7 +196,7 @@ export function horairesSemaine(horairesJson: string | null | undefined, mainten
   const jourCourant = maintenant.getDay();
 
   return ORDRE_AFFICHAGE_JOURS.map(jour => {
-    const periodesDuJour = periodes.filter(p => p.j === jour);
+    const periodesDuJour = periodes.filter(p => periodeConcerneJour(p, jour));
     return {
       jour: NOMS_JOURS[jour],
       horaires: periodesDuJour.length === 0 ? 'Fermé' : periodesDuJour.map(formaterPeriode).join(', '),

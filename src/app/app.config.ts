@@ -4,11 +4,13 @@ import { routes } from './app.routes';
 import { providePrimeNG } from 'primeng/config';
 import Aura from '@primeuix/themes/aura';
 import {provideIonicAngular} from '@ionic/angular/standalone';
+import {provideHttpClient} from '@angular/common/http';
 
 export const appConfig: ApplicationConfig = {
   providers: [
     provideZonelessChangeDetection(),
     provideRouter(routes),
-    provideIonicAngular()
+    provideIonicAngular(),
+    provideHttpClient()
   ],
 };

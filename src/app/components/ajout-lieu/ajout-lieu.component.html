@@ -1,0 +1,295 @@
+<ion-header class="ion-no-border">
+  <ion-toolbar>
+    <ion-title>Ajouter un lieu</ion-title>
+    <ion-buttons slot="end">
+      <ion-button (click)="ferme.emit()" aria-label="Fermer">
+        <ion-icon slot="icon-only" name="close-outline"></ion-icon>
+      </ion-button>
+    </ion-buttons>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content>
+  <div class="ajout-lieu">
+    @if (!googleAuth.estConnecte()) {
+      @if (googleAuth.reconnexionSilencieuseEnCours()) {
+        <div class="ajout-lieu-connexion">
+          <ion-spinner name="dots"></ion-spinner>
+          <p>Reconnexion à Google...</p>
+        </div>
+      } @else {
+        <div class="ajout-lieu-connexion">
+          <p>Connecte-toi avec un compte Google ayant un accès Éditeur sur le Sheet pour pouvoir ajouter un lieu.</p>
+          <ion-button expand="block" (click)="googleAuth.connecter()">Se connecter avec Google</ion-button>
+          @if (googleAuth.erreur()) {
+            <p class="ajout-lieu-erreur"><ion-icon name="alert-circle-outline"></ion-icon> {{ googleAuth.erreur() }}</p>
+          }
+        </div>
+      }
+    } @else {
+      <div class="ajout-lieu-types">
+        <ion-chip [class.ajout-lieu-type-actif]="type() === 'restaurant'" (click)="changerType('restaurant')">Restaurant</ion-chip>
+        <ion-chip [class.ajout-lieu-type-actif]="type() === 'activite'" (click)="changerType('activite')">Activité</ion-chip>
+        <ion-chip [class.ajout-lieu-type-actif]="type() === 'magasin'" (click)="changerType('magasin')">Magasin</ion-chip>
+        <ion-chip [class.ajout-lieu-type-actif]="type() === 'plat'" (click)="changerType('plat')">Plat</ion-chip>
+      </div>
+
+      @if (type() === 'plat') {
+        <div class="ajout-lieu-ligne-nom-plat">
+          <ion-item class="ajout-lieu-nom-plat">
+            <ion-input
+              label="Nom du plat *"
+              labelPlacement="stacked"
+              placeholder="Nom"
+              [value]="nom()"
+              (ionInput)="nom.set($any($event.detail).value ?? '')">
+            </ion-input>
+          </ion-item>
+
+          <div class="ajout-lieu-toggle-categorie">
+            <span class="ajout-lieu-toggle-label" [class.ajout-lieu-toggle-label-plat-actif]="categoriePlat() === PlatCategory.Plat">Plat</span>
+            <ion-toggle
+              [checked]="categoriePlat() === PlatCategory.Snack"
+              color="danger"
+              [style.--track-background]="categoriePlat() === PlatCategory.Plat ? 'var(--ion-color-success)' : null"
+              (ionChange)="categoriePlat.set($any($event.detail).checked ? PlatCategory.Snack : PlatCategory.Plat)">
+            </ion-toggle>
+            <span class="ajout-lieu-toggle-label" [class.ajout-lieu-toggle-label-snack-actif]="categoriePlat() === PlatCategory.Snack">Snack</span>
+          </div>
+        </div>
+      } @else {
+        <ion-item>
+          <ion-input
+            label="Nom *"
+            labelPlacement="stacked"
+            placeholder="Nom du lieu"
+            [value]="nom()"
+            (ionInput)="nom.set($any($event.detail).value ?? '')">
+          </ion-input>
+        </ion-item>
+      }
+
+      @if (estUnLieu()) {
+        <button class="ajout-lieu-quartier" (click)="pickerQuartierOuvert.set(true)">
+          <ion-icon name="funnel-outline"></ion-icon>
+          <span>{{ quartier() ?? 'Choisir un quartier *' }}</span>
+          <ion-icon name="chevron-down-outline" class="ajout-lieu-quartier-chevron"></ion-icon>
+        </button>
+
+        <ion-button
+          class="ajout-lieu-places"
+          fill="outline"
+          size="small"
+          [disabled]="!nom().trim() || !quartier() || rechercheEnCours()"
+          (click)="rechercherPlaces()">
+          @if (rechercheEnCours()) {
+            <ion-spinner name="dots" slot="start"></ion-spinner>
+          } @else {
+            <ion-icon slot="start" name="search-outline"></ion-icon>
+          }
+          Rechercher sur Google Places
+        </ion-button>
+
+        @if (rechercheMessage()) {
+          <p class="ajout-lieu-recherche-message">
+            <span>{{ rechercheMessage() }}</span>
+            <button class="ajout-lieu-message-fermer" (click)="rechercheMessage.set(null)" aria-label="Masquer ce message">
+              <ion-icon name="close-outline"></ion-icon>
+            </button>
+          </p>
+        }
+
+        <ion-item>
+          <ion-input
+            label="Lien (site web)"
+            labelPlacement="stacked"
+            placeholder="https://..."
+            [value]="liens()"
+            (ionInput)="majLiens($any($event.detail).value ?? '')">
+          </ion-input>
+          @if (champsAutoRemplis().has('liens')) {
+            <ion-chip slot="end" class="ajout-lieu-badge-auto" color="tertiary">auto</ion-chip>
+          }
+        </ion-item>
+
+        <ion-item>
+          <ion-input
+            label="Localisation (lien Google Maps)"
+            labelPlacement="stacked"
+            placeholder="https://maps.google.com/..."
+            [value]="localisation()"
+            (ionInput)="majLocalisation($any($event.detail).value ?? '')">
+          </ion-input>
+          @if (champsAutoRemplis().has('localisation')) {
+            <ion-chip slot="end" class="ajout-lieu-badge-auto" color="tertiary">auto</ion-chip>
+          }
+        </ion-item>
+      }
+
+      @if (type() === 'plat') {
+        <ion-item>
+          <ion-input
+            label="Wiki / lien"
+            labelPlacement="stacked"
+            placeholder="https://..."
+            [value]="wiki()"
+            (ionInput)="wiki.set($any($event.detail).value ?? '')">
+          </ion-input>
+        </ion-item>
+      }
+
+      @if (type() !== 'magasin') {
+        <ion-item>
+          <ion-textarea
+            label="Description"
+            labelPlacement="stacked"
+            [autoGrow]="true"
+            [value]="description()"
+            (ionInput)="description.set($any($event.detail).value ?? '')">
+          </ion-textarea>
+        </ion-item>
+      }
+
+      @if (type() === 'restaurant' || type() === 'activite') {
+        <ion-item>
+          <ion-input
+            label="Prix"
+            labelPlacement="stacked"
+            placeholder="¥¥, 1500¥..."
+            [value]="prix()"
+            (ionInput)="prix.set($any($event.detail).value ?? '')">
+          </ion-input>
+        </ion-item>
+      }
+
+      @if (type() === 'restaurant') {
+        <p class="ajout-lieu-label">Plats</p>
+        @if (platsDisponibles().length) {
+          <div class="ajout-lieu-plats-chips">
+            @for (nom of platsDisponibles(); track nom) {
+              <ion-chip
+                [color]="estPlatSelectionne(nom) ? undefined : couleurPlat(nom)"
+                [outline]="!estPlatSelectionne(nom)"
+                [style.--background]="estPlatSelectionne(nom) ? fondPlatSelectionne(nom) : null"
+                [style.--color]="estPlatSelectionne(nom) ? textePlatSelectionne(nom) : null"
+                (click)="basculerPlat(nom)">
+                {{ nom }}
+              </ion-chip>
+            }
+          </div>
+        } @else {
+          <p class="ajout-lieu-plats-vide">Aucun plat connu pour l'instant — ajoute-en un via le type "Plat" ci-dessus.</p>
+        }
+
+        <ion-item>
+          <ion-input
+            label="Vidéo"
+            labelPlacement="stacked"
+            placeholder="https://..."
+            [value]="video()"
+            (ionInput)="video.set($any($event.detail).value ?? '')">
+          </ion-input>
+        </ion-item>
+        <ion-item>
+          <ion-input
+            label="Menu"
+            labelPlacement="stacked"
+            placeholder="https://..."
+            [value]="menu()"
+            (ionInput)="menu.set($any($event.detail).value ?? '')">
+          </ion-input>
+        </ion-item>
+      }
+
+      @if (type() === 'activite') {
+        <ion-item>
+          <ion-input
+            label="Temps sur place"
+            labelPlacement="stacked"
+            placeholder="1h, 2h30..."
+            [value]="temps()"
+            (ionInput)="temps.set($any($event.detail).value ?? '')">
+          </ion-input>
+        </ion-item>
+      }
+
+      @if (type() === 'magasin') {
+        <ion-item>
+          <ion-input
+            label="Type de magasin"
+            labelPlacement="stacked"
+            placeholder="Konbini, Supermarché..."
+            [value]="typeMagasin()"
+            (ionInput)="typeMagasin.set($any($event.detail).value ?? '')">
+          </ion-input>
+        </ion-item>
+      }
+
+      <ion-item>
+        <ion-textarea
+          label="Commentaires"
+          labelPlacement="stacked"
+          [autoGrow]="true"
+          [value]="commentaires()"
+          (ionInput)="commentaires.set($any($event.detail).value ?? '')">
+        </ion-textarea>
+      </ion-item>
+
+      @if (erreur()) {
+        <p class="ajout-lieu-erreur">
+          <ion-icon name="alert-circle-outline"></ion-icon>
+          <span>{{ erreur() }}</span>
+          <button class="ajout-lieu-message-fermer" (click)="erreur.set(null)" aria-label="Masquer ce message">
+            <ion-icon name="close-outline"></ion-icon>
+          </button>
+        </p>
+      }
+
+      <ion-button expand="block" class="ajout-lieu-submit" [disabled]="!formValide() || enCours()" (click)="soumettre()">
+        @if (enCours()) {
+          <ion-spinner name="dots"></ion-spinner>
+        } @else {
+          Ajouter au Sheet
+        }
+      </ion-button>
+
+      @if (raisonInvalide() && !enCours()) {
+        <p class="ajout-lieu-hint">{{ raisonInvalide() }}</p>
+      }
+    }
+  </div>
+</ion-content>
+
+<ion-modal [isOpen]="pickerQuartierOuvert()" (didDismiss)="pickerQuartierOuvert.set(false)" [initialBreakpoint]="0.75" [breakpoints]="[0, 0.75, 1]">
+  <ng-template>
+    <ion-header class="ion-no-border">
+      <ion-toolbar>
+        <ion-title>Choisir un quartier</ion-title>
+        <ion-buttons slot="end">
+          <ion-button (click)="pickerQuartierOuvert.set(false)" aria-label="Fermer">
+            <ion-icon slot="icon-only" name="close-outline"></ion-icon>
+          </ion-button>
+        </ion-buttons>
+      </ion-toolbar>
+    </ion-header>
+
+    <ion-content>
+      <div class="picker-quartier">
+        @for (groupe of quartiersParVille(); track groupe.ville) {
+          <p class="picker-quartier-ville">{{ groupe.ville }}</p>
+          @for (q of groupe.quartiers; track q) {
+            <button
+              class="picker-quartier-option"
+              [class.picker-quartier-selectionne]="quartier() === q"
+              (click)="choisirQuartier(q)">
+              <span>{{ q }}</span>
+              @if (quartier() === q) {
+                <ion-icon name="checkmark-outline"></ion-icon>
+              }
+            </button>
+          }
+        }
+      </div>
+    </ion-content>
+  </ng-template>
+</ion-modal>

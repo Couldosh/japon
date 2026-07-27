@@ -36,6 +36,17 @@ npm test              # tests unitaires (Karma/Jasmine)
 
 `src/environments/environment.ts` contient la clé API MapTiler utilisée par l'onglet Carte. Cette clé est volontairement visible côté client : MapTiler restreint l'usage par domaine autorisé (dashboard MapTiler → la clé → *Allowed origins/domains*), pas par confidentialité de la clé elle-même.
 
+### Écriture dans le Sheet depuis l'app ("Ajouter un lieu")
+
+Le bouton "+" de l'en-tête permet d'ajouter un restaurant/activité/magasin/plat directement depuis l'app, en écrivant dans le vrai Google Sheet via l'API Sheets v4 (authentification OAuth2 côté navigateur avec le compte Google de l'utilisateur). Prérequis, dans le même projet Google Cloud que les scripts de maintenance (`Google Sheets API` déjà activée) :
+
+1. **Un ID client OAuth type "Application Web"** (pas "Application de bureau", utilisée pour les scripts) : *Identifiants* → *Créer des identifiants* → *ID client OAuth* → *Application Web*. Renseigner les origines JavaScript autorisées (`http://localhost:4200` en dev, le domaine de prod en prod).
+2. **Écran de consentement OAuth en mode Test**, avec les comptes Google des contributeurs ajoutés comme "utilisateurs test" — le scope `spreadsheets` est sensible et nécessiterait sinon une vérification Google, inutile pour un groupe fermé.
+3. Renseigner `googleClientId` (l'ID client ci-dessus) et `spreadsheetId` (l'identifiant du Sheet dans son URL d'édition — le même que `SPREADSHEET_ID` dans le `.env` des scripts, **différent** de l'ID de publication CSV utilisé par `SheetsApi.baseUrl`) dans `src/environments/environment.ts`.
+4. Chaque contributeur doit avoir un accès **Éditeur** sur le Sheet avec son compte Google : c'est cet accès, et non la connexion à l'app, qui autorise réellement l'écriture (voir `docs/architecture-et-pieges.md`).
+
+Le bouton "Rechercher sur Google Places" du formulaire (préremplissage Lien/Localisation) nécessite en plus une **clé API Places** dédiée : *Identifiants* → *Créer des identifiants* → *Clé API*, restreinte à *Places API (New)* et à vos origines HTTP (referrers) autorisées — **ne pas réutiliser** `PLACES_API_KEY` du `.env` des scripts, qui n'est pas restreinte par origine. Renseigner `placesApiKey` dans `src/environments/environment.ts`.
+
 ## Source de données
 
 Toutes les données (hors favoris/notes, stockés localement) viennent d'un unique Google Sheet, exposé en lecture via "Publier sur le web" (export CSV), un onglet par type de contenu :
@@ -46,6 +57,7 @@ Toutes les données (hors favoris/notes, stockés localement) viennent d'un uniq
 | Restaurants| `RestaurantService`         | `892590698`   |
 | Magasins   | `MagasinService`             | `346756517`   |
 | Quartiers (référence Ville) | `QuartierService`  | `1855356526`  |
+| Plats (référence, colonne "Plats" des restaurants) | `PlatService` | `2053739160` |
 | Planning   | `PlanningService`             | `1009205135`  |
 
 Le cache navigateur (`SheetsApi`) garde chaque onglet 5 minutes ; le bouton de rafraîchissement de l'en-tête force une relecture immédiate (délègue au chargement propre de l'onglet actif : Planning a son propre cache, indépendant des trois autres feuilles).
