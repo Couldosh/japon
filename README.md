@@ -1,4 +1,4 @@
-# Japon — guide de voyage
+# Japon — guide de voyage !
 
 Application Ionic/Angular servant de guide de voyage pour un séjour au Japon : restaurants, activités et magasins sourcés depuis un Google Sheet partagé, avec carte, favoris et planning de l'itinéraire.
 
