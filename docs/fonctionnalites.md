@@ -24,7 +24,7 @@ Modale en bottom-sheet swipeable (`[breakpoints]="[0,1]"`), commune aux 3 types 
 - Étoiles (moyenne `Avis`, 8 votants nommés dans le Sheet — pas de notation utilisateur, uniquement affichage).
 - Horaires de la semaine, description, commentaires.
 - Restaurant uniquement : liste de plats en chips colorées (vert = Plat, rouge = Snack), cliquables → popup détail du plat.
-- Note personnelle : `ion-textarea` avec auto-save (`NotesService`, localStorage, device-only) + toast de confirmation.
+- Note personnelle : `ion-textarea` avec auto-save debounced (~600ms après la fin de la frappe, `HomeComponent.enregistrerNote()`/`flusherNote()`) + toast de confirmation. Un flush immédiat est forcé à la fermeture de la popup (bouton, swipe ou tap sur le fond) pour ne pas perdre une saisie récente si elle survient avant la fin du debounce.
 - Bouton favori (cœur) avec toast de confirmation.
 - Liens d'action : Maps, Menu, Vidéo, Plus d'infos (selon ce qui est renseigné).
 - Magasin : un quartier peut avoir plusieurs valeurs (colonne "Quartier" à virgules) → un badge cliquable par quartier.
@@ -71,12 +71,12 @@ Modale en bottom-sheet swipeable (`[breakpoints]="[0,1]"`), commune aux 3 types 
 
 ## Notes et Favoris (services)
 
-- `FavorisService` (`Set<string>`) et `NotesService` (`Map<string,string>`), tous deux localStorage, **100% locaux à l'appareil** — pas de compte, pas de synchronisation entre les membres du groupe.
+- `FavorisService` (`Set<string>`) et `NotesService` (`Map<string,string>`), tous deux localStorage, **100% locaux à l'appareil** — pas de compte, pas de synchronisation entre les membres du groupe. Indexés par l'id de lieu généré par `genererIdLieu()` (`utils/lieu-id.ts`, nom + quartier normalisés) — voir `docs/architecture-et-pieges.md` pour le piège corrigé (ancien id basé sur la position dans le Sheet, instable dès qu'une ligne est ajoutée/supprimée par un autre membre du groupe).
 
 ## UX transverse
 
-- Toasts de confirmation (favori ajouté/retiré, note enregistrée/supprimée).
-- Thème clair/sombre (bouton dans l'en-tête), lu une seule fois au chargement depuis la préférence système (pas de suivi live des changements système en cours d'usage — piste d'amélioration non implémentée).
+- Toasts de confirmation (favori ajouté/retiré, note enregistrée/supprimée) — reflètent l'échec réel si la sauvegarde localStorage échoue (quota dépassé, navigation privée), pas juste une confirmation optimiste.
+- Thème clair/sombre (bouton dans l'en-tête) : suit la préférence système en direct pendant la session tant que l'utilisateur n'a jamais basculé le thème manuellement (`ThemeService`) ; dès qu'il le fait une fois, son choix explicite est mémorisé et n'est plus jamais écrasé par un changement système.
 - Zones de tap ≥ 44px sur les filtres et boutons de section.
 - Pull-to-refresh sur Liste/Favoris et sur Planning (pas sur Carte).
 

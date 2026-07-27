@@ -68,7 +68,12 @@
           <div
             class="planning-activite-carte"
             [class.planning-activite-carte-liee]="lieuLie"
-            (click)="ouvrirLieu(lieuLie)">
+            [attr.role]="lieuLie ? 'button' : null"
+            [attr.tabindex]="lieuLie ? 0 : null"
+            [attr.aria-label]="lieuLie ? 'Voir la fiche de ' + lieuLie.nom : null"
+            (click)="ouvrirLieu(lieuLie)"
+            (keydown.enter)="ouvrirLieu(lieuLie)"
+            (keydown.space)="$event.preventDefault(); ouvrirLieu(lieuLie)">
             <div class="planning-activite-entete">
               <span class="planning-activite-heure">
                 {{ activite.heureDebut }}@if (activite.heureFin) { – {{ activite.heureFin }} }

@@ -10,7 +10,9 @@ export class FavorisService {
     return this.favoris().has(id);
   }
 
-  basculer(id: string): void {
+  /** Retourne false si la sauvegarde localStorage a échoué (quota dépassé, navigation privée...),
+   * pour que l'appelant puisse le signaler plutôt que d'afficher une confirmation trompeuse. */
+  basculer(id: string): boolean {
     const nouveaux = new Set(this.favoris());
     if (nouveaux.has(id)) {
       nouveaux.delete(id);
@@ -18,7 +20,7 @@ export class FavorisService {
       nouveaux.add(id);
     }
     this.favoris.set(nouveaux);
-    this.sauvegarder(nouveaux);
+    return this.sauvegarder(nouveaux);
   }
 
   private lireFavoris(): Set<string> {
@@ -30,11 +32,12 @@ export class FavorisService {
     }
   }
 
-  private sauvegarder(favoris: ReadonlySet<string>): void {
+  private sauvegarder(favoris: ReadonlySet<string>): boolean {
     try {
       localStorage.setItem(CLE_STOCKAGE, JSON.stringify([...favoris]));
+      return true;
     } catch {
-      // localStorage indisponible ou quota dépassé : le stockage des favoris est best-effort.
+      return false;
     }
   }
 }

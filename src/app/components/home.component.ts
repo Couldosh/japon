@@ -135,6 +135,10 @@ export class HomeComponent implements OnInit {
   readonly platSelectionne = signal<Plat | null>(null);
   readonly toastMessage = signal<string | null>(null);
 
+  // Debounce de la note perso (voir enregistrerNote()/flusherNote()).
+  private noteEnAttente: { id: string; texte: string } | null = null;
+  private noteDebounceTimer: ReturnType<typeof setTimeout> | null = null;
+
   // Données brutes (issues des services) conservées pour alimenter la popup de détails,
   // qui a besoin de champs absents de la vue "LieuAffichable" (Description, Avis, Plats...).
   private readonly restaurantsBruts = signal<RestaurantModel[]>([]);
@@ -469,20 +473,49 @@ export class HomeComponent implements OnInit {
   }
 
   fermerDetails(): void {
+    this.flusherNote();
     this.detailSelectionne.set(null);
   }
 
-  /** Bascule le favori et confirme l'action par un toast, l'icône seule n'étant pas toujours assez visible. */
+  /** Bascule le favori et confirme l'action par un toast, l'icône seule n'étant pas toujours assez visible.
+   * Le toast reflète le résultat réel de la sauvegarde (localStorage peut échouer silencieusement en
+   * navigation privée ou quota dépassé) plutôt que de confirmer à tort une action non persistée. */
   basculerFavori(id: string): void {
     const etaitFavori = this.favorisService.estFavori(id);
-    this.favorisService.basculer(id);
-    this.toastMessage.set(etaitFavori ? 'Retiré des favoris' : 'Ajouté aux favoris');
+    const succes = this.favorisService.basculer(id);
+    this.toastMessage.set(
+      succes ? (etaitFavori ? 'Retiré des favoris' : 'Ajouté aux favoris') : "Impossible d'enregistrer (stockage indisponible)"
+    );
   }
 
-  /** Enregistre la note perso et confirme la sauvegarde, le champ ne donnant sinon aucun retour. */
+  /**
+   * Enregistre la note perso avec un léger debounce pendant la frappe (au lieu du seul
+   * (ionChange), déclenché sur perte de focus : fermer la popup par swipe/tap sur le fond sans
+   * avoir quitté le champ pouvait perdre la saisie en cours). `fermerDetails()` force un flush
+   * immédiat pour ne rien perdre si la modale se ferme avant la fin du debounce.
+   */
   enregistrerNote(id: string, texte: string): void {
-    this.notesService.definirNote(id, texte);
-    this.toastMessage.set(texte.trim() ? 'Note enregistrée' : 'Note supprimée');
+    this.noteEnAttente = { id, texte };
+    if (this.noteDebounceTimer) {
+      clearTimeout(this.noteDebounceTimer);
+    }
+    this.noteDebounceTimer = setTimeout(() => this.flusherNote(), 600);
+  }
+
+  private flusherNote(): void {
+    if (this.noteDebounceTimer) {
+      clearTimeout(this.noteDebounceTimer);
+      this.noteDebounceTimer = null;
+    }
+    if (!this.noteEnAttente) {
+      return;
+    }
+    const { id, texte } = this.noteEnAttente;
+    this.noteEnAttente = null;
+    const succes = this.notesService.definirNote(id, texte);
+    this.toastMessage.set(
+      succes ? (texte.trim() ? 'Note enregistrée' : 'Note supprimée') : "Impossible d'enregistrer la note (stockage indisponible)"
+    );
   }
 
   /** Depuis le détail d'un lieu, retourne à la Liste filtrée sur ce quartier (tous types) pour explorer les alentours. */

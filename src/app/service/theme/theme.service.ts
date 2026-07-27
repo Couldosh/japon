@@ -3,6 +3,7 @@ import { Injectable, effect, signal } from '@angular/core';
 export type Theme = 'light' | 'dark';
 
 const CLE_STOCKAGE = 'theme';
+const CLE_CHOIX_MANUEL = 'theme_choisi_manuellement';
 const CLASSE_SOMBRE = 'ion-palette-dark';
 
 @Injectable({ providedIn: 'root' })
@@ -18,15 +19,38 @@ export class ThemeService {
     // changements) afin d'éviter un flash de thème incorrect au démarrage.
     this.appliquer(this.theme());
     effect(() => this.appliquer(this.theme()));
+
+    // Suit les changements de thème système en direct pendant la session (ex: mode sombre
+    // auto le soir), mais seulement tant que l'utilisateur n'a jamais basculé le thème
+    // lui-même via le bouton — sinon son choix explicite serait silencieusement écrasé.
+    this.prefersDark?.addEventListener('change', (e) => {
+      if (!this.choisiManuellement()) {
+        this.theme.set(e.matches ? 'dark' : 'light');
+      }
+    });
   }
 
   basculer(): void {
     this.theme.set(this.theme() === 'dark' ? 'light' : 'dark');
+    this.marquerChoixManuel();
+  }
+
+  private choisiManuellement(): boolean {
+    return localStorage.getItem(CLE_CHOIX_MANUEL) === 'true';
+  }
+
+  private marquerChoixManuel(): void {
+    try {
+      localStorage.setItem(CLE_CHOIX_MANUEL, 'true');
+    } catch {
+      // localStorage indisponible : le thème restera appliqué pour la session en cours,
+      // mais pourra être réécrasé par un changement système à la prochaine visite.
+    }
   }
 
   private lireThemeInitial(): Theme {
     const stocke = localStorage.getItem(CLE_STOCKAGE);
-    if (stocke === 'light' || stocke === 'dark') {
+    if (this.choisiManuellement() && (stocke === 'light' || stocke === 'dark')) {
       return stocke;
     }
     return this.prefersDark?.matches ? 'dark' : 'light';

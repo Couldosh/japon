@@ -167,7 +167,13 @@
         }
       } @else if (lieuxAffiches().length === 0) {
         <p class="etat-vide">
-          {{ vue() === 'favoris' ? "Vous n'avez pas encore de favoris." : 'Aucun lieu ne correspond à votre recherche.' }}
+          @if (vue() === 'favoris' && favorisService.favoris().size === 0) {
+            Vous n'avez pas encore de favoris.
+          } @else if (vue() === 'favoris') {
+            Aucun favori ne correspond aux filtres actuels (quartier, recherche...).
+          } @else {
+            Aucun lieu ne correspond à votre recherche.
+          }
         </p>
       } @else if (affichageGroupe()) {
         @for (groupeVille of groupesVille(); track groupeVille.ville) {
@@ -229,7 +235,7 @@
         @if (lieu.horaireTexte) {
           <span><ion-icon name="time-outline"></ion-icon> {{ lieu.horaireTexte }}</span>
         }
-        @if (!lieu.estOuvert && prochaineReouvertureDetail(lieu.horairesJson); as reouverture) {
+        @if (lieu.estOuvert === false && prochaineReouvertureDetail(lieu.horairesJson); as reouverture) {
           <span><ion-icon name="alarm-outline"></ion-icon> {{ reouverture }}</span>
         }
       </div>
@@ -266,7 +272,7 @@
         <ion-toolbar>
           <ion-title>{{ detail.data.Nom }} {{ emojiDetail(detail) }}</ion-title>
           <ion-buttons slot="end">
-            <ion-button (click)="basculerFavori(detail.data.id)" aria-label="Ajouter aux favoris">
+            <ion-button (click)="basculerFavori(detail.data.id)" [attr.aria-label]="favorisService.estFavori(detail.data.id) ? 'Retirer des favoris' : 'Ajouter aux favoris'">
               <ion-icon slot="icon-only" [name]="favorisService.estFavori(detail.data.id) ? 'heart' : 'heart-outline'" [color]="favorisService.estFavori(detail.data.id) ? 'danger' : undefined"></ion-icon>
             </ion-button>
             <ion-button (click)="fermerDetails()" aria-label="Fermer">
@@ -515,7 +521,7 @@
             placeholder="Note personnelle, visible seulement sur cet appareil..."
             [autoGrow]="true"
             [value]="notesService.obtenirNote(detail.data.id)"
-            (ionChange)="enregistrerNote(detail.data.id, $any($event.detail).value ?? '')">
+            (ionInput)="enregistrerNote(detail.data.id, $any($event.detail).value ?? '')">
           </ion-textarea>
         </div>
       </ion-content>
