@@ -1,3 +1,4 @@
+/// <reference types="leaflet.markercluster" />
 import {
   AfterViewInit, Component, ElementRef, OnDestroy, ViewChild,
   computed, effect, inject, input, output, signal
@@ -5,14 +6,34 @@ import {
 import { IonIcon, IonButton } from '@ionic/angular/standalone';
 import { addIcons } from 'ionicons';
 import { locateOutline, heart, heartOutline } from 'ionicons/icons';
-import * as L from 'leaflet';
-import 'leaflet.markercluster';
+import type * as LeafletType from 'leaflet';
 
 import { LieuAffichable } from '../../models/lieu-affichable.model';
 import { FavorisService } from '../../service/favoris/favoris.service';
 import { environment } from '../../../environments/environment';
 
-const CENTRE_PAR_DEFAUT: L.LatLngTuple = [35.6762, 139.6503]; // Tokyo
+// Leaflet + leaflet.markercluster sont chargés en scripts globaux classiques
+// (angular.json > build > options > scripts), PAS importés en module ES.
+// leaflet.markercluster est un plugin qui mute un `L` global existant
+// (`L.MarkerClusterGroup = ...`) : ça fonctionnait en dev via `import * as L
+// from 'leaflet'; import 'leaflet.markercluster';`, mais le bundling ESM de
+// production ne garantit pas que ce plugin s'exécute au bon moment/dans le
+// bon contexte pour retrouver ce `L` — erreur "L.markerClusterGroup is not a
+// function" en prod uniquement, jamais en dev. Charger les deux en scripts
+// globaux élimine toute ambiguïté : `L` devient un vrai window.L, dans
+// l'ordre garanti par la liste `scripts`.
+// `import type` ci-dessus ne sert qu'à typer ce global (LeafletType.X dans
+// les positions de type ci-dessous), sans jamais l'importer au runtime — la
+// constante `L` juste en dessous lit la vraie valeur sur `window.L`. Un
+// module TS ne peut pas référencer un "UMD global" (`export as namespace L`
+// de @types/leaflet) par son nom nu comme le ferait un script classique
+// (erreur TS2686) : d'où ce détour explicite plutôt qu'un simple `L.xxx`.
+// `/// <reference>` en haut de fichier charge l'augmentation de types du
+// plugin (déclare `MarkerClusterGroup`/`markerClusterGroup` sur le module
+// "leaflet", voir @types/leaflet.markercluster).
+const L: typeof LeafletType = (globalThis as { L: typeof LeafletType }).L;
+
+const CENTRE_PAR_DEFAUT: LeafletType.LatLngTuple = [35.6762, 139.6503]; // Tokyo
 const ZOOM_PAR_DEFAUT = 13;
 const ZOOM_RECENTRAGE = 16;
 
@@ -47,9 +68,9 @@ export class CarteComponent implements AfterViewInit, OnDestroy {
 
   @ViewChild('carteEl') private readonly carteEl!: ElementRef<HTMLDivElement>;
 
-  private carte?: L.Map;
-  private groupeMarqueurs?: L.MarkerClusterGroup;
-  private marqueurPosition?: L.Marker;
+  private carte?: LeafletType.Map;
+  private groupeMarqueurs?: LeafletType.MarkerClusterGroup;
+  private marqueurPosition?: LeafletType.Marker;
 
   // Évite de reconstruire tous les marqueurs (coûteux : clearLayers + reclustering)
   // quand seule la distance a changé suite à un tick de géolocalisation, alors
