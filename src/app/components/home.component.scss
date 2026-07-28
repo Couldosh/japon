@@ -156,6 +156,97 @@
   padding: 8px 16px 16px;
 }
 
+.section-recents {
+  padding: 8px 0 0 16px;
+}
+
+.section-recents-entete {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 6px;
+  width: 100%;
+  min-height: 44px;
+  padding: 0 16px 0 0;
+  border: none;
+  background: transparent;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+
+  .section-titre {
+    margin: 0;
+  }
+}
+
+.section-recents-chevron {
+  font-size: 14px;
+  color: var(--ion-color-medium);
+  flex-shrink: 0;
+  transition: transform 0.2s ease;
+}
+
+.section-recents-chevron-ouvert {
+  transform: rotate(180deg);
+}
+
+.recents-scroll {
+  display: flex;
+  gap: 10px;
+  overflow-x: auto;
+  padding: 0 16px 4px 0;
+  scrollbar-width: none;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+.recent-carte {
+  flex: 0 0 auto;
+  width: 92px;
+  min-height: 44px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  background: var(--ion-color-light);
+  border: none;
+  border-radius: 12px;
+  padding: 10px 6px;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.recent-emoji {
+  font-size: 22px;
+  line-height: 1;
+}
+
+.recent-nom {
+  font-size: 12px;
+  font-weight: 500;
+  text-align: center;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.recent-quartier {
+  font-size: 10px;
+  color: var(--ion-color-medium);
+  text-align: center;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .section-titre {
   font-size: 15px;
   font-weight: 500;

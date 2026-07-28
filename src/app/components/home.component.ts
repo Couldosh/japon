@@ -28,6 +28,7 @@ import { GeolocationService } from '../service/geolocation/GeolocationService';
 import { ThemeService } from '../service/theme/theme.service';
 import { FavorisService } from '../service/favoris/favoris.service';
 import { NotesService } from '../service/notes/notes.service';
+import { VusRecemmentService } from '../service/vus-recemment/vus-recemment.service';
 import { LieuAffichable, TypeLieu } from '../models/lieu-affichable.model';
 import { RestaurantModel } from '../models/restaurant.model';
 import { ActiviteModel } from '../models/activite.model';
@@ -87,6 +88,7 @@ export class HomeComponent implements OnInit {
   protected readonly themeService = inject(ThemeService);
   protected readonly favorisService = inject(FavorisService);
   protected readonly notesService = inject(NotesService);
+  protected readonly vusRecemmentService = inject(VusRecemmentService);
   private readonly googleAuth = inject(GoogleAuthService);
 
   // Le Planning charge ses données via son propre service/cache (Sheet distinct) :
@@ -131,6 +133,9 @@ export class HomeComponent implements OnInit {
   readonly lieux = signal<LieuAffichable[]>([]);
   readonly vue = signal<Vue>('liste');
   readonly affichageGroupe = signal(false);
+  // Repliée par défaut : la section "Vus récemment" ne doit pas prendre de place
+  // tant que l'utilisateur n'a pas explicitement choisi de la consulter.
+  readonly recentsOuvert = signal(false);
   readonly detailSelectionne = signal<DetailLieu | null>(null);
   readonly platSelectionne = signal<Plat | null>(null);
   readonly toastMessage = signal<string | null>(null);
@@ -177,6 +182,16 @@ export class HomeComponent implements OnInit {
   readonly typesMagasins = computed(() =>
     [...new Set(this.magasinsBruts().map(m => m.Type).filter(Boolean))].sort((a, b) => a.localeCompare(b))
   );
+
+  // Lieux dont la popup de détail a été ouverte récemment (voir VusRecemmentService),
+  // dans l'ordre de consultation (le plus récent en premier).
+  readonly lieuxRecents = computed((): LieuAffichable[] => {
+    const parId = new Map(this.lieux().map(l => [l.id, l]));
+    return this.vusRecemmentService.idsRecents()
+      .map(id => parId.get(id))
+      .filter((l): l is LieuAffichable => !!l)
+      .slice(0, 10);
+  });
 
   // Liste filtrée + triée par distance, recalculée automatiquement
   readonly lieuxAffiches = computed(() => {
@@ -456,6 +471,10 @@ export class HomeComponent implements OnInit {
     this.affichageGroupe.set(!this.affichageGroupe());
   }
 
+  basculerRecents(): void {
+    this.recentsOuvert.set(!this.recentsOuvert());
+  }
+
   choisirQuartier(quartier: string | null): void {
     this.filtreQuartier.set(quartier);
     this.pickerQuartierOuvert.set(false);
@@ -465,7 +484,15 @@ export class HomeComponent implements OnInit {
     this.recherche.set(valeur ?? '');
   }
 
-  ouvrirDetails(lieu: LieuAffichable): void {
+  /**
+   * `marquerCommeVu` vaut false quand on ouvre depuis la section "Vus récemment" elle-même :
+   * consulter à nouveau un lieu déjà présent dans cet historique ne doit pas le faire remonter
+   * en tête ni rafraîchir sa date de dernière visite.
+   */
+  ouvrirDetails(lieu: LieuAffichable, marquerCommeVu = true): void {
+    if (marquerCommeVu) {
+      this.vusRecemmentService.marquerVu(lieu.id);
+    }
     switch (lieu.type) {
       case 'restaurant': {
         const data = this.restaurantsBruts().find(r => r.id === lieu.id);

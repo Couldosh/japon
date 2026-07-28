@@ -128,6 +128,34 @@
     <app-planning [lieux]="lieux()" (lieuClique)="ouvrirDetails($event)"></app-planning>
   }
 
+  @if (vue() === 'liste' && filtreActif() === 'tout' && !recherche().trim() && !filtreQuartier() && !affichageGroupe() && lieuxRecents().length > 0) {
+    <div class="section-recents">
+      <button
+        class="section-recents-entete"
+        (click)="basculerRecents()"
+        [attr.aria-expanded]="recentsOuvert()"
+        [title]="recentsOuvert() ? 'Replier' : 'Déplier'">
+        <p class="section-titre">Vus récemment</p>
+        <ion-icon
+          name="chevron-down-outline"
+          class="section-recents-chevron"
+          [class.section-recents-chevron-ouvert]="recentsOuvert()">
+        </ion-icon>
+      </button>
+      @if (recentsOuvert()) {
+        <div class="recents-scroll">
+          @for (lieu of lieuxRecents(); track lieu.id) {
+            <button class="recent-carte" (click)="ouvrirDetails(lieu, false)" [title]="lieu.nom">
+              <span class="recent-emoji">{{ lieu.icone }}</span>
+              <span class="recent-nom">{{ lieu.nom }}</span>
+              <span class="recent-quartier">{{ lieu.quartier.Nom }}</span>
+            </button>
+          }
+        </div>
+      }
+    </div>
+  }
+
   @if (vue() === 'liste' || vue() === 'favoris') {
     <div class="section">
       <div class="section-entete">

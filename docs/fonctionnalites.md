@@ -15,6 +15,7 @@ L'app a 4 onglets, pilotés par un signal `vue` dans `HomeComponent` (`'liste' |
 - Chaque carte de lieu affiche : emoji (heuristique par mot-clé, voir `utils/emoji-lieu.ts`), cœur si favori, icône crayon si une note perso existe, badge Ouvert/Fermé, badge "Ferme dans X min" si pertinent, distance, prix, horaires du jour.
 - Bouton "Voir sur la carte" (icône + label) dans l'en-tête de section, visible seulement si un quartier est filtré : bascule sur la Carte et la recentre/zoome sur les lieux de ce quartier (`CarteComponent.recentrerSurMarqueurs()`). Même intitulé que le bouton équivalent de la popup détail (voir plus bas), qui centre lui sur un lieu précis (`CarteComponent.centrerSurPoint()`).
 - États : squelettes de chargement, message d'erreur + bouton Réessayer, état vide.
+- Section "Vus récemment" : en-tête repliable (repliée par défaut, signal `recentsOuvert` non persisté) qui révèle une rangée horizontale scrollable avec les derniers lieux dont la popup de détail a été ouverte (`VusRecemmentService`, localStorage, 100% local à l'appareil — même principe que `FavorisService`/`NotesService`). Visible uniquement dans l'état par défaut de la vue (filtre `'tout'`, pas de recherche/quartier/regroupement actifs) pour ne pas se superposer à une liste déjà filtrée par l'utilisateur. Cliquer sur une vignette de cette section ouvre le détail sans rafraîchir sa date de dernière visite ni le faire remonter en tête (`ouvrirDetails(lieu, false)`), pour ne pas figer artificiellement l'ordre de l'historique.
 
 ### Popup de détail d'un lieu
 
