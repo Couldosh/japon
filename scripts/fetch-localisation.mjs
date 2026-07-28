@@ -1,9 +1,10 @@
 #!/usr/bin/env node
 /**
  * Recherche (Google Places API - New) la localisation des restaurants,
- * activités et magasins dont la colonne "Localisation" est vide, à partir de
- * leur nom et de leur quartier, et écrit un lien Google Maps exploitable par
- * l'app dans cette colonne.
+ * activités, magasins et hébergements dont la colonne "Localisation" est
+ * vide, à partir de leur nom et d'un champ de contexte pour désambiguïser
+ * (colonne "Quartier" pour les lieux, "Adresse" pour les hébergements), et
+ * écrit un lien Google Maps exploitable par l'app dans cette colonne.
  *
  * Le lien écrit est construit nous-mêmes au format "https://www.google.com/
  * maps?q=<lat>,<lng>" plutôt que d'utiliser le googleMapsUri renvoyé par
@@ -48,8 +49,16 @@ const PLACES_API_KEY = requireEnv('PLACES_API_KEY');
 const APPLIQUER = process.argv.includes('--appliquer');
 const RAFRAICHIR = process.argv.includes('--rafraichir');
 
-// gid des onglets, repris de src/app/service/*/*.service.ts
-const GIDS_FEUILLES = [892590698, 0, 346756517]; // Restaurants, Activités, Magasins
+// gid des onglets, repris de src/app/service/*/*.service.ts. `colonneContexte`
+// est le champ utilisé en plus du nom pour désambiguïser la recherche Places :
+// "Quartier" pour les lieux, "Adresse" pour les hébergements (pas de quartier
+// dans cet onglet, voir HebergementService).
+const FEUILLES = [
+  { gid: 892590698, colonneContexte: 'Quartier' }, // Restaurants
+  { gid: 0, colonneContexte: 'Quartier' },           // Activités
+  { gid: 346756517, colonneContexte: 'Quartier' },  // Magasins
+  { gid: 786595870, colonneContexte: 'Adresse' },   // Hébergement
+];
 
 const DELAI_ENTRE_APPELS_MS = 300; // reste sous les limites de quota par défaut de Places API
 const CACHE_PATH = cheminCache('localisation.json');
@@ -57,12 +66,18 @@ const CACHE_PATH = cheminCache('localisation.json');
 // La colonne Quartier des magasins peut contenir plusieurs valeurs séparées
 // par des virgules (avant passage éventuel de dupliquer-quartiers.mjs) : on ne
 // garde que la première pour la recherche, un quartier suffit à désambiguïser.
+// Ne s'applique qu'à "Quartier" : une adresse d'hébergement contient elle-même
+// des virgules ("1-19-1 Kabukicho, Shinjuku, Tokyo") qu'il ne faut pas tronquer.
 function premierQuartier(valeur) {
   return (valeur ?? '').split(',').map(q => q.trim()).filter(Boolean)[0] ?? null;
 }
 
-async function chercherEtablissement(nom, quartier) {
-  const textQuery = quartier ? `${nom} ${quartier}` : nom;
+function extraireContexte(valeur, colonneContexte) {
+  return colonneContexte === 'Quartier' ? premierQuartier(valeur) : (valeur?.trim() || null);
+}
+
+async function chercherEtablissement(nom, contexte) {
+  const textQuery = contexte ? `${nom} ${contexte}` : nom;
 
   const reponse = await fetch('https://places.googleapis.com/v1/places:searchText', {
     method: 'POST',
@@ -83,7 +98,7 @@ async function chercherEtablissement(nom, quartier) {
   return places?.[0] ?? null;
 }
 
-async function traiterFeuille(sheets, gid, cache) {
+async function traiterFeuille(sheets, { gid, colonneContexte }, cache) {
   const titre = await trouverTitreOnglet(sheets, SPREADSHEET_ID, gid);
   console.log(`\n--- ${titre} ---`);
 
@@ -95,7 +110,7 @@ async function traiterFeuille(sheets, gid, cache) {
 
   const entetes = lignes[0];
   const idxNom = indexColonne(entetes, 'Nom');
-  const idxQuartier = indexColonne(entetes, 'Quartier');
+  const idxContexte = indexColonne(entetes, colonneContexte);
   const idxLocalisation = indexColonne(entetes, 'Localisation');
 
   if (idxNom === -1 || idxLocalisation === -1) {
@@ -114,8 +129,8 @@ async function traiterFeuille(sheets, gid, cache) {
 
     if (!nom || localisation) continue; // déjà renseigné, ou ligne sans nom : rien à faire
 
-    const quartier = idxQuartier !== -1 ? premierQuartier(ligne[idxQuartier]) : null;
-    const cle = cleCache(titre, nom, quartier);
+    const contexte = idxContexte !== -1 ? extraireContexte(ligne[idxContexte], colonneContexte) : null;
+    const cle = cleCache(titre, nom, contexte);
     const entreeCache = !RAFRAICHIR ? cache[cle] : undefined;
 
     try {
@@ -124,7 +139,7 @@ async function traiterFeuille(sheets, gid, cache) {
         etablissement = entreeCache.etablissement;
         nbDepuisCache++;
       } else {
-        etablissement = await chercherEtablissement(nom, quartier);
+        etablissement = await chercherEtablissement(nom, contexte);
         cache[cle] = { etablissement, recherche: new Date().toISOString() };
         await attendre(DELAI_ENTRE_APPELS_MS);
       }
@@ -168,8 +183,8 @@ async function main() {
   const cache = await chargerCache(CACHE_PATH);
 
   try {
-    for (const gid of GIDS_FEUILLES) {
-      await traiterFeuille(sheets, gid, cache);
+    for (const feuille of FEUILLES) {
+      await traiterFeuille(sheets, feuille, cache);
     }
   } finally {
     // Sauvegardé même en cas d'erreur en cours de route : les recherches déjà

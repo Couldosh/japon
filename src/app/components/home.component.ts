@@ -2,7 +2,7 @@ import { Component, computed, DestroyRef, inject, OnInit, signal, ViewChild } fr
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { combineLatest } from 'rxjs';
+import { combineLatest, catchError, of } from 'rxjs';
 import {
   IonHeader, IonToolbar, IonSearchbar, IonChip, IonIcon, IonButton, IonButtons,
   IonLabel, IonBadge, IonTabBar, IonTabButton,
@@ -24,6 +24,7 @@ import { RestaurantService } from '../service/restaurant/restaurant.service';
 import { ActiviteService } from '../service/activite/activite.service';
 import { MagasinService } from '../service/magasin/magasin.service';
 import { PlatService } from '../service/plat/plat.service';
+import { HebergementService } from '../service/hebergement/hebergement.service';
 import { GeolocationService } from '../service/geolocation/GeolocationService';
 import { ThemeService } from '../service/theme/theme.service';
 import { FavorisService } from '../service/favoris/favoris.service';
@@ -33,6 +34,7 @@ import { LieuAffichable, TypeLieu } from '../models/lieu-affichable.model';
 import { RestaurantModel } from '../models/restaurant.model';
 import { ActiviteModel } from '../models/activite.model';
 import { MagasinModel } from '../models/magasin.model';
+import { HebergementModel } from '../models/hebergement.model';
 import { Plat, PlatCategory } from '../models/plat.model';
 import { emojiRestaurant, emojiActivite, emojiMagasin } from '../utils/emoji-lieu';
 import { estOuvertMaintenant, horairesAujourdhui, horairesSemaine, fermetureImminente, prochaineReouverture } from '../utils/horaires';
@@ -83,6 +85,7 @@ export class HomeComponent implements OnInit {
   private readonly activiteService = inject(ActiviteService);
   private readonly magasinService = inject(MagasinService);
   private readonly platService = inject(PlatService);
+  private readonly hebergementService = inject(HebergementService);
   private readonly geoloc = inject(GeolocationService);
   private readonly destroyRef = inject(DestroyRef);
   protected readonly themeService = inject(ThemeService);
@@ -131,6 +134,10 @@ export class HomeComponent implements OnInit {
   readonly filtreCategoriePlat = signal<PlatCategory | 'tout'>('tout');
   readonly filtreTypeMagasin = signal<string | null>(null);
   readonly lieux = signal<LieuAffichable[]>([]);
+  // Passé en @Input à app-planning : chargé ici pour bénéficier du même
+  // rafraîchissement forcé que Restaurants/Activités/Magasins/Plats, quel que
+  // soit l'onglet actif au moment où l'utilisateur déclenche un rafraîchissement.
+  readonly hebergements = signal<HebergementModel[]>([]);
   readonly vue = signal<Vue>('liste');
   readonly affichageGroupe = signal(false);
   // Repliée par défaut : la section "Vus récemment" ne doit pas prendre de place
@@ -347,11 +354,15 @@ export class HomeComponent implements OnInit {
       this.restaurantService.getRestaurants(forceRefresh),
       this.activiteService.getActivites(forceRefresh),
       this.magasinService.getMagasins(forceRefresh),
-      this.platService.getPlats(forceRefresh)
+      this.platService.getPlats(forceRefresh),
+      // Erreur interceptée ici plutôt que laissée remonter à combineLatest :
+      // un onglet Hébergement cassé ou pas encore publié ne doit pas empêcher
+      // le chargement de Restaurants/Activités/Magasins/Plats (best-effort).
+      this.hebergementService.getHebergements(forceRefresh).pipe(catchError(() => of([] as HebergementModel[])))
     ])
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
-        next: ([restaurants, activites, magasins, plats]) => {
+        next: ([restaurants, activites, magasins, plats, hebergements]) => {
           const lieuxRestaurants: LieuAffichable[] = restaurants.map(r => ({
             id: r.id,
             type: 'restaurant',
@@ -412,6 +423,7 @@ export class HomeComponent implements OnInit {
           this.activitesBrutes.set(activites);
           this.magasinsBruts.set(magasins);
           this.platsBruts.set(plats);
+          this.hebergements.set(hebergements);
 
           this.lieux.set([...lieuxRestaurants, ...lieuxActivites, ...lieuxMagasins]);
           this.chargement.set(false);

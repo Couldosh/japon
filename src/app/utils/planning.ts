@@ -3,16 +3,19 @@
 // formatage des cellules) : ces fonctions couvrent les formats les plus
 // courants (français dd/mm/yyyy, ISO) avec un repli sur le parsing natif.
 
-/** Convertit une date "26/07/2026" ou "2026-07-26" en ISO "yyyy-MM-dd". Null si illisible. */
+/** Convertit une date "26/07/2026", "14/09/26" ou "2026-07-26" en ISO "yyyy-MM-dd". Null si illisible. */
 export function parserDateISO(valeur: string | null | undefined): string | null {
   const nettoye = valeur?.trim();
   if (!nettoye) {
     return null;
   }
 
-  const matchFr = nettoye.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  // Année sur 2 chiffres (ex: cellule Sheet formatée "jj/mm/aa") : on suppose
+  // 20XX plutôt que 19XX, hypothèse raisonnable pour un carnet de voyage.
+  const matchFr = nettoye.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2}|\d{4})$/);
   if (matchFr) {
-    const [, jour, mois, annee] = matchFr;
+    const [, jour, mois, anneeBrute] = matchFr;
+    const annee = anneeBrute.length === 2 ? `20${anneeBrute}` : anneeBrute;
     return `${annee}-${mois.padStart(2, '0')}-${jour.padStart(2, '0')}`;
   }
 
@@ -31,13 +34,22 @@ export function parserDateISO(valeur: string | null | undefined): string | null 
   return null;
 }
 
-/** Normalise une heure ("9:5", "09:05:00"...) en "HH:mm". Chaîne d'origine si non reconnue. */
+/** Normalise une heure ("9:5", "09:05:00", "16h", "16h30"...) en "HH:mm". Chaîne d'origine si non reconnue. */
 export function parserHeure(valeur: string | null | undefined): string {
   const nettoye = valeur?.trim() ?? '';
-  const match = nettoye.match(/^(\d{1,2}):(\d{2})/);
-  if (match) {
-    return `${match[1].padStart(2, '0')}:${match[2]}`;
+
+  const matchDeuxPoints = nettoye.match(/^(\d{1,2}):(\d{2})/);
+  if (matchDeuxPoints) {
+    return `${matchDeuxPoints[1].padStart(2, '0')}:${matchDeuxPoints[2]}`;
   }
+
+  // Format "16h" / "16h30" (courant en français, sans les deux-points).
+  const matchH = nettoye.match(/^(\d{1,2})[hH](\d{2})?$/);
+  if (matchH) {
+    const minutes = matchH[2] ?? '00';
+    return `${matchH[1].padStart(2, '0')}:${minutes}`;
+  }
+
   return nettoye;
 }
 

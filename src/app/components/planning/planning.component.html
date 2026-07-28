@@ -63,6 +63,27 @@
           }
         </p>
 
+        @for (hebergement of groupe.departsHebergement; track hebergement.id) {
+          <button class="planning-hebergement-bandeau" (click)="ouvrirHebergement(hebergement)" [title]="'Voir le détail de ' + hebergement.nom">
+            <span class="planning-hebergement-icone"><ion-icon name="bed-outline"></ion-icon></span>
+            <span class="planning-hebergement-texte">
+              <strong>{{ hebergement.nom }}</strong>
+              <span>Départ@if (hebergement.heureCheckOut) { · check-out {{ hebergement.heureCheckOut }} }</span>
+            </span>
+            <ion-icon name="chevron-forward-outline" class="planning-hebergement-chevron"></ion-icon>
+          </button>
+        }
+        @for (hebergement of groupe.arriveesHebergement; track hebergement.id) {
+          <button class="planning-hebergement-bandeau" (click)="ouvrirHebergement(hebergement)" [title]="'Voir le détail de ' + hebergement.nom">
+            <span class="planning-hebergement-icone"><ion-icon name="bed-outline"></ion-icon></span>
+            <span class="planning-hebergement-texte">
+              <strong>{{ hebergement.nom }}</strong>
+              <span>Arrivée@if (hebergement.heureCheckIn) { · check-in {{ hebergement.heureCheckIn }} }</span>
+            </span>
+            <ion-icon name="chevron-forward-outline" class="planning-hebergement-chevron"></ion-icon>
+          </button>
+        }
+
         @for (activite of groupe.activites; track $index) {
           @let lieuLie = lieuPourActivite(activite);
           <div
@@ -117,3 +138,53 @@
     }
   }
 </div>
+
+<ion-modal [isOpen]="hebergementSelectionne() !== null" (didDismiss)="fermerHebergement()" [initialBreakpoint]="1" [breakpoints]="[0, 1]">
+  <ng-template>
+    @if (hebergementSelectionne(); as hebergement) {
+      <ion-header class="ion-no-border">
+        <ion-toolbar>
+          <ion-title>{{ hebergement.nom }} 🏨</ion-title>
+          <ion-buttons slot="end">
+            <ion-button (click)="fermerHebergement()" aria-label="Fermer" title="Fermer">
+              <ion-icon slot="icon-only" name="close-outline"></ion-icon>
+            </ion-button>
+          </ion-buttons>
+        </ion-toolbar>
+      </ion-header>
+
+      <ion-content>
+        <div class="hebergement-detail">
+          @if (hebergement.adresse) {
+            <p class="hebergement-detail-adresse"><ion-icon name="location-outline"></ion-icon>{{ hebergement.adresse }}</p>
+          }
+
+          <div class="hebergement-detail-dates">
+            <div class="hebergement-detail-date">
+              <p class="hebergement-detail-sous-titre">Arrivée</p>
+              <p>{{ formaterDateDetail(hebergement.dateArrivee) }}@if (hebergement.heureCheckIn) { · check-in {{ hebergement.heureCheckIn }} }</p>
+            </div>
+            <div class="hebergement-detail-date">
+              <p class="hebergement-detail-sous-titre">Départ</p>
+              <p>{{ formaterDateDetail(hebergement.dateDepart) }}@if (hebergement.heureCheckOut) { · check-out {{ hebergement.heureCheckOut }} }</p>
+            </div>
+          </div>
+
+          @if (hebergement.commentaires) {
+            <p class="hebergement-detail-sous-titre">Commentaires</p>
+            <p class="hebergement-detail-texte">{{ hebergement.commentaires }}</p>
+          }
+
+          @if (hebergement.localisation) {
+            <div class="hebergement-detail-actions">
+              <a class="hebergement-action" [href]="hebergement.localisation" target="_blank" rel="noopener" title="Ouvrir dans Google Maps">
+                <span class="hebergement-action-cercle"><ion-icon name="location-outline"></ion-icon></span>
+                <span class="hebergement-action-label">Google Maps</span>
+              </a>
+            </div>
+          }
+        </div>
+      </ion-content>
+    }
+  </ng-template>
+</ion-modal>

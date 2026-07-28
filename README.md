@@ -59,6 +59,7 @@ Toutes les données (hors favoris/notes, stockés localement) viennent d'un uniq
 | Quartiers (référence Ville) | `QuartierService`  | `1855356526`  |
 | Plats (référence, colonne "Plats" des restaurants) | `PlatService` | `2053739160` |
 | Planning   | `PlanningService`             | `1009205135`  |
+| Hébergements | `HebergementService`        | `786595870`   |
 
 Le cache navigateur (`SheetsApi`) garde chaque onglet 5 minutes ; le bouton de rafraîchissement de l'en-tête force une relecture immédiate (délègue au chargement propre de l'onglet actif : Planning a son propre cache, indépendant des trois autres feuilles).
 
@@ -122,7 +123,7 @@ npm run dupliquer-quartiers -- --appliquer
 
 #### `fetch-localisation.mjs` — retrouve les lieux sans localisation
 
-Pour les lignes des feuilles Restaurants/Activités/Magasins dont la colonne "Localisation" est vide, cherche l'établissement sur Places (par nom + quartier) et écrit un lien Google Maps (`https://www.google.com/maps?q=<lat>,<lng>`) reconnu par `GeolocationService.extraireCoordonnees` côté app.
+Pour les lignes des feuilles Restaurants/Activités/Magasins/Hébergement dont la colonne "Localisation" est vide, cherche l'établissement sur Places (par nom + quartier, ou nom + adresse pour l'onglet Hébergement qui n'a pas de colonne Quartier) et écrit un lien Google Maps (`https://www.google.com/maps?q=<lat>,<lng>`) reconnu par `GeolocationService.extraireCoordonnees` côté app.
 
 ```bash
 node --env-file=.env scripts/fetch-localisation.mjs                 # aperçu, aucune écriture

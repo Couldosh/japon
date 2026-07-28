@@ -125,7 +125,7 @@
   </app-carte>
 
   @if (vue() === 'planning') {
-    <app-planning [lieux]="lieux()" (lieuClique)="ouvrirDetails($event)"></app-planning>
+    <app-planning [lieux]="lieux()" [hebergements]="hebergements()" (lieuClique)="ouvrirDetails($event)"></app-planning>
   }
 
   @if (vue() === 'liste' && filtreActif() === 'tout' && !recherche().trim() && !filtreQuartier() && !affichageGroupe() && lieuxRecents().length > 0) {

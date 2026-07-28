@@ -1,12 +1,17 @@
 import { Component, ElementRef, OnInit, computed, effect, inject, input, output, signal } from '@angular/core';
-import { IonIcon, IonBadge, IonButton, IonChip, IonRefresher, IonRefresherContent, IonSkeletonText } from '@ionic/angular/standalone';
+import {
+  IonIcon, IonBadge, IonButton, IonChip, IonRefresher, IonRefresherContent, IonSkeletonText,
+  IonModal, IonHeader, IonToolbar, IonTitle, IonButtons, IonContent
+} from '@ionic/angular/standalone';
 import { addIcons } from 'ionicons';
 import {
   locationOutline, pricetagOutline, walkOutline,
-  alertCircleOutline, cloudOfflineOutline, calendarOutline, chevronForwardOutline
+  alertCircleOutline, cloudOfflineOutline, calendarOutline, chevronForwardOutline,
+  bedOutline, closeOutline
 } from 'ionicons/icons';
 import { PlanningService } from '../../service/planning/planning.service';
 import { PlanningActivite } from '../../models/planning-activite.model';
+import { HebergementModel } from '../../models/hebergement.model';
 import { LieuAffichable } from '../../models/lieu-affichable.model';
 import { dateISOAujourdhui, formaterDateGroupe, statutReservation, StatutReservation } from '../../utils/planning';
 
@@ -20,12 +25,17 @@ interface GroupeJour {
   titre: string;
   estAujourdhui: boolean;
   activites: PlanningActivite[];
+  arriveesHebergement: HebergementModel[];
+  departsHebergement: HebergementModel[];
 }
 
 @Component({
   selector: 'app-planning',
   standalone: true,
-  imports: [IonIcon, IonBadge, IonButton, IonChip, IonRefresher, IonRefresherContent, IonSkeletonText],
+  imports: [
+    IonIcon, IonBadge, IonButton, IonChip, IonRefresher, IonRefresherContent, IonSkeletonText,
+    IonModal, IonHeader, IonToolbar, IonTitle, IonButtons, IonContent
+  ],
   templateUrl: './planning.component.html',
   styleUrl: './planning.component.scss'
 })
@@ -35,11 +45,15 @@ export class PlanningComponent implements OnInit {
 
   /** Tous les lieux connus (non filtrés), pour retrouver la fiche détail d'une activité du planning. */
   readonly lieux = input<LieuAffichable[]>([]);
+  /** Chargés par HomeComponent (même pipeline SheetsApi que Restaurants/Activités/Magasins/Plats),
+   * pour bénéficier du même rafraîchissement forcé quel que soit l'onglet actif. */
+  readonly hebergements = input<HebergementModel[]>([]);
   readonly lieuClique = output<LieuAffichable>();
 
   readonly chargement = signal(true);
   readonly erreur = signal<string | null>(null);
   readonly activites = signal<PlanningActivite[]>([]);
+  readonly hebergementSelectionne = signal<HebergementModel | null>(null);
   readonly depuisCache = signal(false);
   readonly derniereMiseAJour = signal<number | null>(null);
   readonly filtreVille = signal<string | null>(null);
@@ -93,11 +107,20 @@ export class PlanningComponent implements OnInit {
       }
       groupes.get(activite.date)!.push(activite);
     }
+
+    // Bandeau dédié plutôt qu'une activité comme une autre : un hébergement
+    // n'est rattaché à un jour que s'il existe déjà comme groupe (jour avec au
+    // moins une activité/un trajet dans le Planning). Cas limite accepté : un
+    // hébergement dont la date d'arrivée ou de départ ne correspond à aucun
+    // jour du Planning n'aurait nulle part où s'afficher.
+    const hebergements = this.hebergements();
     return [...groupes.entries()].map(([date, activites]) => ({
       date,
       titre: formaterDateGroupe(date),
       estAujourdhui: date === aujourdhui,
-      activites
+      activites,
+      arriveesHebergement: hebergements.filter(h => h.dateArrivee === date),
+      departsHebergement: hebergements.filter(h => h.dateDepart === date)
     }));
   });
 
@@ -109,7 +132,8 @@ export class PlanningComponent implements OnInit {
   constructor() {
     addIcons({
       locationOutline, pricetagOutline, walkOutline, alertCircleOutline,
-      cloudOfflineOutline, calendarOutline, chevronForwardOutline
+      cloudOfflineOutline, calendarOutline, chevronForwardOutline,
+      bedOutline, closeOutline
     });
 
     effect(() => {
@@ -142,6 +166,14 @@ export class PlanningComponent implements OnInit {
       },
       complete: () => onDone?.()
     });
+  }
+
+  ouvrirHebergement(hebergement: HebergementModel): void {
+    this.hebergementSelectionne.set(hebergement);
+  }
+
+  fermerHebergement(): void {
+    this.hebergementSelectionne.set(null);
   }
 
   statut(reservation?: string): StatutReservation | null {
@@ -205,6 +237,10 @@ export class PlanningComponent implements OnInit {
     if (lieu) {
       this.lieuClique.emit(lieu);
     }
+  }
+
+  formaterDateDetail(dateISO: string): string {
+    return formaterDateGroupe(dateISO);
   }
 
   formaterMiseAJour(timestamp: number | null): string {
