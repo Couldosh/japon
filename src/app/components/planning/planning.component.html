@@ -12,11 +12,11 @@
 
   @if (!chargement() && villesDisponibles().length > 1) {
     <div class="planning-filtre-villes">
-      <ion-chip [class.filtre-actif]="filtreVille() === null" (click)="choisirVille(null)">
+      <ion-chip [class.filtre-actif]="filtreVille() === null" (click)="choisirVille(null)" title="Afficher toutes les villes">
         Toutes les villes
       </ion-chip>
       @for (ville of villesDisponibles(); track ville) {
-        <ion-chip [class.filtre-actif]="filtreVille() === ville" (click)="choisirVille(ville)">
+        <ion-chip [class.filtre-actif]="filtreVille() === ville" (click)="choisirVille(ville)" [title]="'Filtrer sur ' + ville">
           {{ ville }}
           <ion-badge [color]="filtreVille() === ville ? 'light' : 'medium'">{{ comptesVilles().get(ville) }}</ion-badge>
         </ion-chip>
@@ -42,7 +42,7 @@
       <ion-icon [name]="erreur() ? 'cloud-offline-outline' : 'calendar-outline'"></ion-icon>
       <p>{{ messageVide() }}</p>
       @if (erreur()) {
-        <ion-button fill="outline" size="small" (click)="charger()">Réessayer</ion-button>
+        <ion-button fill="outline" size="small" (click)="charger()" title="Réessayer le chargement">Réessayer</ion-button>
       }
     </div>
   } @else {
@@ -50,7 +50,7 @@
       <div class="planning-bandeau-erreur">
         <ion-icon name="alert-circle-outline"></ion-icon>
         <span>{{ erreur() }}</span>
-        <ion-button fill="clear" size="small" (click)="charger()">Réessayer</ion-button>
+        <ion-button fill="clear" size="small" (click)="charger()" title="Réessayer le chargement">Réessayer</ion-button>
       </div>
     }
 
@@ -71,6 +71,7 @@
             [attr.role]="lieuLie ? 'button' : null"
             [attr.tabindex]="lieuLie ? 0 : null"
             [attr.aria-label]="lieuLie ? 'Voir la fiche de ' + lieuLie.nom : null"
+            [attr.title]="lieuLie ? 'Voir la fiche de ' + lieuLie.nom : null"
             (click)="ouvrirLieu(lieuLie)"
             (keydown.enter)="ouvrirLieu(lieuLie)"
             (keydown.space)="$event.preventDefault(); ouvrirLieu(lieuLie)">

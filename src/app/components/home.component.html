@@ -9,13 +9,13 @@
         </ion-searchbar>
       }
       <div class="entete-boutons">
-        <ion-button fill="clear" (click)="ouvrirModaleAjout()" aria-label="Ajouter un lieu">
+        <ion-button fill="clear" (click)="ouvrirModaleAjout()" aria-label="Ajouter un lieu" title="Ajouter un lieu">
           <ion-icon slot="icon-only" name="add-outline"></ion-icon>
         </ion-button>
-        <ion-button fill="clear" (click)="themeService.basculer()" aria-label="Changer de thème">
+        <ion-button fill="clear" (click)="themeService.basculer()" aria-label="Changer de thème" title="Changer de thème">
           <ion-icon slot="icon-only" [name]="themeService.theme() === 'dark' ? 'sunny-outline' : 'moon-outline'"></ion-icon>
         </ion-button>
-        <ion-button fill="clear" (click)="rafraichir()" [disabled]="rafraichissementEnCours()" aria-label="Rafraîchir les données">
+        <ion-button fill="clear" (click)="rafraichir()" [disabled]="rafraichissementEnCours()" aria-label="Rafraîchir les données" title="Rafraîchir les données">
           <ion-icon slot="icon-only" name="refresh-outline"></ion-icon>
         </ion-button>
       </div>
@@ -25,27 +25,31 @@
       <div class="filtres">
         <ion-chip
           [class.filtre-actif]="filtreActif() === 'tout'"
-          (click)="changerFiltre('tout')">
+          (click)="changerFiltre('tout')"
+          title="Afficher tous les types de lieux">
           Tout
         </ion-chip>
         <ion-chip
           [class.filtre-actif]="filtreActif() === 'restaurant'"
-          (click)="changerFiltre('restaurant')">
+          (click)="changerFiltre('restaurant')"
+          title="Filtrer sur les restaurants">
           Restaurants
         </ion-chip>
         <ion-chip
           [class.filtre-actif]="filtreActif() === 'activite'"
-          (click)="changerFiltre('activite')">
+          (click)="changerFiltre('activite')"
+          title="Filtrer sur les activités">
           Activités
         </ion-chip>
         <ion-chip
           [class.filtre-actif]="filtreActif() === 'magasin'"
-          (click)="changerFiltre('magasin')">
+          (click)="changerFiltre('magasin')"
+          title="Filtrer sur les magasins">
           Magasins
         </ion-chip>
 
         @if (!affichageGroupe()) {
-          <button class="filtre-pilule filtre-pilule-bouton" (click)="pickerQuartierOuvert.set(true)">
+          <button class="filtre-pilule filtre-pilule-bouton" (click)="pickerQuartierOuvert.set(true)" title="Filtrer par quartier">
             <ion-icon name="funnel-outline"></ion-icon>
             <span>{{ filtreQuartier() ?? 'Tous les quartiers' }}</span>
             <ion-icon name="chevron-down-outline" class="filtre-pilule-chevron"></ion-icon>
@@ -137,7 +141,8 @@
             fill="clear"
             size="small"
             (click)="voirQuartierSurCarte()"
-            aria-label="Voir ce quartier sur la carte">
+            aria-label="Voir ce quartier sur la carte"
+            title="Voir ce quartier sur la carte">
             <ion-icon slot="start" name="map-outline"></ion-icon>
             Voir sur la carte
           </ion-button>
@@ -147,7 +152,8 @@
             fill="clear"
             size="small"
             (click)="basculerGroupement()"
-            aria-label="Regrouper par ville et quartier">
+            aria-label="Regrouper par ville et quartier"
+            title="Regrouper par ville et quartier">
             <ion-icon slot="start" name="layers-outline"></ion-icon>
             Regrouper
           </ion-button>
@@ -156,7 +162,7 @@
 
       @if (erreurChargement(); as erreur) {
         <p class="etat-vide">{{ erreur }}</p>
-        <ion-button expand="block" fill="outline" (click)="rafraichir()">Réessayer</ion-button>
+        <ion-button expand="block" fill="outline" (click)="rafraichir()" title="Réessayer le chargement">Réessayer</ion-button>
       } @else if (chargement()) {
         @for (i of [1, 2, 3]; track i) {
           <div class="carte-lieu">
@@ -178,7 +184,7 @@
           }
         </p>
         @if (affichageGroupe()) {
-          <ion-button expand="block" fill="outline" (click)="basculerGroupement()">
+          <ion-button expand="block" fill="outline" (click)="basculerGroupement()" title="Afficher en liste">
             <ion-icon slot="start" name="list-outline"></ion-icon>
             Afficher en liste
           </ion-button>
@@ -192,7 +198,8 @@
                 fill="clear"
                 size="small"
                 (click)="basculerGroupement()"
-                aria-label="Afficher en liste">
+                aria-label="Afficher en liste"
+                title="Afficher en liste">
                 <ion-icon slot="start" name="list-outline"></ion-icon>
                 Afficher en liste
               </ion-button>
@@ -261,22 +268,22 @@
 </ng-template>
 
 <ion-tab-bar slot="bottom">
-  <ion-tab-button tab="liste" [selected]="vue() === 'liste'" (click)="changerVue('liste')">
+  <ion-tab-button tab="liste" [selected]="vue() === 'liste'" (click)="changerVue('liste')" title="Liste des lieux">
     <ion-icon name="list-outline"></ion-icon>
     <ion-label>Liste</ion-label>
   </ion-tab-button>
-  <ion-tab-button tab="carte" [selected]="vue() === 'carte'" (click)="changerVue('carte')">
+  <ion-tab-button tab="carte" [selected]="vue() === 'carte'" (click)="changerVue('carte')" title="Carte des lieux">
     <ion-icon name="map-outline"></ion-icon>
     <ion-label>Carte</ion-label>
   </ion-tab-button>
-  <ion-tab-button tab="favoris" [selected]="vue() === 'favoris'" (click)="changerVue('favoris')">
+  <ion-tab-button tab="favoris" [selected]="vue() === 'favoris'" (click)="changerVue('favoris')" title="Vos favoris">
     <ion-icon name="heart-outline"></ion-icon>
     <ion-label>Favoris</ion-label>
     @if (favorisService.favoris().size > 0) {
       <ion-badge>{{ favorisService.favoris().size }}</ion-badge>
     }
   </ion-tab-button>
-  <ion-tab-button tab="planning" [selected]="vue() === 'planning'" (click)="changerVue('planning')">
+  <ion-tab-button tab="planning" [selected]="vue() === 'planning'" (click)="changerVue('planning')" title="Planning du séjour">
     <ion-icon name="calendar-outline"></ion-icon>
     <ion-label>Planning</ion-label>
   </ion-tab-button>
@@ -289,10 +296,10 @@
         <ion-toolbar>
           <ion-title>{{ detail.data.Nom }} {{ emojiDetail(detail) }}</ion-title>
           <ion-buttons slot="end">
-            <ion-button (click)="basculerFavori(detail.data.id)" [attr.aria-label]="favorisService.estFavori(detail.data.id) ? 'Retirer des favoris' : 'Ajouter aux favoris'">
+            <ion-button (click)="basculerFavori(detail.data.id)" [attr.aria-label]="favorisService.estFavori(detail.data.id) ? 'Retirer des favoris' : 'Ajouter aux favoris'" [attr.title]="favorisService.estFavori(detail.data.id) ? 'Retirer des favoris' : 'Ajouter aux favoris'">
               <ion-icon slot="icon-only" [name]="favorisService.estFavori(detail.data.id) ? 'heart' : 'heart-outline'" [color]="favorisService.estFavori(detail.data.id) ? 'danger' : undefined"></ion-icon>
             </ion-button>
-            <ion-button (click)="fermerDetails()" aria-label="Fermer">
+            <ion-button (click)="fermerDetails()" aria-label="Fermer" title="Fermer">
               <ion-icon slot="icon-only" name="close-outline"></ion-icon>
             </ion-button>
           </ion-buttons>
@@ -315,7 +322,7 @@
               @if (ouvert === false && prochaineReouvertureDetail(detail.data.Horaires); as reouverture) {
                 <span class="detail-badge"><ion-icon name="alarm-outline"></ion-icon>{{ reouverture }}</span>
               }
-              <button class="detail-badge detail-badge-lien" (click)="voirQuartier(detail.data.Quartier.Nom)">
+              <button class="detail-badge detail-badge-lien" (click)="voirQuartier(detail.data.Quartier.Nom)" title="Filtrer sur ce quartier">
                 <ion-icon name="location-outline"></ion-icon>
                 {{ detail.data.Quartier.Nom }}@if (detail.data.Quartier.Ville.Nom) {, {{ detail.data.Quartier.Ville.Nom }}}
               </button>
@@ -368,31 +375,31 @@
 
             <div class="detail-actions">
               @if (detail.data.latitude != null && detail.data.longitude != null) {
-                <button class="action-icone action-icone-bouton" (click)="voirLieuSurCarte(detail.data.latitude, detail.data.longitude)">
+                <button class="action-icone action-icone-bouton" (click)="voirLieuSurCarte(detail.data.latitude, detail.data.longitude)" title="Voir sur la carte">
                   <span class="action-icone-cercle"><ion-icon name="map-outline"></ion-icon></span>
                   <span class="action-icone-label">Voir sur la carte</span>
                 </button>
               }
               @if (detail.data.Localisation) {
-                <a class="action-icone action-icone-principale" [href]="detail.data.Localisation" target="_blank" rel="noopener">
+                <a class="action-icone action-icone-principale" [href]="detail.data.Localisation" target="_blank" rel="noopener" title="Ouvrir dans Google Maps">
                   <span class="action-icone-cercle"><ion-icon name="location-outline"></ion-icon></span>
                   <span class="action-icone-label">Google Maps</span>
                 </a>
               }
               @if (detail.data.Menu) {
-                <a class="action-icone" [href]="detail.data.Menu" target="_blank" rel="noopener">
+                <a class="action-icone" [href]="detail.data.Menu" target="_blank" rel="noopener" title="Voir le menu">
                   <span class="action-icone-cercle"><ion-icon name="restaurant-outline"></ion-icon></span>
                   <span class="action-icone-label">Menu</span>
                 </a>
               }
               @if (detail.data.Video) {
-                <a class="action-icone" [href]="detail.data.Video" target="_blank" rel="noopener">
+                <a class="action-icone" [href]="detail.data.Video" target="_blank" rel="noopener" title="Voir la vidéo">
                   <span class="action-icone-cercle"><ion-icon name="play-outline"></ion-icon></span>
                   <span class="action-icone-label">Vidéo</span>
                 </a>
               }
               @if (detail.data.Liens) {
-                <a class="action-icone" [href]="detail.data.Liens" target="_blank" rel="noopener">
+                <a class="action-icone" [href]="detail.data.Liens" target="_blank" rel="noopener" title="Plus d'infos">
                   <span class="action-icone-cercle"><ion-icon name="open-outline"></ion-icon></span>
                   <span class="action-icone-label">Plus d'infos</span>
                 </a>
@@ -412,7 +419,7 @@
               @if (ouvert === false && prochaineReouvertureDetail(detail.data.Horaires); as reouverture) {
                 <span class="detail-badge"><ion-icon name="alarm-outline"></ion-icon>{{ reouverture }}</span>
               }
-              <button class="detail-badge detail-badge-lien" (click)="voirQuartier(detail.data.Quartier.Nom)">
+              <button class="detail-badge detail-badge-lien" (click)="voirQuartier(detail.data.Quartier.Nom)" title="Filtrer sur ce quartier">
                 <ion-icon name="location-outline"></ion-icon>{{ detail.data.Quartier.Nom }}
               </button>
               @if (detail.data.Prix) {
@@ -457,19 +464,19 @@
 
             <div class="detail-actions">
               @if (detail.data.latitude != null && detail.data.longitude != null) {
-                <button class="action-icone action-icone-bouton" (click)="voirLieuSurCarte(detail.data.latitude, detail.data.longitude)">
+                <button class="action-icone action-icone-bouton" (click)="voirLieuSurCarte(detail.data.latitude, detail.data.longitude)" title="Voir sur la carte">
                   <span class="action-icone-cercle"><ion-icon name="map-outline"></ion-icon></span>
                   <span class="action-icone-label">Voir sur la carte</span>
                 </button>
               }
               @if (detail.data.Localisation) {
-                <a class="action-icone action-icone-principale" [href]="detail.data.Localisation" target="_blank" rel="noopener">
+                <a class="action-icone action-icone-principale" [href]="detail.data.Localisation" target="_blank" rel="noopener" title="Ouvrir dans Google Maps">
                   <span class="action-icone-cercle"><ion-icon name="location-outline"></ion-icon></span>
                   <span class="action-icone-label">Google Maps</span>
                 </a>
               }
               @if (detail.data.Liens) {
-                <a class="action-icone" [href]="detail.data.Liens" target="_blank" rel="noopener">
+                <a class="action-icone" [href]="detail.data.Liens" target="_blank" rel="noopener" title="Plus d'infos">
                   <span class="action-icone-cercle"><ion-icon name="open-outline"></ion-icon></span>
                   <span class="action-icone-label">Plus d'infos</span>
                 </a>
@@ -490,7 +497,7 @@
                 <span class="detail-badge"><ion-icon name="alarm-outline"></ion-icon>{{ reouverture }}</span>
               }
               @for (quartier of detail.data.Quartier; track quartier.Nom) {
-                <button class="detail-badge detail-badge-lien" (click)="voirQuartier(quartier.Nom)">
+                <button class="detail-badge detail-badge-lien" (click)="voirQuartier(quartier.Nom)" title="Filtrer sur ce quartier">
                   <ion-icon name="location-outline"></ion-icon>{{ quartier.Nom }}
                 </button>
               }
@@ -530,19 +537,19 @@
 
             <div class="detail-actions">
               @if (detail.data.latitude != null && detail.data.longitude != null) {
-                <button class="action-icone action-icone-bouton" (click)="voirLieuSurCarte(detail.data.latitude, detail.data.longitude)">
+                <button class="action-icone action-icone-bouton" (click)="voirLieuSurCarte(detail.data.latitude, detail.data.longitude)" title="Voir sur la carte">
                   <span class="action-icone-cercle"><ion-icon name="map-outline"></ion-icon></span>
                   <span class="action-icone-label">Voir sur la carte</span>
                 </button>
               }
               @if (detail.data.Localisation) {
-                <a class="action-icone action-icone-principale" [href]="detail.data.Localisation" target="_blank" rel="noopener">
+                <a class="action-icone action-icone-principale" [href]="detail.data.Localisation" target="_blank" rel="noopener" title="Ouvrir dans Google Maps">
                   <span class="action-icone-cercle"><ion-icon name="location-outline"></ion-icon></span>
                   <span class="action-icone-label">Google Maps</span>
                 </a>
               }
               @if (detail.data.Liens) {
-                <a class="action-icone" [href]="detail.data.Liens" target="_blank" rel="noopener">
+                <a class="action-icone" [href]="detail.data.Liens" target="_blank" rel="noopener" title="Plus d'infos">
                   <span class="action-icone-cercle"><ion-icon name="open-outline"></ion-icon></span>
                   <span class="action-icone-label">Plus d'infos</span>
                 </a>
@@ -571,7 +578,7 @@
         <ion-toolbar>
           <ion-title>{{ plat.Nom }}</ion-title>
           <ion-buttons slot="end">
-            <ion-button (click)="fermerPlat()" aria-label="Fermer">
+            <ion-button (click)="fermerPlat()" aria-label="Fermer" title="Fermer">
               <ion-icon slot="icon-only" name="close-outline"></ion-icon>
             </ion-button>
           </ion-buttons>
@@ -595,7 +602,7 @@
           }
           @if (plat.Wiki) {
             <div class="detail-actions">
-              <a class="action-icone action-icone-principale" [href]="plat.Wiki" target="_blank" rel="noopener">
+              <a class="action-icone action-icone-principale" [href]="plat.Wiki" target="_blank" rel="noopener" title="En savoir plus">
                 <span class="action-icone-cercle"><ion-icon name="open-outline"></ion-icon></span>
                 <span class="action-icone-label">En savoir plus</span>
               </a>
@@ -613,7 +620,7 @@
       <ion-toolbar>
         <ion-title>Filtrer par quartier</ion-title>
         <ion-buttons slot="end">
-          <ion-button (click)="pickerQuartierOuvert.set(false)" aria-label="Fermer">
+          <ion-button (click)="pickerQuartierOuvert.set(false)" aria-label="Fermer" title="Fermer">
             <ion-icon slot="icon-only" name="close-outline"></ion-icon>
           </ion-button>
         </ion-buttons>
@@ -625,7 +632,8 @@
         <button
           class="picker-quartier-option picker-quartier-tous"
           [class.picker-quartier-selectionne]="filtreQuartier() === null"
-          (click)="choisirQuartier(null)">
+          (click)="choisirQuartier(null)"
+          title="Tous les quartiers">
           <span>Tous les quartiers</span>
           @if (filtreQuartier() === null) {
             <ion-icon name="checkmark-outline"></ion-icon>
@@ -638,7 +646,8 @@
             <button
               class="picker-quartier-option"
               [class.picker-quartier-selectionne]="filtreQuartier() === quartier"
-              (click)="choisirQuartier(quartier)">
+              (click)="choisirQuartier(quartier)"
+              [title]="quartier">
               <span>{{ quartier }}</span>
               @if (filtreQuartier() === quartier) {
                 <ion-icon name="checkmark-outline"></ion-icon>

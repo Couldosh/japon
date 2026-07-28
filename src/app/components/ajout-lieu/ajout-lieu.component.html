@@ -2,7 +2,7 @@
   <ion-toolbar>
     <ion-title>Ajouter un lieu</ion-title>
     <ion-buttons slot="end">
-      <ion-button (click)="ferme.emit()" aria-label="Fermer">
+      <ion-button (click)="ferme.emit()" aria-label="Fermer" title="Fermer">
         <ion-icon slot="icon-only" name="close-outline"></ion-icon>
       </ion-button>
     </ion-buttons>
@@ -20,7 +20,7 @@
       } @else {
         <div class="ajout-lieu-connexion">
           <p>Connecte-toi avec un compte Google ayant un accès Éditeur sur le Sheet pour pouvoir ajouter un lieu.</p>
-          <ion-button expand="block" (click)="googleAuth.connecter()">Se connecter avec Google</ion-button>
+          <ion-button expand="block" (click)="googleAuth.connecter()" title="Se connecter avec Google">Se connecter avec Google</ion-button>
           @if (googleAuth.erreur()) {
             <p class="ajout-lieu-erreur"><ion-icon name="alert-circle-outline"></ion-icon> {{ googleAuth.erreur() }}</p>
           }
@@ -28,11 +28,11 @@
       }
     } @else {
       <div class="ajout-lieu-types">
-        <ion-chip [class.ajout-lieu-type-actif]="type() === 'restaurant'" (click)="changerType('restaurant')">Restaurant</ion-chip>
-        <ion-chip [class.ajout-lieu-type-actif]="type() === 'activite'" (click)="changerType('activite')">Activité</ion-chip>
-        <ion-chip [class.ajout-lieu-type-actif]="type() === 'magasin'" (click)="changerType('magasin')">Magasin</ion-chip>
-        <ion-chip [class.ajout-lieu-type-actif]="type() === 'plat'" (click)="changerType('plat')">Plat</ion-chip>
-        <ion-chip [class.ajout-lieu-type-actif]="type() === 'quartier'" (click)="changerType('quartier')">Quartier</ion-chip>
+        <ion-chip [class.ajout-lieu-type-actif]="type() === 'restaurant'" (click)="changerType('restaurant')" title="Ajouter un restaurant">Restaurant</ion-chip>
+        <ion-chip [class.ajout-lieu-type-actif]="type() === 'activite'" (click)="changerType('activite')" title="Ajouter une activité">Activité</ion-chip>
+        <ion-chip [class.ajout-lieu-type-actif]="type() === 'magasin'" (click)="changerType('magasin')" title="Ajouter un magasin">Magasin</ion-chip>
+        <ion-chip [class.ajout-lieu-type-actif]="type() === 'plat'" (click)="changerType('plat')" title="Ajouter un plat">Plat</ion-chip>
+        <ion-chip [class.ajout-lieu-type-actif]="type() === 'quartier'" (click)="changerType('quartier')" title="Ajouter un quartier">Quartier</ion-chip>
       </div>
 
       @if (type() === 'plat') {
@@ -87,7 +87,8 @@
             @for (v of villesConnues(); track v) {
               <ion-chip
                 [class.ajout-quartier-ville-actif]="villeQuartier() === v"
-                (click)="choisirVilleQuartier(v)">
+                (click)="choisirVilleQuartier(v)"
+                [title]="'Choisir ' + v">
                 {{ v }}
               </ion-chip>
             }
@@ -106,7 +107,7 @@
       }
 
       @if (estUnLieu()) {
-        <button class="ajout-lieu-quartier" (click)="pickerQuartierOuvert.set(true)">
+        <button class="ajout-lieu-quartier" (click)="pickerQuartierOuvert.set(true)" title="Choisir un quartier">
           <ion-icon name="funnel-outline"></ion-icon>
           <span>{{ quartier() ?? 'Choisir un quartier *' }}</span>
           <ion-icon name="chevron-down-outline" class="ajout-lieu-quartier-chevron"></ion-icon>
@@ -117,7 +118,8 @@
           fill="outline"
           size="small"
           [disabled]="!nom().trim() || !quartier() || rechercheEnCours()"
-          (click)="rechercherPlaces()">
+          (click)="rechercherPlaces()"
+          title="Rechercher sur Google Places">
           @if (rechercheEnCours()) {
             <ion-spinner name="dots" slot="start"></ion-spinner>
           } @else {
@@ -129,7 +131,7 @@
         @if (rechercheMessage()) {
           <p class="ajout-lieu-recherche-message">
             <span>{{ rechercheMessage() }}</span>
-            <button class="ajout-lieu-message-fermer" (click)="rechercheMessage.set(null)" aria-label="Masquer ce message">
+            <button class="ajout-lieu-message-fermer" (click)="rechercheMessage.set(null)" aria-label="Masquer ce message" title="Masquer ce message">
               <ion-icon name="close-outline"></ion-icon>
             </button>
           </p>
@@ -208,7 +210,8 @@
                 [outline]="!estPlatSelectionne(nom)"
                 [style.--background]="estPlatSelectionne(nom) ? fondPlatSelectionne(nom) : null"
                 [style.--color]="estPlatSelectionne(nom) ? textePlatSelectionne(nom) : null"
-                (click)="basculerPlat(nom)">
+                (click)="basculerPlat(nom)"
+                [title]="(estPlatSelectionne(nom) ? 'Retirer ' : 'Ajouter ') + nom">
                 {{ nom }}
               </ion-chip>
             }
@@ -277,13 +280,13 @@
         <p class="ajout-lieu-erreur">
           <ion-icon name="alert-circle-outline"></ion-icon>
           <span>{{ erreur() }}</span>
-          <button class="ajout-lieu-message-fermer" (click)="erreur.set(null)" aria-label="Masquer ce message">
+          <button class="ajout-lieu-message-fermer" (click)="erreur.set(null)" aria-label="Masquer ce message" title="Masquer ce message">
             <ion-icon name="close-outline"></ion-icon>
           </button>
         </p>
       }
 
-      <ion-button expand="block" class="ajout-lieu-submit" [disabled]="!formValide() || enCours()" (click)="soumettre()">
+      <ion-button expand="block" class="ajout-lieu-submit" [disabled]="!formValide() || enCours()" (click)="soumettre()" title="Ajouter au Sheet">
         @if (enCours()) {
           <ion-spinner name="dots"></ion-spinner>
         } @else {
@@ -304,7 +307,7 @@
       <ion-toolbar>
         <ion-title>Choisir un quartier</ion-title>
         <ion-buttons slot="end">
-          <ion-button (click)="pickerQuartierOuvert.set(false)" aria-label="Fermer">
+          <ion-button (click)="pickerQuartierOuvert.set(false)" aria-label="Fermer" title="Fermer">
             <ion-icon slot="icon-only" name="close-outline"></ion-icon>
           </ion-button>
         </ion-buttons>
@@ -319,7 +322,8 @@
             <button
               class="picker-quartier-option"
               [class.picker-quartier-selectionne]="quartier() === q"
-              (click)="choisirQuartier(q)">
+              (click)="choisirQuartier(q)"
+              [title]="q">
               <span>{{ q }}</span>
               @if (quartier() === q) {
                 <ion-icon name="checkmark-outline"></ion-icon>

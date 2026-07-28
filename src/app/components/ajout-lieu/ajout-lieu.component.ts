@@ -1,6 +1,6 @@
 import { Component, DestroyRef, OnInit, computed, inject, output, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { Observable, of, switchMap } from 'rxjs';
+import { switchMap } from 'rxjs';
 import {
   IonHeader, IonToolbar, IonTitle, IonButtons, IonButton, IonIcon, IonContent,
   IonChip, IonItem, IonInput, IonTextarea, IonModal, IonSpinner, IonToggle, AlertController
@@ -408,13 +408,56 @@ export class AjoutLieuComponent implements OnInit {
       return;
     }
 
+    if (this.type() === 'quartier') {
+      this.soumettreQuartier();
+      return;
+    }
+
+    this.ecrire(this.type());
+  }
+
+  /**
+   * Cas "Quartier" : si la ville saisie manuellement ne correspond à aucune ville déjà
+   * connue (comparaison insensible casse/accents via normaliser()), demande confirmation
+   * avant de la créer dans le Sheet — une faute de frappe sur une ville existante créerait
+   * sinon un doublon silencieux, pénible à nettoyer sur un Sheet partagé. Annuler laisse le
+   * formulaire intact pour corriger la saisie.
+   */
+  private async soumettreQuartier(): Promise<void> {
+    const nouvelleVille = this.nouvelleVilleQuartier().trim();
+    const villeACreer = !!nouvelleVille && !this.villesConnues().some(v => normaliser(v) === normaliser(nouvelleVille));
+
+    if (villeACreer && !(await this.confirmerNouvelleVille(nouvelleVille))) {
+      return;
+    }
+
+    this.ecrire('quartier', villeACreer ? nouvelleVille : null);
+  }
+
+  private async confirmerNouvelleVille(nom: string): Promise<boolean> {
+    const alert = await this.alertController.create({
+      header: 'Nouvelle ville ?',
+      message: `"${nom}" n'existe pas encore dans la liste des villes — elle sera ajoutée au Sheet.`,
+      buttons: [
+        { text: 'Annuler', role: 'cancel' },
+        { text: 'Créer la ville', role: 'confirm' },
+      ],
+    });
+    await alert.present();
+    const { role } = await alert.onDidDismiss();
+    return role === 'confirm';
+  }
+
+  /** Écrit la ligne du type courant, en écrivant d'abord `nouvelleVille` dans la feuille
+   * "Villes" si fourni (cas "Quartier" avec une ville inédite déjà confirmée). */
+  private ecrire(type: TypeAjout, nouvelleVille: string | null = null): void {
     this.enCours.set(true);
     this.erreur.set(null);
-    const type = this.type();
 
-    const ecriture$ = type === 'quartier'
-      ? this.ecrireNouvelleVilleSiBesoin().pipe(switchMap(() => this.sheetsWrite.ajouterLigne(GID_PAR_TYPE[type], this.construireValeurs(type))))
-      : this.sheetsWrite.ajouterLigne(GID_PAR_TYPE[type], this.construireValeurs(type));
+    const ecritureQuartier$ = this.sheetsWrite.ajouterLigne(GID_PAR_TYPE[type], this.construireValeurs(type));
+    const ecriture$ = nouvelleVille
+      ? this.sheetsWrite.ajouterLigne(GID_VILLES, { Nom: nouvelleVille }).pipe(switchMap(() => ecritureQuartier$))
+      : ecritureQuartier$;
 
     ecriture$
       .pipe(takeUntilDestroyed(this.destroyRef))
@@ -430,22 +473,6 @@ export class AjoutLieuComponent implements OnInit {
           this.erreur.set(err.message);
         }
       });
-  }
-
-  /**
-   * Si la ville saisie manuellement pour le nouveau quartier ne correspond à aucune ville
-   * déjà connue (comparaison insensible casse/accents via normaliser()), l'ajoute d'abord
-   * à la feuille de référence "Villes" avant d'écrire le quartier lui-même — sinon no-op.
-   */
-  private ecrireNouvelleVilleSiBesoin(): Observable<unknown> {
-    const nouvelleVille = this.nouvelleVilleQuartier().trim();
-    const estDejaConnue = this.villesConnues().some(v => normaliser(v) === normaliser(nouvelleVille));
-
-    if (!nouvelleVille || estDejaConnue) {
-      return of(undefined);
-    }
-
-    return this.sheetsWrite.ajouterLigne(GID_VILLES, { Nom: nouvelleVille });
   }
 
   private construireValeurs(type: TypeAjout): Record<string, string> {
