@@ -1,5 +1,6 @@
 import { Component, DestroyRef, OnInit, computed, inject, output, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { Observable, of, switchMap } from 'rxjs';
 import {
   IonHeader, IonToolbar, IonTitle, IonButtons, IonButton, IonIcon, IonContent,
   IonChip, IonItem, IonInput, IonTextarea, IonModal, IonSpinner, IonToggle, AlertController
@@ -10,11 +11,13 @@ import { GoogleAuthService } from '../../service/google/google-auth.service';
 import { SheetsWriteService } from '../../service/google/sheets-write.service';
 import { QuartierService } from '../../service/quartier/quartier.service';
 import { QuartierModel } from '../../models/quartier.model';
+import { VilleService } from '../../service/ville/ville.service';
+import { VilleModel } from '../../models/ville.model';
 import { PlatService } from '../../service/plat/plat.service';
 import { Plat, PlatCategory } from '../../models/plat.model';
 import { PlacesSearchService } from '../../service/google/places-search.service';
 
-type TypeAjout = 'restaurant' | 'activite' | 'magasin' | 'plat';
+type TypeAjout = 'restaurant' | 'activite' | 'magasin' | 'plat' | 'quartier';
 
 /** Normalise un nom pour un matching insensible à la casse/aux accents (ex: "Ramen" ~ "râmen"). */
 function normaliser(texte: string): string {
@@ -26,15 +29,21 @@ interface VilleQuartiers {
   quartiers: string[];
 }
 
-/** gid de l'onglet Sheet correspondant à chaque type, voir README.md. */
+/** gid de l'onglet Sheet correspondant à chaque type, voir README.md. "quartier" pointe vers
+ * l'onglet de référence "Quartiers" (même gid que QuartierService). */
 const GID_PAR_TYPE: Record<TypeAjout, string> = {
   restaurant: '892590698',
   activite: '0',
   magasin: '346756517',
   plat: '2053739160',
+  quartier: '1855356526',
 };
 
-/** "Plat" n'est pas un lieu (pas de Quartier/Localisation) : traité à part dans le formulaire. */
+/** gid de l'onglet de référence "Villes" (même gid que VilleService), pour y ajouter une ville
+ * saisie manuellement lors de la création d'un quartier — voir soumettreQuartier(). */
+const GID_VILLES = '357846773';
+
+/** "Plat" et "Quartier" ne sont pas des lieux (pas de Quartier/Localisation) : traités à part dans le formulaire. */
 const TYPES_LIEU: TypeAjout[] = ['restaurant', 'activite', 'magasin'];
 
 /**
@@ -56,6 +65,7 @@ export class AjoutLieuComponent implements OnInit {
   protected readonly googleAuth = inject(GoogleAuthService);
   private readonly sheetsWrite = inject(SheetsWriteService);
   private readonly quartierService = inject(QuartierService);
+  private readonly villeService = inject(VilleService);
   private readonly platService = inject(PlatService);
   private readonly placesSearch = inject(PlacesSearchService);
   private readonly alertController = inject(AlertController);
@@ -84,6 +94,11 @@ export class AjoutLieuComponent implements OnInit {
   readonly estUnLieu = computed(() => TYPES_LIEU.includes(this.type()));
 
   readonly pickerQuartierOuvert = signal(false);
+
+  /** Champs du type "Quartier" : ville choisie parmi les villes connues, ou saisie manuellement. */
+  readonly villeQuartier = signal<string | null>(null);
+  readonly nouvelleVilleQuartier = signal('');
+
   readonly enCours = signal(false);
   readonly erreur = signal<string | null>(null);
   readonly rechercheEnCours = signal(false);
@@ -93,6 +108,7 @@ export class AjoutLieuComponent implements OnInit {
   readonly champsAutoRemplis = signal<Set<'liens' | 'localisation'>>(new Set());
 
   private readonly quartiers = signal<QuartierModel[]>([]);
+  private readonly villes = signal<VilleModel[]>([]);
   private readonly platsBruts = signal<Plat[]>([]);
 
   /** Noms de plats connus (feuille "Plats"), pour le sélecteur du formulaire Restaurant. */
@@ -122,15 +138,36 @@ export class AjoutLieuComponent implements OnInit {
       .map(([ville, quartiers]) => ({ ville, quartiers: [...quartiers].sort((a, b) => a.localeCompare(b)) }));
   });
 
+  /** Villes déjà connues dans la feuille de référence "Villes" (VilleService), pour choisir
+   * plutôt que ressaisir une ville existante — et détecter si une saisie manuelle correspond
+   * à une nouvelle ville à ajouter au Sheet (voir soumettreQuartier()). */
+  readonly villesConnues = computed(() =>
+    [...new Set(this.villes().map(v => v.Nom?.trim()).filter((n): n is string => !!n))]
+      .sort((a, b) => a.localeCompare(b))
+  );
+
+  /** Ville qui sera écrite pour le type "Quartier" : la nouvelle ville tapée à la main
+   * a priorité sur une ville existante sélectionnée (les deux champs se désélectionnent
+   * mutuellement au clic/à la saisie, voir choisirVilleQuartier()/majNouvelleVilleQuartier()). */
+  private readonly villeAAppliquer = computed(() =>
+    this.nouvelleVilleQuartier().trim() || this.villeQuartier()
+  );
+
   readonly formValide = computed(() => {
     if (!this.nom().trim()) return false;
+    if (this.type() === 'quartier') return !!this.villeAAppliquer();
     return this.estUnLieu() ? !!this.quartier() : true;
   });
 
   /** Explique pourquoi le formulaire n'est pas valide, affiché sous le bouton "Ajouter au Sheet". */
   readonly raisonInvalide = computed(() => {
     if (!this.nom().trim()) {
-      return this.type() === 'plat' ? 'Le nom du plat est requis.' : 'Le nom est requis.';
+      if (this.type() === 'plat') return 'Le nom du plat est requis.';
+      if (this.type() === 'quartier') return 'Le nom du quartier est requis.';
+      return 'Le nom est requis.';
+    }
+    if (this.type() === 'quartier' && !this.villeAAppliquer()) {
+      return 'Choisis ou saisis une ville.';
     }
     if (this.estUnLieu() && !this.quartier()) {
       return 'Choisis un quartier.';
@@ -143,9 +180,11 @@ export class AjoutLieuComponent implements OnInit {
   readonly formulaireRempli = computed(() =>
     [
       this.nom(), this.liens(), this.localisation(), this.description(), this.prix(),
-      this.video(), this.menu(), this.temps(), this.typeMagasin(), this.commentaires(), this.wiki()
+      this.video(), this.menu(), this.temps(), this.typeMagasin(), this.commentaires(), this.wiki(),
+      this.nouvelleVilleQuartier()
     ].some(valeur => valeur.trim().length > 0)
     || this.quartier() !== null
+    || this.villeQuartier() !== null
     || this.platsSelectionnes().length > 0
   );
 
@@ -163,17 +202,22 @@ export class AjoutLieuComponent implements OnInit {
 
   /**
    * Recharge les listes de référence utilisées par le formulaire (quartiers pour
-   * le picker, plats pour le multi-select du Restaurant). Appelé au montage, puis
-   * après chaque ajout réussi avec forceRefresh=true : SheetsWriteService a déjà
-   * vidé le cache SheetsApi du gid concerné, mais les signals locaux de ce
-   * composant (indépendants de ceux de HomeComponent) ne se rafraîchissent pas
-   * tout seuls — sans ce rappel, un plat tout juste créé n'apparaîtrait pas dans
-   * le multi-select tant que la modale n'est pas fermée puis rouverte.
+   * le picker, villes pour le type "Quartier", plats pour le multi-select du
+   * Restaurant). Appelé au montage, puis après chaque ajout réussi avec
+   * forceRefresh=true : SheetsWriteService a déjà vidé le cache SheetsApi du gid
+   * concerné, mais les signals locaux de ce composant (indépendants de ceux de
+   * HomeComponent) ne se rafraîchissent pas tout seuls — sans ce rappel, un plat
+   * tout juste créé n'apparaîtrait pas dans le multi-select tant que la modale
+   * n'est pas fermée puis rouverte.
    */
   private rafraichirListesReference(forceRefresh: boolean): void {
     this.quartierService.getQuartiers(forceRefresh)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe(quartiers => this.quartiers.set(quartiers));
+
+    this.villeService.getVilles(forceRefresh)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(villes => this.villes.set(villes));
 
     this.platService.getPlats(forceRefresh)
       .pipe(takeUntilDestroyed(this.destroyRef))
@@ -188,6 +232,18 @@ export class AjoutLieuComponent implements OnInit {
   choisirQuartier(nom: string): void {
     this.quartier.set(nom);
     this.pickerQuartierOuvert.set(false);
+  }
+
+  choisirVilleQuartier(ville: string): void {
+    this.villeQuartier.set(ville);
+    this.nouvelleVilleQuartier.set('');
+  }
+
+  majNouvelleVilleQuartier(valeur: string): void {
+    this.nouvelleVilleQuartier.set(valeur);
+    if (valeur.trim()) {
+      this.villeQuartier.set(null);
+    }
   }
 
   majLiens(valeur: string): void {
@@ -356,7 +412,11 @@ export class AjoutLieuComponent implements OnInit {
     this.erreur.set(null);
     const type = this.type();
 
-    this.sheetsWrite.ajouterLigne(GID_PAR_TYPE[type], this.construireValeurs(type))
+    const ecriture$ = type === 'quartier'
+      ? this.ecrireNouvelleVilleSiBesoin().pipe(switchMap(() => this.sheetsWrite.ajouterLigne(GID_PAR_TYPE[type], this.construireValeurs(type))))
+      : this.sheetsWrite.ajouterLigne(GID_PAR_TYPE[type], this.construireValeurs(type));
+
+    ecriture$
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: () => {
@@ -372,6 +432,22 @@ export class AjoutLieuComponent implements OnInit {
       });
   }
 
+  /**
+   * Si la ville saisie manuellement pour le nouveau quartier ne correspond à aucune ville
+   * déjà connue (comparaison insensible casse/accents via normaliser()), l'ajoute d'abord
+   * à la feuille de référence "Villes" avant d'écrire le quartier lui-même — sinon no-op.
+   */
+  private ecrireNouvelleVilleSiBesoin(): Observable<unknown> {
+    const nouvelleVille = this.nouvelleVilleQuartier().trim();
+    const estDejaConnue = this.villesConnues().some(v => normaliser(v) === normaliser(nouvelleVille));
+
+    if (!nouvelleVille || estDejaConnue) {
+      return of(undefined);
+    }
+
+    return this.sheetsWrite.ajouterLigne(GID_VILLES, { Nom: nouvelleVille });
+  }
+
   private construireValeurs(type: TypeAjout): Record<string, string> {
     if (type === 'plat') {
       return {
@@ -380,6 +456,14 @@ export class AjoutLieuComponent implements OnInit {
         Description: this.description().trim(),
         Commentaires: this.commentaires().trim(),
         Wiki: this.wiki().trim(),
+      };
+    }
+
+    if (type === 'quartier') {
+      return {
+        Nom: this.nom().trim(),
+        Ville: this.villeAAppliquer() ?? '',
+        Mood: '',
       };
     }
 
@@ -432,6 +516,8 @@ export class AjoutLieuComponent implements OnInit {
     this.commentaires.set('');
     this.categoriePlat.set(PlatCategory.Plat);
     this.wiki.set('');
+    this.villeQuartier.set(null);
+    this.nouvelleVilleQuartier.set('');
     this.rechercheMessage.set(null);
     this.champsAutoRemplis.set(new Set());
   }

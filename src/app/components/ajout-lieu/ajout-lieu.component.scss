@@ -29,6 +29,7 @@
 
 .ajout-lieu-types {
   display: flex;
+  flex-wrap: wrap;
   gap: 8px;
   padding: 4px 0 12px;
 
@@ -245,4 +246,20 @@
   background: var(--ion-color-light);
   color: var(--ion-color-primary);
   font-weight: 600;
+}
+
+.ajout-quartier-villes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding-bottom: 8px;
+
+  ion-chip {
+    margin: 0;
+  }
+}
+
+.ajout-quartier-ville-actif {
+  --background: var(--ion-color-primary);
+  --color: var(--ion-color-primary-contrast);
 }

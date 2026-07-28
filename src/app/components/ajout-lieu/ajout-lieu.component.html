@@ -32,6 +32,7 @@
         <ion-chip [class.ajout-lieu-type-actif]="type() === 'activite'" (click)="changerType('activite')">Activité</ion-chip>
         <ion-chip [class.ajout-lieu-type-actif]="type() === 'magasin'" (click)="changerType('magasin')">Magasin</ion-chip>
         <ion-chip [class.ajout-lieu-type-actif]="type() === 'plat'" (click)="changerType('plat')">Plat</ion-chip>
+        <ion-chip [class.ajout-lieu-type-actif]="type() === 'quartier'" (click)="changerType('quartier')">Quartier</ion-chip>
       </div>
 
       @if (type() === 'plat') {
@@ -57,6 +58,16 @@
             <span class="ajout-lieu-toggle-label" [class.ajout-lieu-toggle-label-snack-actif]="categoriePlat() === PlatCategory.Snack">Snack</span>
           </div>
         </div>
+      } @else if (type() === 'quartier') {
+        <ion-item>
+          <ion-input
+            label="Nom du quartier *"
+            labelPlacement="stacked"
+            placeholder="Ex : Shimokitazawa"
+            [value]="nom()"
+            (ionInput)="nom.set($any($event.detail).value ?? '')">
+          </ion-input>
+        </ion-item>
       } @else {
         <ion-item>
           <ion-input
@@ -65,6 +76,31 @@
             placeholder="Nom du lieu"
             [value]="nom()"
             (ionInput)="nom.set($any($event.detail).value ?? '')">
+          </ion-input>
+        </ion-item>
+      }
+
+      @if (type() === 'quartier') {
+        <p class="ajout-lieu-label">Ville *</p>
+        @if (villesConnues().length) {
+          <div class="ajout-quartier-villes">
+            @for (v of villesConnues(); track v) {
+              <ion-chip
+                [class.ajout-quartier-ville-actif]="villeQuartier() === v"
+                (click)="choisirVilleQuartier(v)">
+                {{ v }}
+              </ion-chip>
+            }
+          </div>
+        }
+
+        <ion-item>
+          <ion-input
+            label="Ou nouvelle ville"
+            labelPlacement="stacked"
+            placeholder="Ex : Kanazawa"
+            [value]="nouvelleVilleQuartier()"
+            (ionInput)="majNouvelleVilleQuartier($any($event.detail).value ?? '')">
           </ion-input>
         </ion-item>
       }
@@ -138,7 +174,7 @@
         </ion-item>
       }
 
-      @if (type() !== 'magasin') {
+      @if (type() !== 'magasin' && type() !== 'quartier') {
         <ion-item>
           <ion-textarea
             label="Description"
@@ -225,15 +261,17 @@
         </ion-item>
       }
 
-      <ion-item>
-        <ion-textarea
-          label="Commentaires"
-          labelPlacement="stacked"
-          [autoGrow]="true"
-          [value]="commentaires()"
-          (ionInput)="commentaires.set($any($event.detail).value ?? '')">
-        </ion-textarea>
-      </ion-item>
+      @if (type() !== 'quartier') {
+        <ion-item>
+          <ion-textarea
+            label="Commentaires"
+            labelPlacement="stacked"
+            [autoGrow]="true"
+            [value]="commentaires()"
+            (ionInput)="commentaires.set($any($event.detail).value ?? '')">
+          </ion-textarea>
+        </ion-item>
+      }
 
       @if (erreur()) {
         <p class="ajout-lieu-erreur">
