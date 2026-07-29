@@ -5,7 +5,7 @@ import { FormsModule } from '@angular/forms';
 import { combineLatest, catchError, of } from 'rxjs';
 import {
   IonHeader, IonToolbar, IonSearchbar, IonChip, IonIcon, IonButton, IonButtons,
-  IonLabel, IonBadge, IonTabBar, IonTabButton,
+  IonLabel, IonBadge, IonTabBar, IonTabButton, IonSegment, IonSegmentButton, IonToggle,
   IonContent, IonSkeletonText, IonRefresher, IonRefresherContent,
   IonModal, IonTitle, IonSelect, IonSelectOption, IonTextarea, IonToast
 } from '@ionic/angular/standalone';
@@ -71,7 +71,7 @@ type DetailLieu =
   imports: [
     CommonModule, FormsModule,
     IonHeader, IonToolbar, IonSearchbar, IonChip, IonIcon, IonButton, IonButtons,
-    IonLabel, IonBadge, IonTabBar, IonTabButton,
+    IonLabel, IonBadge, IonTabBar, IonTabButton, IonSegment, IonSegmentButton, IonToggle,
     IonContent, IonSkeletonText, IonRefresher, IonRefresherContent,
     IonModal, IonTitle, IonSelect, IonSelectOption, IonTextarea, IonToast,
     CarteComponent, PlanningComponent, AjoutLieuComponent
@@ -137,6 +137,8 @@ export class HomeComponent implements OnInit {
   // Sous-filtres, spécifiques au type de lieu actif
   readonly filtrePlat = signal<string | null>(null);
   readonly filtreCategoriePlat = signal<PlatCategory | 'tout'>('tout');
+  // Exposé pour le template (comparaisons PlatCategory.Plat/.Snack sur le toggle catégorie).
+  readonly PlatCategory = PlatCategory;
   readonly filtreTypeMagasin = signal<string | null>(null);
   readonly lieux = signal<LieuAffichable[]>([]);
   // Passé en @Input à app-planning : chargé ici pour bénéficier du même
@@ -199,28 +201,15 @@ export class HomeComponent implements OnInit {
   // dans l'ordre de consultation (le plus récent en premier).
   readonly lieuxRecents = computed((): LieuAffichable[] => {
     const parId = new Map(this.lieux().map(l => [l.id, l]));
+    const filtre = this.filtreActif();
     return this.vusRecemmentService.idsRecents()
       .map(id => parId.get(id))
       .filter((l): l is LieuAffichable => !!l)
+      .filter(l => filtre === 'tout' || l.type === filtre)
       .slice(0, 10);
   });
 
-  // Jours restants avant le premier hébergement (date d'arrivée la plus proche connue).
-  // Déduit des hébergements déjà chargés plutôt qu'une date de voyage codée en dur.
-  // null si aucun hébergement connu, ou si cette date est déjà passée (le compte à
-  // rebours n'a plus d'intérêt une fois le séjour commencé).
-  readonly joursAvantDepart = computed((): number | null => {
-    const dates = this.hebergements().map(h => h.dateArrivee).filter(Boolean).sort();
-    if (dates.length === 0) return null;
-
-    const depart = new Date(dates[0] + 'T00:00:00');
-    const aujourdhui = new Date();
-    aujourdhui.setHours(0, 0, 0, 0);
-    const jours = Math.round((depart.getTime() - aujourdhui.getTime()) / 86_400_000);
-    return jours >= 0 ? jours : null;
-  });
-
-  // Liste filtrée + triée par distance, recalculée automatiquement
+// Liste filtrée + triée par distance, recalculée automatiquement
   readonly lieuxAffiches = computed(() => {
     const filtre = this.filtreActif();
     const terme = this.recherche().toLowerCase().trim();

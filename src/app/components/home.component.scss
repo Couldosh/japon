@@ -28,29 +28,48 @@
   }
 }
 
+// Ligne unique et défilable horizontalement plutôt qu'un retour à la ligne :
+// avec les 4 chips de type + le filtre "Ouvert maintenant" + la pilule quartier
+// (+ les sous-filtres restaurant/magasin), un flex-wrap ferait facilement 3
+// lignes sur un petit écran, poussant la liste très bas. Même principe que
+// .recents-scroll.
 .filtres {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   align-items: center;
   gap: 8px;
   padding: 8px 16px 12px;
+  overflow-x: auto;
+  scrollbar-width: none;
+
+  > * {
+    flex-shrink: 0;
+  }
 
   ion-chip {
     margin: 0;
     white-space: nowrap;
   }
+}
 
-  .filtre-actif {
-    --background: var(--ion-color-primary);
-    --color: var(--ion-color-primary-contrast);
-  }
+// "Ouvert" vit dans .section-entete-droite, pas dans .filtres (voir plus bas) :
+// règle non imbriquée pour s'appliquer aux deux emplacements (vue liste normale
+// et vue groupée). Vert (success) plutôt que la couleur primaire, pour rester
+// cohérent avec le badge "Ouvert" vert utilisé partout ailleurs dans l'app.
+.filtre-ouvert-actif {
+  --background: var(--ion-color-success);
+  --color: var(--ion-color-success-contrast);
+}
+
+.filtres-segment {
+  padding-top: 0;
 }
 
 .filtre-pilule {
   display: flex;
   align-items: center;
   gap: 4px;
-  flex: 0 1 auto;
+  flex: 0 0 auto;
   min-width: 0;
   max-width: 100%;
   min-height: 44px;
@@ -102,6 +121,15 @@
   -webkit-tap-highlight-color: transparent;
 }
 
+// ion-button plutôt qu'un <button> "reset" comme ci-dessus : le tap target
+// (~44px) et le reset visuel viennent gratuitement du style global Ionic,
+// hors du budget anyComponentStyle de ce fichier.
+.carte-lieu-favori-bouton {
+  flex-shrink: 0;
+  --padding-start: 6px;
+  --padding-end: 6px;
+}
+
 .filtre-pilule-bouton {
   color: inherit;
   padding-right: 8px;
@@ -117,6 +145,32 @@
 
 .filtre-pilule-chevron {
   font-size: 12px !important;
+}
+
+// Même toggle (et mêmes classes) que ajout-lieu.component.scss pour le choix
+// Plat/Snack — dupliqué ici plutôt que partagé car l'encapsulation de vue
+// Angular ne laisse pas fuiter les styles d'un composant à l'autre. Garder les
+// deux synchronisés si l'un des deux évolue.
+.ajout-lieu-toggle-categorie {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.ajout-lieu-toggle-label {
+  font-size: 12px;
+  color: var(--ion-color-medium);
+}
+
+.ajout-lieu-toggle-label-plat-actif {
+  color: var(--ion-color-success);
+  font-weight: 600;
+}
+
+.ajout-lieu-toggle-label-snack-actif {
+  color: var(--ion-color-danger);
+  font-weight: 600;
 }
 
 .picker-quartier {
@@ -170,10 +224,6 @@
   padding: 8px 16px 16px;
 }
 
-.compte-a-rebours {
-  padding: 8px 16px 0;
-}
-
 .section-recents {
   padding: 8px 0 0 16px;
 }
@@ -212,10 +262,13 @@
   overflow-x: auto;
   padding: 0 16px 4px 0;
   scrollbar-width: none;
+}
 
-  &::-webkit-scrollbar {
-    display: none;
-  }
+// Barre de défilement webkit masquée sur les deux rangées horizontales
+// (filtres, vus récemment) : regroupée pour ne compter le sélecteur qu'une fois.
+.filtres::-webkit-scrollbar,
+.recents-scroll::-webkit-scrollbar {
+  display: none;
 }
 
 .recent-carte {
@@ -271,9 +324,19 @@
   .section-titre {
     margin: 0;
   }
+}
+
+// Regroupe le chip "Ouvert" et le bouton Voir sur la carte/Regrouper (au plus
+// un des deux à la fois) sur la même ligne, poussés à droite même quand le
+// titre est absent (vue groupée sans quartier filtré).
+.section-entete-droite {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+  flex-shrink: 0;
 
   ion-button {
-    margin: 0 0 0 auto;
     --padding-start: 4px;
     --padding-end: 4px;
     min-width: 44px;
@@ -306,13 +369,6 @@
 
   .groupe-ville-titre {
     margin: 0;
-  }
-
-  ion-button {
-    margin: 0 0 0 auto;
-    --padding-start: 4px;
-    --padding-end: 8px;
-    flex-shrink: 0;
   }
 }
 
@@ -388,8 +444,6 @@
 
 .carte-lieu-favori {
   font-size: 15px;
-  color: var(--ion-color-danger);
-  flex-shrink: 0;
 }
 
 .carte-lieu-note {

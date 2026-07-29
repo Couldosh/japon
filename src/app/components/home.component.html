@@ -20,94 +20,6 @@
         </ion-button>
       </div>
     </div>
-
-    @if (vue() !== 'planning') {
-      <div class="filtres">
-        <ion-chip
-          [class.filtre-actif]="filtreActif() === 'tout'"
-          (click)="changerFiltre('tout')"
-          title="Afficher tous les types de lieux">
-          Tout
-        </ion-chip>
-        <ion-chip
-          [class.filtre-actif]="filtreActif() === 'restaurant'"
-          (click)="changerFiltre('restaurant')"
-          title="Filtrer sur les restaurants">
-          Restaurants
-        </ion-chip>
-        <ion-chip
-          [class.filtre-actif]="filtreActif() === 'activite'"
-          (click)="changerFiltre('activite')"
-          title="Filtrer sur les activités">
-          Activités
-        </ion-chip>
-        <ion-chip
-          [class.filtre-actif]="filtreActif() === 'magasin'"
-          (click)="changerFiltre('magasin')"
-          title="Filtrer sur les magasins">
-          Magasins
-        </ion-chip>
-        <ion-chip
-          [class.filtre-actif]="filtreOuvertMaintenant()"
-          (click)="basculerOuvertMaintenant()"
-          title="N'afficher que les lieux actuellement ouverts">
-          Ouvert maintenant
-        </ion-chip>
-
-        @if (!affichageGroupe()) {
-          <button class="filtre-pilule filtre-pilule-bouton" (click)="pickerQuartierOuvert.set(true)" title="Filtrer par quartier">
-            <ion-icon name="funnel-outline"></ion-icon>
-            <span>{{ filtreQuartier() ?? 'Tous les quartiers' }}</span>
-            <ion-icon name="chevron-down-outline" class="filtre-pilule-chevron"></ion-icon>
-          </button>
-        }
-
-        @if (filtreActif() === 'restaurant') {
-          <div class="filtre-pilule">
-            <ion-icon name="funnel-outline"></ion-icon>
-            <ion-select
-              interface="popover"
-              placeholder="Tous les plats"
-              [value]="filtrePlat()"
-              (ionChange)="filtrePlat.set($event.detail.value)">
-              <ion-select-option [value]="null">Tous les plats</ion-select-option>
-              @for (nom of platsDisponibles(); track nom) {
-                <ion-select-option [value]="nom">{{ nom }}</ion-select-option>
-              }
-            </ion-select>
-          </div>
-
-          <div class="filtre-pilule">
-            <ion-icon name="funnel-outline"></ion-icon>
-            <ion-select
-              interface="popover"
-              placeholder="Catégorie"
-              [value]="filtreCategoriePlat()"
-              (ionChange)="filtreCategoriePlat.set($event.detail.value)">
-              <ion-select-option value="tout">Plat ou snack</ion-select-option>
-              <ion-select-option value="Plat">Plat</ion-select-option>
-              <ion-select-option value="Snack">Snack</ion-select-option>
-            </ion-select>
-          </div>
-        }
-
-        @if (filtreActif() === 'magasin') {
-          <div class="filtre-pilule">
-            <ion-icon name="funnel-outline"></ion-icon>
-            <ion-select
-              interface="popover"
-              placeholder="Tous les types"
-              [value]="filtreTypeMagasin()"
-              (ionChange)="filtreTypeMagasin.set($event.detail.value)">
-              <ion-select-option [value]="null">Tous les types</ion-select-option>
-              @for (type of typesMagasins(); track type) {
-                <ion-select-option [value]="type">{{ type }}</ion-select-option>
-              }
-            </ion-select>
-          </div>
-        }
-      </div>
-    }
   </ion-toolbar>
 </ion-header>
 
@@ -116,19 +28,87 @@
     <ion-refresher slot="fixed" (ionRefresh)="rafraichir($event)">
       <ion-refresher-content></ion-refresher-content>
     </ion-refresher>
+  }
 
-    @if (joursAvantDepart() !== null) {
-      <div class="compte-a-rebours">
-        <span class="detail-badge">
-          <ion-icon name="calendar-outline"></ion-icon>
-          @if (joursAvantDepart() === 0) {
-            C'est aujourd'hui, bon voyage !
-          } @else {
-            J-{{ joursAvantDepart() }} avant le départ
-          }
-        </span>
-      </div>
-    }
+  <!-- Sous le header plutôt que dans la toolbar : un ion-segment y adopte le
+       style "onglets de toolbar" d'Ionic (fond transparent, se fond dans le
+       header), ce qui faisait disparaître la séparation visuelle entre l'en-tête
+       et la barre de filtres. -->
+  @if (vue() !== 'planning') {
+    <div class="filtres filtres-segment">
+      <ion-segment [value]="filtreActif()" (ionChange)="changerFiltre($any($event.detail).value)" title="Filtrer par type de lieu">
+        <ion-segment-button value="tout">
+          <ion-label>Tout</ion-label>
+        </ion-segment-button>
+        <ion-segment-button value="restaurant">
+          <ion-label>Restaurants</ion-label>
+        </ion-segment-button>
+        <ion-segment-button value="activite">
+          <ion-label>Activités</ion-label>
+        </ion-segment-button>
+        <ion-segment-button value="magasin">
+          <ion-label>Magasins</ion-label>
+        </ion-segment-button>
+      </ion-segment>
+    </div>
+
+    <div class="filtres">
+      @if (!affichageGroupe()) {
+        <button class="filtre-pilule filtre-pilule-bouton" (click)="pickerQuartierOuvert.set(true)" title="Filtrer par quartier">
+          <ion-icon name="funnel-outline"></ion-icon>
+          <span>{{ filtreQuartier() ?? 'Tous les quartiers' }}</span>
+          <ion-icon name="chevron-down-outline" class="filtre-pilule-chevron"></ion-icon>
+        </button>
+      }
+
+      @if (filtreActif() === 'restaurant') {
+        <div class="filtre-pilule">
+          <ion-icon name="funnel-outline"></ion-icon>
+          <ion-select
+            interface="popover"
+            placeholder="Tous les plats"
+            [value]="filtrePlat()"
+            (ionChange)="filtrePlat.set($event.detail.value)">
+            <ion-select-option [value]="null">Tous les plats</ion-select-option>
+            @for (nom of platsDisponibles(); track nom) {
+              <ion-select-option [value]="nom">{{ nom }}</ion-select-option>
+            }
+          </ion-select>
+        </div>
+
+        <!-- Même toggle que le formulaire d'ajout de plat (binaire, sans état "tout") : un
+             premier tap depuis l'état par défaut sélectionne Snack (checked=true), un second
+             repasse à Plat. Pas de retour à "tout" via ce contrôle une fois touché — seul un
+             changement de filtre de type (changerFiltre() réinitialise filtreCategoriePlat) le
+             refait repartir de zéro. -->
+        <div class="ajout-lieu-toggle-categorie">
+          <span class="ajout-lieu-toggle-label" [class.ajout-lieu-toggle-label-plat-actif]="filtreCategoriePlat() === PlatCategory.Plat">Plat</span>
+          <ion-toggle
+            [checked]="filtreCategoriePlat() === PlatCategory.Snack"
+            color="danger"
+            [style.--track-background]="filtreCategoriePlat() === PlatCategory.Plat ? 'var(--ion-color-success)' : null"
+            (ionChange)="filtreCategoriePlat.set($any($event.detail).checked ? PlatCategory.Snack : PlatCategory.Plat)">
+          </ion-toggle>
+          <span class="ajout-lieu-toggle-label" [class.ajout-lieu-toggle-label-snack-actif]="filtreCategoriePlat() === PlatCategory.Snack">Snack</span>
+        </div>
+      }
+
+      @if (filtreActif() === 'magasin') {
+        <div class="filtre-pilule">
+          <ion-icon name="funnel-outline"></ion-icon>
+          <ion-select
+            interface="popover"
+            placeholder="Tous les types"
+            [value]="filtreTypeMagasin()"
+            (ionChange)="filtreTypeMagasin.set($event.detail.value)">
+            <ion-select-option [value]="null">Tous les types</ion-select-option>
+            @for (type of typesMagasins(); track type) {
+              <ion-select-option [value]="type">{{ type }}</ion-select-option>
+            }
+          </ion-select>
+        </div>
+      }
+    </div>
   }
 
   <!-- Toujours présent (juste masqué) pour ne pas recréer la carte à chaque
@@ -147,7 +127,7 @@
     <app-planning [lieux]="lieux()" [hebergements]="hebergements()" (lieuClique)="ouvrirDetails($event)"></app-planning>
   }
 
-  @if (vue() === 'liste' && filtreActif() === 'tout' && !recherche().trim() && !filtreQuartier() && !affichageGroupe() && lieuxRecents().length > 0) {
+  @if (vue() === 'liste' && !recherche().trim() && !filtreQuartier() && !affichageGroupe()) {
     <div class="section-recents">
       <button
         class="section-recents-entete"
@@ -162,15 +142,19 @@
         </ion-icon>
       </button>
       @if (recentsOuvert()) {
-        <div class="recents-scroll">
-          @for (lieu of lieuxRecents(); track lieu.id) {
-            <button class="recent-carte" (click)="ouvrirDetails(lieu, false)" [title]="lieu.nom">
-              <span class="recent-emoji">{{ lieu.icone }}</span>
-              <span class="recent-nom">{{ lieu.nom }}</span>
-              <span class="recent-quartier">{{ lieu.quartier.Nom }}</span>
-            </button>
-          }
-        </div>
+        @if (lieuxRecents().length > 0) {
+          <div class="recents-scroll">
+            @for (lieu of lieuxRecents(); track lieu.id) {
+              <button class="recent-carte" (click)="ouvrirDetails(lieu, false)" [title]="lieu.nom">
+                <span class="recent-emoji">{{ lieu.icone }}</span>
+                <span class="recent-nom">{{ lieu.nom }}</span>
+                <span class="recent-quartier">{{ lieu.quartier.Nom }}</span>
+              </button>
+            }
+          </div>
+        } @else {
+          <p class="etat-vide">Aucun lieu consulté récemment.</p>
+        }
       }
     </div>
   }
@@ -183,28 +167,41 @@
             {{ filtreQuartier() ?? (vue() === 'favoris' ? 'Vos favoris' : 'Près de vous') }}
           </p>
         }
-        @if (filtreQuartier()) {
-          <ion-button
-            fill="clear"
-            size="small"
-            (click)="voirQuartierSurCarte()"
-            aria-label="Voir ce quartier sur la carte"
-            title="Voir ce quartier sur la carte">
-            <ion-icon slot="start" name="map-outline"></ion-icon>
-            Voir sur la carte
-          </ion-button>
-        }
-        @if (!affichageGroupe() && !filtreQuartier()) {
-          <ion-button
-            fill="clear"
-            size="small"
-            (click)="basculerGroupement()"
-            aria-label="Regrouper par ville et quartier"
-            title="Regrouper par ville et quartier">
-            <ion-icon slot="start" name="layers-outline"></ion-icon>
-            Regrouper
-          </ion-button>
-        }
+        <div class="section-entete-droite">
+          @if (!affichageGroupe()) {
+            <!-- Filtre orthogonal aux chips de type (combinable avec n'importe lequel), contrairement à
+                 Tout/Restaurants/Activités/Magasins qui sont un choix exclusif. En vue groupée, ce chip
+                 est affiché à côté de "Afficher en liste" à la place (voir plus bas). -->
+            <ion-chip
+              [class.filtre-ouvert-actif]="filtreOuvertMaintenant()"
+              (click)="basculerOuvertMaintenant()"
+              title="N'afficher que les lieux actuellement ouverts">
+              Ouvert
+            </ion-chip>
+          }
+          @if (filtreQuartier()) {
+            <ion-button
+              fill="clear"
+              size="small"
+              (click)="voirQuartierSurCarte()"
+              aria-label="Voir ce quartier sur la carte"
+              title="Voir ce quartier sur la carte">
+              <ion-icon slot="start" name="map-outline"></ion-icon>
+              Voir sur la carte
+            </ion-button>
+          }
+          @if (!affichageGroupe() && !filtreQuartier()) {
+            <ion-button
+              fill="clear"
+              size="small"
+              (click)="basculerGroupement()"
+              aria-label="Regrouper par ville et quartier"
+              title="Regrouper par ville et quartier">
+              <ion-icon slot="start" name="layers-outline"></ion-icon>
+              Regrouper
+            </ion-button>
+          }
+        </div>
       </div>
 
       @if (erreurChargement(); as erreur) {
@@ -241,15 +238,23 @@
           @if (premiere) {
             <div class="groupe-ville-entete">
               <p class="groupe-ville-titre">{{ groupeVille.ville }}</p>
-              <ion-button
-                fill="clear"
-                size="small"
-                (click)="basculerGroupement()"
-                aria-label="Afficher en liste"
-                title="Afficher en liste">
-                <ion-icon slot="start" name="list-outline"></ion-icon>
-                Afficher en liste
-              </ion-button>
+              <div class="section-entete-droite">
+                <ion-chip
+                  [class.filtre-ouvert-actif]="filtreOuvertMaintenant()"
+                  (click)="basculerOuvertMaintenant()"
+                  title="N'afficher que les lieux actuellement ouverts">
+                  Ouvert
+                </ion-chip>
+                <ion-button
+                  fill="clear"
+                  size="small"
+                  (click)="basculerGroupement()"
+                  aria-label="Afficher en liste"
+                  title="Afficher en liste">
+                  <ion-icon slot="start" name="list-outline"></ion-icon>
+                  Afficher en liste
+                </ion-button>
+              </div>
             </div>
           } @else {
             <p class="groupe-ville-titre">{{ groupeVille.ville }}</p>
@@ -278,9 +283,20 @@
     <div class="carte-lieu-contenu">
       <div class="carte-lieu-ligne">
         <p class="carte-lieu-nom">{{ lieu.nom }}</p>
-        @if (favorisService.estFavori(lieu.id)) {
-          <ion-icon class="carte-lieu-favori" name="heart"></ion-icon>
-        }
+        <ion-button
+          class="carte-lieu-favori-bouton"
+          fill="clear"
+          size="small"
+          (click)="$event.stopPropagation(); basculerFavori(lieu.id)"
+          [attr.aria-label]="favorisService.estFavori(lieu.id) ? 'Retirer des favoris' : 'Ajouter aux favoris'"
+          [title]="favorisService.estFavori(lieu.id) ? 'Retirer des favoris' : 'Ajouter aux favoris'">
+          <ion-icon
+            slot="icon-only"
+            class="carte-lieu-favori"
+            [color]="favorisService.estFavori(lieu.id) ? 'danger' : 'medium'"
+            [name]="favorisService.estFavori(lieu.id) ? 'heart' : 'heart-outline'">
+          </ion-icon>
+        </ion-button>
         @if (notesService.aUneNote(lieu.id)) {
           <ion-icon class="carte-lieu-note" name="create-outline"></ion-icon>
         }
