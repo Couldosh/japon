@@ -9,6 +9,38 @@
   margin-bottom: 10px;
 }
 
+.planning-nav-jours {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  padding-bottom: 12px;
+  scrollbar-width: none;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+.planning-nav-jour {
+  flex: 0 0 auto;
+  min-width: 44px;
+  min-height: 32px;
+  border: none;
+  border-radius: 10px;
+  background: var(--ion-color-light);
+  color: var(--ion-text-color);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.planning-nav-jour-actif {
+  background: var(--ion-color-primary);
+  color: var(--ion-color-primary-contrast);
+}
+
 .planning-filtre-villes {
   display: flex;
   flex-wrap: wrap;

@@ -10,6 +10,20 @@
     }
   </div>
 
+  @if (!chargement() && groupesJour().length > 1) {
+    <div class="planning-nav-jours">
+      @for (groupe of groupesJour(); track groupe.date) {
+        <button
+          class="planning-nav-jour"
+          [class.planning-nav-jour-actif]="groupe.estAujourdhui"
+          (click)="allerAuJour(groupe.date)"
+          [title]="groupe.titre">
+          {{ formaterJourCourt(groupe.date) }}
+        </button>
+      }
+    </div>
+  }
+
   @if (!chargement() && villesDisponibles().length > 1) {
     <div class="planning-filtre-villes">
       <ion-chip [class.filtre-actif]="filtreVille() === null" (click)="choisirVille(null)" title="Afficher toutes les villes">
@@ -55,7 +69,7 @@
     }
 
     @for (groupe of groupesJour(); track groupe.date) {
-      <div class="planning-jour-groupe" [class.planning-jour-groupe-aujourdhui]="groupe.estAujourdhui">
+      <div class="planning-jour-groupe" [class.planning-jour-groupe-aujourdhui]="groupe.estAujourdhui" [attr.data-jour-date]="groupe.date">
         <p class="planning-jour-titre" [class.planning-jour-titre-aujourdhui]="groupe.estAujourdhui">
           {{ groupe.titre }}
           @if (groupe.estAujourdhui) {

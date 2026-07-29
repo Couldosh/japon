@@ -115,6 +115,11 @@ export class HomeComponent implements OnInit {
   // tous les types de lieux dès l'ouverture plutôt que masquer silencieusement
   // activités/magasins tant qu'on n'a pas cliqué sur un autre chip.
   readonly filtreActif = signal<TypeLieu | 'tout'>('tout');
+  // Filtre orthogonal aux chips de type ci-dessus (peut se combiner à n'importe
+  // lequel) : ne garde que les lieux dont l'horaire calculé (estOuvert) est
+  // actuellement vrai. Les lieux sans horaires connus (estOuvert undefined) sont
+  // exclus, comme le badge Ouvert/Fermé de la carte de lieu qui les masque déjà.
+  readonly filtreOuvertMaintenant = signal(false);
   readonly recherche = signal('');
 
   // Filtre quartier, applicable à toutes les vues (Tout/Restaurants/Activités/Magasins)
@@ -200,6 +205,21 @@ export class HomeComponent implements OnInit {
       .slice(0, 10);
   });
 
+  // Jours restants avant le premier hébergement (date d'arrivée la plus proche connue).
+  // Déduit des hébergements déjà chargés plutôt qu'une date de voyage codée en dur.
+  // null si aucun hébergement connu, ou si cette date est déjà passée (le compte à
+  // rebours n'a plus d'intérêt une fois le séjour commencé).
+  readonly joursAvantDepart = computed((): number | null => {
+    const dates = this.hebergements().map(h => h.dateArrivee).filter(Boolean).sort();
+    if (dates.length === 0) return null;
+
+    const depart = new Date(dates[0] + 'T00:00:00');
+    const aujourdhui = new Date();
+    aujourdhui.setHours(0, 0, 0, 0);
+    const jours = Math.round((depart.getTime() - aujourdhui.getTime()) / 86_400_000);
+    return jours >= 0 ? jours : null;
+  });
+
   // Liste filtrée + triée par distance, recalculée automatiquement
   readonly lieuxAffiches = computed(() => {
     const filtre = this.filtreActif();
@@ -214,6 +234,10 @@ export class HomeComponent implements OnInit {
 
     if (filtre !== 'tout') {
       resultat = resultat.filter(l => l.type === filtre);
+    }
+
+    if (this.filtreOuvertMaintenant()) {
+      resultat = resultat.filter(l => l.estOuvert === true);
     }
 
     const quartierFiltre = this.filtreQuartier();
@@ -451,6 +475,10 @@ export class HomeComponent implements OnInit {
     this.filtrePlat.set(null);
     this.filtreCategoriePlat.set('tout');
     this.filtreTypeMagasin.set(null);
+  }
+
+  basculerOuvertMaintenant(): void {
+    this.filtreOuvertMaintenant.set(!this.filtreOuvertMaintenant());
   }
 
   changerVue(vue: Vue): void {

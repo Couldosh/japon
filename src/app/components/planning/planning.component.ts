@@ -13,7 +13,7 @@ import { PlanningService } from '../../service/planning/planning.service';
 import { PlanningActivite } from '../../models/planning-activite.model';
 import { HebergementModel } from '../../models/hebergement.model';
 import { LieuAffichable } from '../../models/lieu-affichable.model';
-import { dateISOAujourdhui, formaterDateGroupe, statutReservation, StatutReservation } from '../../utils/planning';
+import { dateISOAujourdhui, formaterDateCourte, formaterDateGroupe, statutReservation, StatutReservation } from '../../utils/planning';
 
 /** Normalise un nom pour un matching insensible à la casse/aux accents (ex: "Ichiran" ~ "ichirân"). */
 function normaliser(texte: string): string {
@@ -143,6 +143,10 @@ export class PlanningComponent implements OnInit {
       this.dejaScrolleAujourdhui = true;
       setTimeout(() => {
         document.querySelector('.planning-jour-groupe-aujourdhui')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        // `inline: 'start'` aligne la pastille du jour courant au bord gauche de la
+        // mini-nav plutôt que de simplement la rendre visible, pour ne pas laisser
+        // l'utilisateur scroller manuellement parmi les jours déjà passés.
+        document.querySelector('.planning-nav-jour-actif')?.scrollIntoView({ behavior: 'smooth', inline: 'start', block: 'nearest' });
       }, 50);
     });
   }
@@ -222,6 +226,15 @@ export class PlanningComponent implements OnInit {
     const contenu = this.elementRef.nativeElement.closest('ion-content') as
       (HTMLElement & { scrollToTop?: (duration?: number) => Promise<void> }) | null;
     contenu?.scrollToTop?.(300);
+  }
+
+  formaterJourCourt(dateISO: string): string {
+    return formaterDateCourte(dateISO);
+  }
+
+  /** Fait défiler la liste jusqu'au groupe du jour choisi (mini-nav de jours). */
+  allerAuJour(date: string): void {
+    document.querySelector(`[data-jour-date="${date}"]`)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 
   /** Message de l'état vide : distingue une vraie erreur réseau d'un simple filtre ville sans résultat. */

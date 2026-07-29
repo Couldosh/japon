@@ -66,6 +66,14 @@ export function formaterDateGroupe(dateISO: string): string {
   return texte.charAt(0).toUpperCase() + texte.slice(1);
 }
 
+/** Formate une date ISO "yyyy-MM-dd" en libellé compact pour la mini-nav des jours, ex: "Sam 26". */
+export function formaterDateCourte(dateISO: string): string {
+  const [annee, mois, jour] = dateISO.split('-').map(Number);
+  const date = new Date(annee, mois - 1, jour);
+  const jourSemaine = new Intl.DateTimeFormat('fr-FR', { weekday: 'short' }).format(date).replace('.', '');
+  return `${jourSemaine.charAt(0).toUpperCase()}${jourSemaine.slice(1)} ${jour}`;
+}
+
 /** Date du jour au format ISO "yyyy-MM-dd", pour comparer aux dates du planning. */
 export function dateISOAujourdhui(maintenant = new Date()): string {
   return `${maintenant.getFullYear()}-${String(maintenant.getMonth() + 1).padStart(2, '0')}-${String(maintenant.getDate()).padStart(2, '0')}`;

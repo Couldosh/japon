@@ -47,6 +47,12 @@
           title="Filtrer sur les magasins">
           Magasins
         </ion-chip>
+        <ion-chip
+          [class.filtre-actif]="filtreOuvertMaintenant()"
+          (click)="basculerOuvertMaintenant()"
+          title="N'afficher que les lieux actuellement ouverts">
+          Ouvert maintenant
+        </ion-chip>
 
         @if (!affichageGroupe()) {
           <button class="filtre-pilule filtre-pilule-bouton" (click)="pickerQuartierOuvert.set(true)" title="Filtrer par quartier">
@@ -110,6 +116,19 @@
     <ion-refresher slot="fixed" (ionRefresh)="rafraichir($event)">
       <ion-refresher-content></ion-refresher-content>
     </ion-refresher>
+
+    @if (joursAvantDepart() !== null) {
+      <div class="compte-a-rebours">
+        <span class="detail-badge">
+          <ion-icon name="calendar-outline"></ion-icon>
+          @if (joursAvantDepart() === 0) {
+            C'est aujourd'hui, bon voyage !
+          } @else {
+            J-{{ joursAvantDepart() }} avant le départ
+          }
+        </span>
+      </div>
+    }
   }
 
   <!-- Toujours présent (juste masqué) pour ne pas recréer la carte à chaque
