@@ -82,11 +82,28 @@
   }
 }
 
-.filtre-pilule-bouton {
+// Propriétés communes aux boutons "reset" ci-dessous (regroupées pour limiter
+// la taille du CSS compilé, cf. budget anyComponentStyle dans angular.json).
+.filtre-pilule-bouton,
+.section-recents-entete,
+.picker-quartier-option,
+.recent-carte,
+.detail-badge-lien,
+.action-icone-bouton {
   border: none;
   font: inherit;
-  color: inherit;
   cursor: pointer;
+}
+
+.section-recents-entete,
+.recent-carte,
+.detail-badge-lien,
+.action-icone-bouton {
+  -webkit-tap-highlight-color: transparent;
+}
+
+.filtre-pilule-bouton {
+  color: inherit;
   padding-right: 8px;
 
   span {
@@ -126,14 +143,11 @@
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  border: none;
   background: transparent;
-  font: inherit;
   text-align: left;
   color: var(--ion-text-color);
   padding: 10px 8px;
   border-radius: 10px;
-  cursor: pointer;
 
   ion-icon {
     color: var(--ion-color-primary);
@@ -168,13 +182,9 @@
   width: 100%;
   min-height: 44px;
   padding: 0 16px 0 0;
-  border: none;
   background: transparent;
-  font: inherit;
   color: inherit;
   text-align: left;
-  cursor: pointer;
-  -webkit-tap-highlight-color: transparent;
 
   .section-titre {
     margin: 0;
@@ -213,13 +223,9 @@
   align-items: center;
   gap: 4px;
   background: var(--ion-color-light);
-  border: none;
   border-radius: 12px;
   padding: 10px 6px;
-  font: inherit;
   color: inherit;
-  cursor: pointer;
-  -webkit-tap-highlight-color: transparent;
 }
 
 .recent-emoji {
@@ -455,13 +461,6 @@
   font-weight: 500;
 }
 
-.detail-badge-lien {
-  border: none;
-  font: inherit;
-  cursor: pointer;
-  -webkit-tap-highlight-color: transparent;
-}
-
 .detail-badge-ferme {
   background: var(--ion-color-medium);
   color: var(--ion-color-medium-contrast);
@@ -572,11 +571,7 @@
 // Modificateur pour un <button> (au lieu d'un <a href> externe) dans .detail-actions,
 // ex: "Voir sur la carte" qui navigue dans l'app plutôt que d'ouvrir un lien.
 .action-icone-bouton {
-  border: none;
   background: transparent;
-  font: inherit;
-  cursor: pointer;
-  -webkit-tap-highlight-color: transparent;
 }
 
 .action-icone-cercle {
