@@ -6,10 +6,10 @@
 } @else {
   <div #carteEl class="carte-conteneur"></div>
 
-  @if (aucunFavoriAffiche()) {
+  @if (aucunLieuAffiche()) {
     <div class="carte-etat-vide">
-      <p>Aucun favori à afficher sur la carte.</p>
-      <ion-button fill="outline" size="small" (click)="basculerFiltreFavoris()" title="Afficher tous les lieux">Afficher tous les lieux</ion-button>
+      <p>Aucun lieu ne correspond aux filtres actifs.</p>
+      <ion-button fill="outline" size="small" (click)="filtrerFavoris.set(false); filtrerOuverts.set(false)" title="Afficher tous les lieux">Afficher tous les lieux</ion-button>
     </div>
   }
 
@@ -20,6 +20,15 @@
     [attr.aria-label]="filtrerFavoris() ? 'Afficher tous les lieux' : 'Afficher seulement mes favoris'"
     [attr.title]="filtrerFavoris() ? 'Afficher tous les lieux' : 'Afficher seulement mes favoris'">
     <ion-icon [name]="filtrerFavoris() ? 'heart' : 'heart-outline'"></ion-icon>
+  </button>
+
+  <button
+    class="bouton-ouverts"
+    [class.bouton-ouverts-actif]="filtrerOuverts()"
+    (click)="basculerFiltreOuverts()"
+    [attr.aria-label]="filtrerOuverts() ? 'Afficher tous les lieux' : 'Afficher seulement les lieux ouverts'"
+    [attr.title]="filtrerOuverts() ? 'Afficher tous les lieux' : 'Afficher seulement les lieux ouverts'">
+    <ion-icon name="time-outline"></ion-icon>
   </button>
 
   @if (position()) {

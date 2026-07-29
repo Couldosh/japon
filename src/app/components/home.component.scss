@@ -61,8 +61,18 @@
   --color: var(--ion-color-success-contrast);
 }
 
+// Seul enfant de cette rangée (contrairement à l'autre .filtres, qui aligne
+// plusieurs pilules) : .filtres > * force flex-shrink:0 pour ces dernières,
+// mais un ion-segment doit au contraire pouvoir se compresser nativement pour
+// tenir dans la largeur plutôt que de scroller comme une barre d'onglets cassée.
 .filtres-segment {
   padding-top: 0;
+  overflow-x: visible;
+
+  > * {
+    flex-shrink: 1;
+    min-width: 0;
+  }
 }
 
 .filtre-pilule {
@@ -341,6 +351,15 @@
     --padding-end: 4px;
     min-width: 44px;
     min-height: 44px;
+  }
+
+  // Rapproche la taille du chip "Ouvert" (texte seul, sans icône) de celle des
+  // ion-button voisins (icône + libellé, 44px de haut) pour éviter que les deux
+  // familles de contrôles ne paraissent pas du même niveau hiérarchique.
+  ion-chip {
+    min-height: 32px;
+    font-size: 13px;
+    margin: 0;
   }
 }
 

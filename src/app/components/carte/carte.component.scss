@@ -96,3 +96,30 @@
   background: var(--ion-color-danger);
   color: var(--ion-color-danger-contrast);
 }
+
+.bouton-ouverts {
+  position: absolute;
+  right: 16px;
+  top: 68px;
+  z-index: 1000;
+  width: 44px;
+  height: 44px;
+  border: none;
+  border-radius: 50%;
+  background: var(--ion-color-light);
+  color: var(--ion-color-medium);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+
+  ion-icon {
+    font-size: 20px;
+  }
+}
+
+.bouton-ouverts-actif {
+  background: var(--ion-color-success);
+  color: var(--ion-color-success-contrast);
+}

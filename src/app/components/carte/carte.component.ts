@@ -5,7 +5,7 @@ import {
 } from '@angular/core';
 import { IonIcon, IonButton } from '@ionic/angular/standalone';
 import { addIcons } from 'ionicons';
-import { locateOutline, heart, heartOutline } from 'ionicons/icons';
+import { locateOutline, heart, heartOutline, timeOutline } from 'ionicons/icons';
 import type * as LeafletType from 'leaflet';
 
 import { LieuAffichable } from '../../models/lieu-affichable.model';
@@ -58,13 +58,27 @@ export class CarteComponent implements AfterViewInit, OnDestroy {
 
   /** N'affiche que les lieux favoris sur la carte quand actif. */
   readonly filtrerFavoris = signal(false);
+  /** N'affiche que les lieux actuellement ouverts sur la carte quand actif. Filtre propre à la
+   * Carte (comme filtrerFavoris ci-dessus), indépendant du chip "Ouvert" de la Liste/Favoris —
+   * ce dernier n'est pas accessible ici puisque .section-entete n'existe pas sur cet onglet. */
+  readonly filtrerOuverts = signal(false);
 
-  private readonly lieuxFiltres = computed(() =>
-    this.filtrerFavoris() ? this.lieux().filter(l => this.favorisService.estFavori(l.id)) : this.lieux()
+  private readonly lieuxFiltres = computed(() => {
+    let resultat = this.lieux();
+    if (this.filtrerFavoris()) {
+      resultat = resultat.filter(l => this.favorisService.estFavori(l.id));
+    }
+    if (this.filtrerOuverts()) {
+      resultat = resultat.filter(l => l.estOuvert === true);
+    }
+    return resultat;
+  });
+
+  /** true si au moins un filtre (favoris/ouverts) est actif mais qu'aucun lieu ne correspond
+   * (carte silencieusement vide sinon). */
+  readonly aucunLieuAffiche = computed(() =>
+    (this.filtrerFavoris() || this.filtrerOuverts()) && this.lieuxFiltres().length === 0
   );
-
-  /** true si le filtre favoris est actif mais qu'aucun favori n'est à afficher (carte silencieusement vide sinon). */
-  readonly aucunFavoriAffiche = computed(() => this.filtrerFavoris() && this.lieuxFiltres().length === 0);
 
   @ViewChild('carteEl') private readonly carteEl!: ElementRef<HTMLDivElement>;
 
@@ -83,7 +97,7 @@ export class CarteComponent implements AfterViewInit, OnDestroy {
   private vueInitialeAjustee = false;
 
   constructor() {
-    addIcons({ locateOutline, heart, heartOutline });
+    addIcons({ locateOutline, heart, heartOutline, timeOutline });
 
     effect(() => this.mettreAJourMarqueursLieux(this.lieuxFiltres()));
     effect(() => this.mettreAJourMarqueurPosition(this.position()));
@@ -121,6 +135,10 @@ export class CarteComponent implements AfterViewInit, OnDestroy {
 
   basculerFiltreFavoris(): void {
     this.filtrerFavoris.set(!this.filtrerFavoris());
+  }
+
+  basculerFiltreOuverts(): void {
+    this.filtrerOuverts.set(!this.filtrerOuverts());
   }
 
   /**
