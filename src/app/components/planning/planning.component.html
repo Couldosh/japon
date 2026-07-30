@@ -75,6 +75,11 @@
           @if (groupe.estAujourdhui) {
             <span class="planning-badge-aujourdhui">Aujourd'hui</span>
           }
+          @if (meteoJour(groupe); as meteo) {
+            <span class="planning-jour-meteo" [title]="'Météo prévue à ' + groupe.ville">
+              {{ emojiMeteo(meteo.code) }} {{ meteo.tempMin }}°–{{ meteo.tempMax }}°
+            </span>
+          }
         </p>
 
         @for (hebergement of groupe.departsHebergement; track hebergement.id) {

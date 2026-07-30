@@ -10,10 +10,13 @@ import {
   bedOutline, closeOutline
 } from 'ionicons/icons';
 import { PlanningService } from '../../service/planning/planning.service';
+import { MeteoService } from '../../service/meteo/meteo.service';
 import { PlanningActivite } from '../../models/planning-activite.model';
 import { HebergementModel } from '../../models/hebergement.model';
+import { MeteoJour } from '../../models/meteo.model';
 import { LieuAffichable } from '../../models/lieu-affichable.model';
 import { dateISOAujourdhui, formaterDateCourte, formaterDateGroupe, statutReservation, StatutReservation } from '../../utils/planning';
+import { emojiMeteo } from '../../utils/emoji-meteo';
 
 /** Normalise un nom pour un matching insensible à la casse/aux accents (ex: "Ichiran" ~ "ichirân"). */
 function normaliser(texte: string): string {
@@ -27,6 +30,9 @@ interface GroupeJour {
   activites: PlanningActivite[];
   arriveesHebergement: HebergementModel[];
   departsHebergement: HebergementModel[];
+  /** Ville de la dernière activité du jour (meilleure approximation d'où on
+   * passe la soirée/nuit, y compris un jour de trajet) — sert à la météo. */
+  ville: string;
 }
 
 @Component({
@@ -41,6 +47,7 @@ interface GroupeJour {
 })
 export class PlanningComponent implements OnInit {
   private readonly planningService = inject(PlanningService);
+  private readonly meteoService = inject(MeteoService);
   private readonly elementRef = inject(ElementRef<HTMLElement>);
 
   /** Tous les lieux connus (non filtrés), pour retrouver la fiche détail d'une activité du planning. */
@@ -114,15 +121,25 @@ export class PlanningComponent implements OnInit {
     // hébergement dont la date d'arrivée ou de départ ne correspond à aucun
     // jour du Planning n'aurait nulle part où s'afficher.
     const hebergements = this.hebergements();
-    return [...groupes.entries()].map(([date, activites]) => ({
-      date,
-      titre: formaterDateGroupe(date),
-      estAujourdhui: date === aujourdhui,
-      activites,
-      arriveesHebergement: hebergements.filter(h => h.dateArrivee === date),
-      departsHebergement: hebergements.filter(h => h.dateDepart === date)
-    }));
+    return [...groupes.entries()].map(([date, activites]) => {
+      const villesJour = activites.map(a => a.ville?.trim()).filter((v): v is string => !!v);
+      return {
+        date,
+        titre: formaterDateGroupe(date),
+        estAujourdhui: date === aujourdhui,
+        activites,
+        arriveesHebergement: hebergements.filter(h => h.dateArrivee === date),
+        departsHebergement: hebergements.filter(h => h.dateDepart === date),
+        ville: villesJour.length > 0 ? villesJour[villesJour.length - 1] : ''
+      };
+    });
   });
+
+  /** Prévisions météo connues, indexées par "ville|dateISO" (voir MeteoService : best-effort,
+   * une entrée absente signifie simplement "pas de prévision affichable", jamais une erreur). */
+  readonly meteoParVilleEtDate = signal<Map<string, MeteoJour>>(new Map());
+  private readonly villesMeteoChargees = new Set<string>();
+  readonly emojiMeteo = emojiMeteo;
 
   // Ne déclenche le scroll auto qu'une seule fois par ouverture de l'onglet (le
   // composant est détruit/recréé à chaque changement de vue, donc ce flag ne
@@ -149,6 +166,35 @@ export class PlanningComponent implements OnInit {
         document.querySelector('.planning-nav-jour-actif')?.scrollIntoView({ behavior: 'smooth', inline: 'start', block: 'nearest' });
       }, 50);
     });
+
+    // Charge la météo une seule fois par ville rencontrée (pas par jour) : le
+    // service met déjà en cache par ville, mais on évite ici de resouscrire à
+    // chaque recalcul de groupesJour() (ex: changement de filtre ville).
+    effect(() => {
+      for (const groupe of this.groupesJour()) {
+        if (!groupe.ville || this.villesMeteoChargees.has(groupe.ville)) {
+          continue;
+        }
+        this.villesMeteoChargees.add(groupe.ville);
+        const ville = groupe.ville;
+        this.meteoService.getPrevisions(ville).subscribe(previsions => {
+          if (previsions.size === 0) {
+            return;
+          }
+          const fusion = new Map(this.meteoParVilleEtDate());
+          for (const [date, meteo] of previsions) {
+            fusion.set(`${ville}|${date}`, meteo);
+          }
+          this.meteoParVilleEtDate.set(fusion);
+        });
+      }
+    });
+  }
+
+  /** Prévision météo du jour affiché dans l'en-tête de groupe, null si non disponible
+   * (jour hors fenêtre de prévision, ville non géolocalisable, etc. — voir MeteoService). */
+  meteoJour(groupe: GroupeJour): MeteoJour | null {
+    return groupe.ville ? this.meteoParVilleEtDate().get(`${groupe.ville}|${groupe.date}`) ?? null : null;
   }
 
   ngOnInit(): void {
