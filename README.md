@@ -123,15 +123,17 @@ npm run dupliquer-quartiers -- --appliquer
 
 #### `fetch-localisation.mjs` — retrouve les lieux sans localisation
 
-Pour les lignes des feuilles Restaurants/Activités/Magasins/Hébergement dont la colonne "Localisation" est vide, cherche l'établissement sur Places (par nom + quartier, ou nom + adresse pour l'onglet Hébergement qui n'a pas de colonne Quartier) et écrit un lien Google Maps (`https://www.google.com/maps?q=<lat>,<lng>`) reconnu par `GeolocationService.extraireCoordonnees` côté app.
+Pour les lignes des feuilles Restaurants/Activités/Magasins/Hébergement dont la colonne "Localisation" est vide, cherche l'établissement sur Places (par nom + quartier, ou nom + adresse pour l'onglet Hébergement qui n'a pas de colonne Quartier) et écrit un lien Google Maps (`https://www.google.com/maps/search/?api=1&query=<lat>,<lng>&query_place_id=<id>`) reconnu par `GeolocationService.extraireCoordonnees` côté app — `query_place_id` fait que Google Maps affiche la fiche complète du lieu au clic (nom, avis, horaires, photos...) plutôt qu'un simple pin.
 
 ```bash
 node --env-file=.env scripts/fetch-localisation.mjs                 # aperçu, aucune écriture
 node --env-file=.env scripts/fetch-localisation.mjs --appliquer     # écrit dans le Sheet
 node --env-file=.env scripts/fetch-localisation.mjs --rafraichir    # ignore le cache de recherche
+node --env-file=.env scripts/fetch-localisation.mjs --reformater    # retraite aussi l'ancien format "?q=lat,lng" (pin seul)
 
 npm run localisation
 npm run localisation -- --appliquer
+npm run localisation -- --reformater
 ```
 
 #### `fetch-menu.mjs` — retrouve les liens de menu des restaurants

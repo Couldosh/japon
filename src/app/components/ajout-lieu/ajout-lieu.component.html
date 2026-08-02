@@ -106,7 +106,30 @@
         </ion-item>
       }
 
-      @if (estUnLieu()) {
+      @if (estTypeFranchisable()) {
+        <ion-item lines="none" class="ajout-lieu-toggle-franchise">
+          <ion-toggle
+            [checked]="estFranchise()"
+            (ionChange)="estFranchise.set($any($event.detail).checked)">
+            Franchise (une instance par quartier)
+          </ion-toggle>
+        </ion-item>
+        @if (estFranchise()) {
+          <p class="ajout-lieu-hint">
+            À l'ajout, une recherche Google Places sera lancée pour "{{ nom() || 'ce nom' }}" dans chacun des
+            {{ quartiersConnus().length }} quartiers connus du Sheet ; une ligne sera ajoutée pour chaque quartier
+            où une instance est trouvée.
+          </p>
+          @if (quartiersDejaCouverts().length) {
+            <p class="ajout-lieu-hint">
+              Déjà présent dans {{ quartiersDejaCouverts().length }} quartier{{ quartiersDejaCouverts().length > 1 ? 's' : '' }}
+              ({{ quartiersDejaCouverts().join(', ') }}) — ignoré{{ quartiersDejaCouverts().length > 1 ? 's' : '' }} automatiquement.
+            </p>
+          }
+        }
+      }
+
+      @if (estUnLieu() && !estLieuFranchise()) {
         <button class="ajout-lieu-quartier" (click)="pickerQuartierOuvert.set(true)" title="Choisir un quartier">
           <ion-icon name="funnel-outline"></ion-icon>
           <span>{{ quartier() ?? 'Choisir un quartier *' }}</span>
@@ -289,10 +312,23 @@
       <ion-button expand="block" class="ajout-lieu-submit" [disabled]="!formValide() || enCours()" (click)="soumettre()" title="Ajouter au Sheet">
         @if (enCours()) {
           <ion-spinner name="dots"></ion-spinner>
+        } @else if (estLieuFranchise()) {
+          Rechercher et ajouter dans chaque quartier
         } @else {
           Ajouter au Sheet
         }
       </ion-button>
+
+      @if (progressionFranchise(); as prog) {
+        <div class="ajout-lieu-progression-franchise">
+          <p class="ajout-lieu-hint">
+            Recherche quartier {{ prog.traites }}/{{ prog.total }} ({{ prog.trouves }} trouvé{{ prog.trouves > 1 ? 's' : '' }})...
+          </p>
+          <ion-button fill="clear" size="small" color="danger" (click)="annulerFranchise()" title="Annuler la recherche">
+            Annuler
+          </ion-button>
+        </div>
+      }
 
       @if (raisonInvalide() && !enCours()) {
         <p class="ajout-lieu-hint">{{ raisonInvalide() }}</p>

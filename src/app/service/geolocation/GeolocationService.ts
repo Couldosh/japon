@@ -80,8 +80,11 @@ export class GeolocationService {
       };
     }
 
-    // Format 2 : ...?q=35.6595,139.7005
-    const matchQuery = lienGoogleMaps.match(/[?&]q=(-?\d+\.\d+),(-?\d+\.\d+)/);
+    // Format 2 : ...?q=35.6595,139.7005 (ancien format écrit par l'app/les scripts) ou
+    // ...?api=1&query=35.6595,139.7005&query_place_id=... (format actuel, voir
+    // PlacesSearchService/fetch-localisation.mjs : query_place_id permet à Google Maps
+    // d'afficher la fiche du lieu — nom, avis, horaires... — au clic, pas juste un pin).
+    const matchQuery = lienGoogleMaps.match(/[?&](?:q|query)=(-?\d+\.\d+),(-?\d+\.\d+)/);
     if (matchQuery) {
       return {
         latitude: parseFloat(matchQuery[1]),

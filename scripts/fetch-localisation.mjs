@@ -6,15 +6,26 @@
  * (colonne "Quartier" pour les lieux, "Adresse" pour les hébergements), et
  * écrit un lien Google Maps exploitable par l'app dans cette colonne.
  *
- * Le lien écrit est construit nous-mêmes au format "https://www.google.com/
- * maps?q=<lat>,<lng>" plutôt que d'utiliser le googleMapsUri renvoyé par
- * l'API (souvent un lien par cid, sans coordonnées lisibles) : ce format est
- * garanti reconnu par GeolocationService.extraireCoordonnees côté app.
+ * Le lien écrit est construit nous-mêmes (pas le googleMapsUri renvoyé par
+ * l'API, souvent un lien par cid sans coordonnées lisibles) au format
+ * "https://www.google.com/maps/search/?api=1&query=<lat>,<lng>&query_place_id=<id>"
+ * : le paramètre query_place_id fait que Google Maps affiche la fiche
+ * complète du lieu au clic (nom, avis, horaires, photos...) plutôt qu'un
+ * simple pin. Repli sur l'ancien format "?q=<lat>,<lng>" (pin seul) si l'API
+ * ne renvoie pas d'id pour le résultat. Les deux formats sont reconnus par
+ * GeolocationService.extraireCoordonnees côté app.
  *
  * Par défaut le script ne fait qu'un aperçu (aucune écriture) : les
  * correspondances trouvées via une recherche floue peuvent se tromper
  * d'enseigne, mieux vaut les relire avant d'écrire dans le Sheet. Passer
  * --appliquer pour écrire réellement les liens trouvés.
+ *
+ * Par défaut, seules les lignes sans Localisation sont traitées. Passer
+ * --reformater pour aussi retraiter les lignes déjà au format "?q=lat,lng"
+ * (écrit par une version antérieure de ce script, avant query_place_id) et
+ * les remplacer par le nouveau format — utile pour corriger a posteriori les
+ * lignes déjà présentes dans le Sheet, sans re-rechercher/écraser les
+ * Localisation renseignées manuellement par un membre du groupe.
  *
  * Cache local (scripts/.cache/localisation.json) : chaque résultat de
  * recherche Places est mémorisé par (feuille, nom, quartier) et réutilisé tel
@@ -35,6 +46,7 @@
  *   node --env-file=.env scripts/fetch-localisation.mjs               (aperçu)
  *   node --env-file=.env scripts/fetch-localisation.mjs --appliquer   (écrit dans le Sheet)
  *   node --env-file=.env scripts/fetch-localisation.mjs --rafraichir  (ignore le cache)
+ *   node --env-file=.env scripts/fetch-localisation.mjs --reformater  (retraite aussi l'ancien format "?q=lat,lng")
  */
 
 import {
@@ -48,6 +60,12 @@ const SPREADSHEET_ID = requireEnv('SPREADSHEET_ID');
 const PLACES_API_KEY = requireEnv('PLACES_API_KEY');
 const APPLIQUER = process.argv.includes('--appliquer');
 const RAFRAICHIR = process.argv.includes('--rafraichir');
+const REFORMATER = process.argv.includes('--reformater');
+
+// Format exact écrit par une version antérieure de ce script (sans query_place_id) —
+// seules les lignes correspondant EXACTEMENT à ce format sont retraitées avec
+// --reformater, pour ne jamais toucher un lien Google Maps saisi/collé manuellement.
+const ANCIEN_FORMAT = /^https:\/\/www\.google\.com\/maps\?q=-?\d+\.\d+,-?\d+\.\d+$/;
 
 // gid des onglets, repris de src/app/service/*/*.service.ts. `colonneContexte`
 // est le champ utilisé en plus du nom pour désambiguïser la recherche Places :
@@ -76,6 +94,14 @@ function extraireContexte(valeur, colonneContexte) {
   return colonneContexte === 'Quartier' ? premierQuartier(valeur) : (valeur?.trim() || null);
 }
 
+// Même logique que construireLienLocalisation() dans places-search.service.ts côté app.
+function construireLien({ latitude, longitude }, placeId) {
+  if (placeId) {
+    return `https://www.google.com/maps/search/?api=1&query=${latitude},${longitude}&query_place_id=${encodeURIComponent(placeId)}`;
+  }
+  return `https://www.google.com/maps?q=${latitude},${longitude}`;
+}
+
 async function chercherEtablissement(nom, contexte) {
   const textQuery = contexte ? `${nom} ${contexte}` : nom;
 
@@ -85,7 +111,7 @@ async function chercherEtablissement(nom, contexte) {
       'Content-Type': 'application/json',
       'X-Goog-Api-Key': PLACES_API_KEY,
       // Adapter si Google fait évoluer le nom des champs de l'API Places (New).
-      'X-Goog-FieldMask': 'places.displayName,places.formattedAddress,places.location',
+      'X-Goog-FieldMask': 'places.id,places.displayName,places.formattedAddress,places.location',
     },
     body: JSON.stringify({ textQuery, maxResultCount: 1 }),
   });
@@ -126,12 +152,16 @@ async function traiterFeuille(sheets, { gid, colonneContexte }, cache) {
     const ligne = lignes[i];
     const nom = ligne[idxNom]?.trim();
     const localisation = ligne[idxLocalisation]?.trim();
+    const aReformater = REFORMATER && !!localisation && ANCIEN_FORMAT.test(localisation);
 
-    if (!nom || localisation) continue; // déjà renseigné, ou ligne sans nom : rien à faire
+    if (!nom || (localisation && !aReformater)) continue; // déjà renseigné (et pas à reformater), ou ligne sans nom
 
     const contexte = idxContexte !== -1 ? extraireContexte(ligne[idxContexte], colonneContexte) : null;
     const cle = cleCache(titre, nom, contexte);
-    const entreeCache = !RAFRAICHIR ? cache[cle] : undefined;
+    // En reformatage, on ignore systématiquement le cache : une entrée mise en cache avant
+    // ce correctif ne contient pas l'id du lieu (l'ancien fieldMask ne le demandait pas), la
+    // réutiliser reconstruirait le même ancien lien "?q=lat,lng" sans rien corriger.
+    const entreeCache = !RAFRAICHIR && !aReformater ? cache[cle] : undefined;
 
     try {
       let etablissement;
@@ -148,13 +178,12 @@ async function traiterFeuille(sheets, { gid, colonneContexte }, cache) {
         console.warn(`  ${nom} : aucun établissement (avec localisation) trouvé sur Places.${entreeCache ? ' (depuis le cache)' : ''}`);
         nbIntrouvables++;
       } else {
-        const { latitude, longitude } = etablissement.location;
-        const lien = `https://www.google.com/maps?q=${latitude},${longitude}`;
+        const lien = construireLien(etablissement.location, etablissement.id);
 
         // Log le résultat matché pour permettre de vérifier que c'est la bonne
         // enseigne avant d'appliquer (les enseignes à succursales multiples,
         // ex: Daiso, Uniqlo, sont ambiguës même avec le quartier en indice).
-        console.log(`  ${nom} -> ${etablissement.displayName?.text ?? '?'} (${etablissement.formattedAddress ?? 'adresse inconnue'})${entreeCache ? ' (depuis le cache)' : ''}`);
+        console.log(`  ${nom} -> ${etablissement.displayName?.text ?? '?'} (${etablissement.formattedAddress ?? 'adresse inconnue'})${entreeCache ? ' (depuis le cache)' : ''}${aReformater ? ' [reformatage]' : ''}`);
         console.log(`    ${lien}`);
         nbTrouves++;
 

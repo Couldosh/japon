@@ -1,6 +1,6 @@
 import { Component, DestroyRef, OnInit, computed, inject, output, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { switchMap } from 'rxjs';
+import { catchError, concatMap, from, of, Subscription, switchMap, tap, toArray } from 'rxjs';
 import {
   IonHeader, IonToolbar, IonTitle, IonButtons, IonButton, IonIcon, IonContent,
   IonChip, IonItem, IonInput, IonTextarea, IonModal, IonSpinner, IonToggle, AlertController
@@ -15,7 +15,11 @@ import { VilleService } from '../../service/ville/ville.service';
 import { VilleModel } from '../../models/ville.model';
 import { PlatService } from '../../service/plat/plat.service';
 import { Plat, PlatCategory } from '../../models/plat.model';
-import { PlacesSearchService } from '../../service/google/places-search.service';
+import { PlacesSearchService, ResultatPlaces } from '../../service/google/places-search.service';
+import { RestaurantService } from '../../service/restaurant/restaurant.service';
+import { RestaurantModel } from '../../models/restaurant.model';
+import { MagasinService } from '../../service/magasin/magasin.service';
+import { MagasinModel } from '../../models/magasin.model';
 
 type TypeAjout = 'restaurant' | 'activite' | 'magasin' | 'plat' | 'quartier';
 
@@ -46,6 +50,10 @@ const GID_VILLES = '357846773';
 /** "Plat" et "Quartier" ne sont pas des lieux (pas de Quartier/Localisation) : traités à part dans le formulaire. */
 const TYPES_LIEU: TypeAjout[] = ['restaurant', 'activite', 'magasin'];
 
+/** Types pour lesquels la case "Franchise" est proposée : restaurants et magasins ont
+ * de vraies chaînes multi-quartiers (konbini, fast-foods...), pas les activités. */
+const TYPES_FRANCHISABLES: TypeAjout[] = ['restaurant', 'magasin'];
+
 /**
  * Formulaire d'ajout d'un lieu (restaurant/activité/magasin), qui écrit
  * directement dans le Google Sheet via SheetsWriteService — voir
@@ -68,8 +76,14 @@ export class AjoutLieuComponent implements OnInit {
   private readonly villeService = inject(VilleService);
   private readonly platService = inject(PlatService);
   private readonly placesSearch = inject(PlacesSearchService);
+  private readonly restaurantService = inject(RestaurantService);
+  private readonly magasinService = inject(MagasinService);
   private readonly alertController = inject(AlertController);
   private readonly destroyRef = inject(DestroyRef);
+
+  /** Souscription de la recherche franchise en cours, pour permettre son annulation
+   * (annulerFranchise()) — les quartiers déjà écrits avant l'annulation restent acquis. */
+  private franchiseSubscription: Subscription | null = null;
 
   readonly ferme = output<void>();
   readonly ajoute = output<string>();
@@ -77,6 +91,10 @@ export class AjoutLieuComponent implements OnInit {
   readonly type = signal<TypeAjout>('restaurant');
   readonly nom = signal('');
   readonly quartier = signal<string | null>(null);
+  /** Restaurant "franchise" : pas de quartier unique à choisir, une instance est
+   * recherchée via Google Places dans chaque quartier connu du Sheet à la soumission. */
+  readonly estFranchise = signal(false);
+  readonly progressionFranchise = signal<{ traites: number; trouves: number; total: number } | null>(null);
   readonly liens = signal('');
   readonly localisation = signal('');
   readonly description = signal('');
@@ -110,6 +128,8 @@ export class AjoutLieuComponent implements OnInit {
   private readonly quartiers = signal<QuartierModel[]>([]);
   private readonly villes = signal<VilleModel[]>([]);
   private readonly platsBruts = signal<Plat[]>([]);
+  private readonly restaurantsBruts = signal<RestaurantModel[]>([]);
+  private readonly magasinsBruts = signal<MagasinModel[]>([]);
 
   /** Noms de plats connus (feuille "Plats"), pour le sélecteur du formulaire Restaurant. */
   readonly platsDisponibles = computed(() =>
@@ -138,6 +158,56 @@ export class AjoutLieuComponent implements OnInit {
       .map(([ville, quartiers]) => ({ ville, quartiers: [...quartiers].sort((a, b) => a.localeCompare(b)) }));
   });
 
+  /** Liste à plat de tous les quartiers connus (toutes villes confondues), pour la
+   * recherche Google Places quartier par quartier d'un restaurant "franchise". */
+  readonly quartiersConnus = computed(() => this.quartiersParVille().flatMap(g => g.quartiers));
+
+  /** Par type franchisable (restaurant/magasin), nom de lieu normalisé -> Set des quartiers
+   * (normalisés) où il existe déjà dans le Sheet, pour ne pas rechercher/ajouter en double une
+   * instance de franchise déjà présente. Un magasin peut avoir plusieurs quartiers (colonne à
+   * virgules) contrairement à un restaurant, d'où indexerLieu() prenant un tableau de quartiers. */
+  private readonly quartiersParNomParType = computed(() => {
+    const parType = new Map<TypeAjout, Map<string, Set<string>>>();
+
+    const indexerLieu = (type: TypeAjout, nom: string | null | undefined, quartiersDuLieu: (string | null | undefined)[]) => {
+      const nomNormalise = normaliser(nom ?? '');
+      if (!nomNormalise) return;
+      if (!parType.has(type)) {
+        parType.set(type, new Map());
+      }
+      const parNom = parType.get(type)!;
+      if (!parNom.has(nomNormalise)) {
+        parNom.set(nomNormalise, new Set());
+      }
+      const quartiersExistants = parNom.get(nomNormalise)!;
+      for (const q of quartiersDuLieu) {
+        const quartierNormalise = normaliser(q ?? '');
+        if (quartierNormalise) {
+          quartiersExistants.add(quartierNormalise);
+        }
+      }
+    };
+
+    for (const r of this.restaurantsBruts()) {
+      indexerLieu('restaurant', r.Nom, [r.Quartier?.Nom]);
+    }
+    for (const m of this.magasinsBruts()) {
+      indexerLieu('magasin', m.Nom, (m.Quartier ?? []).map(q => q.Nom));
+    }
+
+    return parType;
+  });
+
+  /** Quartiers connus (quartiersConnus()) où un lieu du type et du nom actuellement saisis
+   * existe déjà — affiché comme indice, et exclus de la recherche par soumettreFranchise(). */
+  readonly quartiersDejaCouverts = computed(() => {
+    const nomNormalise = normaliser(this.nom().trim());
+    if (!nomNormalise) return [];
+    const existants = this.quartiersParNomParType().get(this.type())?.get(nomNormalise);
+    if (!existants?.size) return [];
+    return this.quartiersConnus().filter(q => existants.has(normaliser(q)));
+  });
+
   /** Villes déjà connues dans la feuille de référence "Villes" (VilleService), pour choisir
    * plutôt que ressaisir une ville existante — et détecter si une saisie manuelle correspond
    * à une nouvelle ville à ajouter au Sheet (voir soumettreQuartier()). */
@@ -153,9 +223,13 @@ export class AjoutLieuComponent implements OnInit {
     this.nouvelleVilleQuartier().trim() || this.villeQuartier()
   );
 
+  readonly estTypeFranchisable = computed(() => TYPES_FRANCHISABLES.includes(this.type()));
+  readonly estLieuFranchise = computed(() => this.estTypeFranchisable() && this.estFranchise());
+
   readonly formValide = computed(() => {
     if (!this.nom().trim()) return false;
     if (this.type() === 'quartier') return !!this.villeAAppliquer();
+    if (this.estLieuFranchise()) return true;
     return this.estUnLieu() ? !!this.quartier() : true;
   });
 
@@ -169,7 +243,7 @@ export class AjoutLieuComponent implements OnInit {
     if (this.type() === 'quartier' && !this.villeAAppliquer()) {
       return 'Choisis ou saisis une ville.';
     }
-    if (this.estUnLieu() && !this.quartier()) {
+    if (this.estUnLieu() && !this.quartier() && !this.estLieuFranchise()) {
       return 'Choisis un quartier.';
     }
     return null;
@@ -186,6 +260,7 @@ export class AjoutLieuComponent implements OnInit {
     || this.quartier() !== null
     || this.villeQuartier() !== null
     || this.platsSelectionnes().length > 0
+    || this.estFranchise()
   );
 
   constructor() {
@@ -222,11 +297,22 @@ export class AjoutLieuComponent implements OnInit {
     this.platService.getPlats(forceRefresh)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe(plats => this.platsBruts.set(plats));
+
+    this.restaurantService.getRestaurants(forceRefresh)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(restaurants => this.restaurantsBruts.set(restaurants));
+
+    this.magasinService.getMagasins(forceRefresh)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(magasins => this.magasinsBruts.set(magasins));
   }
 
   changerType(type: TypeAjout): void {
     this.type.set(type);
     this.rechercheMessage.set(null);
+    if (!TYPES_FRANCHISABLES.includes(type)) {
+      this.estFranchise.set(false);
+    }
   }
 
   choisirQuartier(nom: string): void {
@@ -413,7 +499,164 @@ export class AjoutLieuComponent implements OnInit {
       return;
     }
 
+    if (this.estLieuFranchise()) {
+      this.soumettreFranchise();
+      return;
+    }
+
     this.ecrire(this.type());
+  }
+
+  /**
+   * Cas "franchise" (restaurant ou magasin) : pas de quartier unique saisi par
+   * l'utilisateur — on recherche une instance via Google Places ("Nom quartier") dans
+   * chacun des quartiers connus du Sheet (quartiersConnus()) qui n'ont pas déjà cette
+   * enseigne (quartiersDejaCouverts()), séquentiellement (concatMap) pour rester dans
+   * un rythme raisonnable côté API Places/Sheets et pouvoir afficher une progression.
+   * Une ligne n'est ajoutée que pour les quartiers où Places trouve un résultat ; une
+   * erreur (réseau, quota) sur un quartier donné est traitée comme un "non trouvé"
+   * pour ce quartier plutôt que d'interrompre toute la recherche. Demande confirmation
+   * avant de lancer (le nombre de requêtes Places peut être élevé), et peut être
+   * interrompue en cours de route via annulerFranchise() — les quartiers déjà écrits
+   * avant l'annulation restent acquis, seuls les quartiers restants ne sont pas traités.
+   */
+  private async soumettreFranchise(): Promise<void> {
+    const type = this.type();
+    const nom = this.nom().trim();
+    const dejaCouverts = this.quartiersDejaCouverts();
+    const dejaCouvertsSet = new Set(dejaCouverts);
+    const quartiers = this.quartiersConnus().filter(q => !dejaCouvertsSet.has(q));
+
+    if (quartiers.length === 0) {
+      this.erreur.set(
+        dejaCouverts.length > 0
+          ? `"${nom}" est déjà présent dans les ${dejaCouverts.length} quartier${dejaCouverts.length > 1 ? 's' : ''} connu${dejaCouverts.length > 1 ? 's' : ''} du Sheet — rien à ajouter.`
+          : 'Aucun quartier connu dans le Sheet pour rechercher cette franchise.'
+      );
+      return;
+    }
+
+    if (!(await this.confirmerRechercheFranchise(nom, quartiers.length))) {
+      return;
+    }
+
+    this.enCours.set(true);
+    this.erreur.set(null);
+    this.progressionFranchise.set({ traites: 0, trouves: 0, total: quartiers.length });
+
+    this.franchiseSubscription = from(quartiers)
+      .pipe(
+        concatMap(quartierCourant =>
+          this.placesSearch.rechercher(nom, quartierCourant).pipe(
+            catchError(() => of(null)),
+            switchMap(resultat =>
+              resultat
+                ? this.sheetsWrite
+                    .ajouterLigne(GID_PAR_TYPE[type], this.construireValeursFranchise(type, quartierCourant, resultat))
+                    .pipe(switchMap(() => of(true)), catchError(() => of(false)))
+                : of(false)
+            ),
+            tap(ajoute => {
+              const etat = this.progressionFranchise();
+              if (etat) {
+                this.progressionFranchise.set({
+                  traites: etat.traites + 1,
+                  trouves: etat.trouves + (ajoute ? 1 : 0),
+                  total: etat.total,
+                });
+              }
+            })
+          )
+        ),
+        toArray(),
+        takeUntilDestroyed(this.destroyRef)
+      )
+      .subscribe(resultats => {
+        const trouves = resultats.filter(Boolean).length;
+        const suffixeDejaCouverts = dejaCouverts.length > 0
+          ? ` (${dejaCouverts.length} déjà couvert${dejaCouverts.length > 1 ? 's' : ''}, ignoré${dejaCouverts.length > 1 ? 's' : ''})`
+          : '';
+        this.franchiseSubscription = null;
+        this.enCours.set(false);
+        this.progressionFranchise.set(null);
+        this.reinitialiser();
+        this.rafraichirListesReference(true);
+        this.rechercheMessage.set(
+          trouves > 0
+            ? `Franchise "${nom}" ajoutée dans ${trouves} nouveau${trouves > 1 ? 'x' : ''} quartier${trouves > 1 ? 's' : ''} sur ${quartiers.length} recherché${quartiers.length > 1 ? 's' : ''}${suffixeDejaCouverts}.`
+            : `Aucune nouvelle instance de "${nom}" trouvée sur Google Places parmi les ${quartiers.length} quartier${quartiers.length > 1 ? 's' : ''} restant${quartiers.length > 1 ? 's' : ''}${suffixeDejaCouverts}.`
+        );
+        this.ajoute.emit(type);
+      });
+  }
+
+  /** Confirmation avant de lancer potentiellement de nombreuses requêtes Google Places
+   * (facturées au-delà d'un certain quota) et l'écriture des lignes correspondantes. */
+  private async confirmerRechercheFranchise(nom: string, total: number): Promise<boolean> {
+    const alert = await this.alertController.create({
+      header: 'Lancer la recherche ?',
+      message:
+        `${total} recherche${total > 1 ? 's' : ''} Google Places va${total > 1 ? 'nt' : ''} être ` +
+        `lancée${total > 1 ? 's' : ''} pour "${nom}" (une par quartier), et une ligne sera ajoutée au ` +
+        `Sheet pour chaque quartier où une instance est trouvée.`,
+      buttons: [
+        { text: 'Annuler', role: 'cancel' },
+        { text: 'Lancer', role: 'confirm' },
+      ],
+    });
+    await alert.present();
+    const { role } = await alert.onDidDismiss();
+    return role === 'confirm';
+  }
+
+  /** Interrompt une recherche franchise en cours (bouton "Annuler" affiché pendant la
+   * progression) : les quartiers déjà traités (et écrits dans le Sheet) restent acquis,
+   * seuls les quartiers restants ne sont pas recherchés/ajoutés. */
+  annulerFranchise(): void {
+    if (!this.franchiseSubscription) return;
+
+    const etat = this.progressionFranchise();
+    this.franchiseSubscription.unsubscribe();
+    this.franchiseSubscription = null;
+    this.enCours.set(false);
+    this.progressionFranchise.set(null);
+    this.rafraichirListesReference(true);
+    if (etat) {
+      this.rechercheMessage.set(
+        `Recherche annulée après ${etat.traites}/${etat.total} quartier${etat.total > 1 ? 's' : ''} ` +
+        `(${etat.trouves} ajouté${etat.trouves > 1 ? 's' : ''}).`
+      );
+    }
+  }
+
+  /** Valeurs d'une ligne (restaurant ou magasin) pour un quartier de franchise donné :
+   * Localisation vient toujours du résultat Places (spécifique à ce quartier) ; Liens ne
+   * reprend le site web Places que s'il existe, plutôt que dupliquer un lien saisi
+   * manuellement sur chaque ligne. */
+  private construireValeursFranchise(type: TypeAjout, quartierCourant: string, resultat: ResultatPlaces): Record<string, string> {
+    const commun: Record<string, string> = {
+      Nom: this.nom().trim(),
+      Quartier: quartierCourant,
+      Liens: resultat.siteWeb ?? '',
+      Localisation: resultat.lienLocalisation,
+      Commentaires: this.commentaires().trim(),
+    };
+
+    if (type === 'restaurant') {
+      return {
+        ...commun,
+        Description: this.description().trim(),
+        Prix: this.prix().trim(),
+        Plats: this.platsSelectionnes().join(', '),
+        Video: this.video().trim(),
+        Menu: this.menu().trim(),
+      };
+    }
+
+    return {
+      ...commun,
+      Type: this.typeMagasin().trim(),
+    };
   }
 
   /**
@@ -531,6 +774,7 @@ export class AjoutLieuComponent implements OnInit {
   private reinitialiser(): void {
     this.nom.set('');
     this.quartier.set(null);
+    this.estFranchise.set(false);
     this.liens.set('');
     this.localisation.set('');
     this.description.set('');

@@ -13,7 +13,26 @@ export interface ResultatPlaces {
   resume: string | null;
 }
 
+/**
+ * Construit le lien Google Maps écrit dans la colonne "Localisation" du Sheet, à partir
+ * des coordonnées et (si disponible) de l'id du lieu renvoyé par Places API (New).
+ *
+ * Avec `query_place_id`, Google Maps affiche la fiche complète du lieu au clic (nom,
+ * avis, horaires, photos...) plutôt qu'un simple pin — voir la doc "Search Action" des
+ * Google Maps URLs (developers.google.com/maps/documentation/urls). Repli sur l'ancien
+ * format `?q=lat,lng` (juste un pin) si l'id est absent, ce qui ne devrait pas arriver en
+ * pratique pour un résultat Places valide, mais reste géré par
+ * GeolocationService.extraireCoordonnees dans les deux cas.
+ */
+function construireLienLocalisation(location: { latitude: number; longitude: number }, placeId?: string): string {
+  if (placeId) {
+    return `https://www.google.com/maps/search/?api=1&query=${location.latitude},${location.longitude}&query_place_id=${encodeURIComponent(placeId)}`;
+  }
+  return `https://www.google.com/maps?q=${location.latitude},${location.longitude}`;
+}
+
 interface PlaceApi {
+  id?: string;
   displayName?: { text?: string };
   formattedAddress?: string;
   location?: { latitude: number; longitude: number };
@@ -50,7 +69,7 @@ export class PlacesSearchService {
             'X-Goog-Api-Key': environment.placesApiKey,
             // Adapter si Google fait évoluer le nom des champs de l'API Places (New).
             'X-Goog-FieldMask':
-              'places.displayName,places.formattedAddress,places.location,places.websiteUri,places.editorialSummary',
+              'places.id,places.displayName,places.formattedAddress,places.location,places.websiteUri,places.editorialSummary',
           },
         }
       )
@@ -63,7 +82,7 @@ export class PlacesSearchService {
           return {
             nom: place.displayName?.text ?? nom,
             adresse: place.formattedAddress ?? null,
-            lienLocalisation: `https://www.google.com/maps?q=${place.location.latitude},${place.location.longitude}`,
+            lienLocalisation: construireLienLocalisation(place.location, place.id),
             siteWeb: place.websiteUri ?? null,
             resume: place.editorialSummary?.text ?? null,
           };
