@@ -10,6 +10,11 @@ export class NotesService {
     return this.notes().get(id) ?? '';
   }
 
+  /** Toutes les notes de l'appareil (export/sauvegarde). */
+  toutes(): ReadonlyMap<string, string> {
+    return this.notes();
+  }
+
   aUneNote(id: string): boolean {
     return !!this.notes().get(id);
   }
@@ -26,6 +31,20 @@ export class NotesService {
     }
     this.notes.set(nouvelles);
     return this.sauvegarder(nouvelles);
+  }
+
+  /** Fusionne des notes importées avec celles de l'appareil : ne remplace jamais une note déjà
+   * présente localement, pour ne pas écraser une saisie plus récente que celle de la sauvegarde. */
+  importer(notes: Readonly<Record<string, string>>): boolean {
+    const fusion = new Map(this.notes());
+    for (const [id, texte] of Object.entries(notes)) {
+      const nettoye = texte?.trim();
+      if (nettoye && !fusion.has(id)) {
+        fusion.set(id, nettoye);
+      }
+    }
+    this.notes.set(fusion);
+    return this.sauvegarder(fusion);
   }
 
   private lireNotes(): Map<string, string> {

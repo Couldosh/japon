@@ -9,6 +9,18 @@
         </ion-searchbar>
       }
       <div class="entete-boutons">
+        <input
+          #inputImport
+          type="file"
+          accept="application/json,.json"
+          class="input-cache"
+          (change)="onFichierImporte($event)">
+        <ion-button fill="clear" (click)="exporterDonnees()" aria-label="Exporter mes favoris et notes" title="Exporter mes favoris et notes">
+          <ion-icon slot="icon-only" name="download-outline"></ion-icon>
+        </ion-button>
+        <ion-button fill="clear" (click)="declencherImport(inputImport)" aria-label="Importer des favoris et notes" title="Importer des favoris et notes">
+          <ion-icon slot="icon-only" name="cloud-upload-outline"></ion-icon>
+        </ion-button>
         <ion-button fill="clear" (click)="ouvrirModaleAjout()" aria-label="Ajouter un lieu" title="Ajouter un lieu">
           <ion-icon slot="icon-only" name="add-outline"></ion-icon>
         </ion-button>
@@ -281,6 +293,14 @@
       </ion-fab-button>
     </ion-fab>
   }
+
+  @if (boutonAujourdhuiVisible()) {
+    <ion-fab slot="fixed" vertical="bottom" horizontal="end">
+      <ion-fab-button size="small" (click)="allerAujourdhuiPlanning()" aria-label="Aller à aujourd'hui" title="Aller à aujourd'hui">
+        <ion-icon name="today-outline"></ion-icon>
+      </ion-fab-button>
+    </ion-fab>
+  }
 </ion-content>
 
 <ng-template #carteLieuTpl let-lieu>
@@ -307,6 +327,9 @@
         </ion-button>
         @if (notesService.aUneNote(lieu.id)) {
           <ion-icon class="carte-lieu-note" name="create-outline"></ion-icon>
+        }
+        @if (nouveauteService.estNouveau(lieu.id)) {
+          <ion-badge color="tertiary">Nouveau</ion-badge>
         }
         @if (lieu.estOuvert !== undefined) {
           <ion-badge [color]="lieu.estOuvert ? 'success' : 'medium'">
@@ -445,6 +468,10 @@
             }
 
             <div class="detail-actions">
+              <button class="action-icone action-icone-bouton" (click)="partagerLieu(detail)" title="Partager ce lieu">
+                <span class="action-icone-cercle"><ion-icon name="share-outline"></ion-icon></span>
+                <span class="action-icone-label">Partager</span>
+              </button>
               @if (detail.data.latitude != null && detail.data.longitude != null) {
                 <button class="action-icone action-icone-bouton" (click)="voirLieuSurCarte(detail.data.latitude, detail.data.longitude)" title="Voir sur la carte">
                   <span class="action-icone-cercle"><ion-icon name="map-outline"></ion-icon></span>
@@ -534,6 +561,10 @@
             }
 
             <div class="detail-actions">
+              <button class="action-icone action-icone-bouton" (click)="partagerLieu(detail)" title="Partager ce lieu">
+                <span class="action-icone-cercle"><ion-icon name="share-outline"></ion-icon></span>
+                <span class="action-icone-label">Partager</span>
+              </button>
               @if (detail.data.latitude != null && detail.data.longitude != null) {
                 <button class="action-icone action-icone-bouton" (click)="voirLieuSurCarte(detail.data.latitude, detail.data.longitude)" title="Voir sur la carte">
                   <span class="action-icone-cercle"><ion-icon name="map-outline"></ion-icon></span>
@@ -607,6 +638,10 @@
             }
 
             <div class="detail-actions">
+              <button class="action-icone action-icone-bouton" (click)="partagerLieu(detail)" title="Partager ce lieu">
+                <span class="action-icone-cercle"><ion-icon name="share-outline"></ion-icon></span>
+                <span class="action-icone-label">Partager</span>
+              </button>
               @if (detail.data.latitude != null && detail.data.longitude != null) {
                 <button class="action-icone action-icone-bouton" (click)="voirLieuSurCarte(detail.data.latitude, detail.data.longitude)" title="Voir sur la carte">
                   <span class="action-icone-cercle"><ion-icon name="map-outline"></ion-icon></span>

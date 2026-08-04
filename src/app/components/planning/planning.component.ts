@@ -283,6 +283,17 @@ export class PlanningComponent implements OnInit {
     document.querySelector(`[data-jour-date="${date}"]`)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 
+  /** Un des groupes de jour affichés correspond-il à aujourd'hui ? (le voyage peut être fini/pas commencé). */
+  aUnJourAujourdhui(): boolean {
+    return this.groupesJour().some(g => g.estAujourdhui);
+  }
+
+  /** Bouton flottant "Aujourd'hui" (home.component) : re-scroll au jour courant après que
+   * l'auto-scroll d'ouverture (voir constructor()) ait défilé une fois pour de bon. */
+  allerAujourdhui(): void {
+    this.allerAuJour(dateISOAujourdhui());
+  }
+
   /** Message de l'état vide : distingue une vraie erreur réseau d'un simple filtre ville sans résultat. */
   messageVide(): string {
     if (this.erreur()) {

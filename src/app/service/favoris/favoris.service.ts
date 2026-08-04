@@ -23,6 +23,17 @@ export class FavorisService {
     return this.sauvegarder(nouveaux);
   }
 
+  /** Fusionne un ensemble importé (restauration d'une sauvegarde, transfert entre appareils)
+   * avec les favoris actuels : n'écrase jamais, ne fait qu'ajouter. */
+  importer(ids: readonly string[]): boolean {
+    const fusion = new Set(this.favoris());
+    for (const id of ids) {
+      fusion.add(id);
+    }
+    this.favoris.set(fusion);
+    return this.sauvegarder(fusion);
+  }
+
   private lireFavoris(): Set<string> {
     try {
       const stocke = localStorage.getItem(CLE_STOCKAGE);

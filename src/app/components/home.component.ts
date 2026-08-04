@@ -18,7 +18,8 @@ import {
   sunnyOutline, moonOutline, closeOutline, locationOutline,
   openOutline, starOutline, star, starHalf, pricetagOutline, playOutline,
   timeOutline, funnelOutline, layersOutline, chevronDownOutline, checkmarkOutline,
-  calendarOutline, alarmOutline, createOutline, addOutline, arrowUpOutline
+  calendarOutline, alarmOutline, createOutline, addOutline, arrowUpOutline,
+  shareOutline, downloadOutline, cloudUploadOutline, todayOutline
 } from 'ionicons/icons';
 
 import { RestaurantService } from '../service/restaurant/restaurant.service';
@@ -31,6 +32,7 @@ import { ThemeService } from '../service/theme/theme.service';
 import { FavorisService } from '../service/favoris/favoris.service';
 import { NotesService } from '../service/notes/notes.service';
 import { VusRecemmentService } from '../service/vus-recemment/vus-recemment.service';
+import { NouveauteService } from '../service/nouveaute/nouveaute.service';
 import { LieuAffichable, TypeLieu } from '../models/lieu-affichable.model';
 import { RestaurantModel } from '../models/restaurant.model';
 import { ActiviteModel } from '../models/activite.model';
@@ -94,6 +96,7 @@ export class HomeComponent implements OnInit {
   protected readonly favorisService = inject(FavorisService);
   protected readonly notesService = inject(NotesService);
   protected readonly vusRecemmentService = inject(VusRecemmentService);
+  protected readonly nouveauteService = inject(NouveauteService);
   private readonly googleAuth = inject(GoogleAuthService);
 
   // Le Planning charge ses données via son propre service/cache (Sheet distinct) :
@@ -324,7 +327,8 @@ export class HomeComponent implements OnInit {
       sunnyOutline, moonOutline, closeOutline, locationOutline,
       openOutline, starOutline, star, starHalf, pricetagOutline, playOutline,
       timeOutline, funnelOutline, layersOutline, chevronDownOutline, checkmarkOutline,
-      calendarOutline, alarmOutline, createOutline, addOutline, arrowUpOutline
+      calendarOutline, alarmOutline, createOutline, addOutline, arrowUpOutline,
+      shareOutline, downloadOutline, cloudUploadOutline, todayOutline
     });
   }
 
@@ -450,7 +454,9 @@ export class HomeComponent implements OnInit {
           this.platsBruts.set(plats);
           this.hebergements.set(hebergements);
 
-          this.lieux.set([...lieuxRestaurants, ...lieuxActivites, ...lieuxMagasins]);
+          const tousLesLieux = [...lieuxRestaurants, ...lieuxActivites, ...lieuxMagasins];
+          this.lieux.set(tousLesLieux);
+          this.nouveauteService.enregistrer(tousLesLieux.map(l => l.id));
           this.chargement.set(false);
           onDone?.();
         },
@@ -523,6 +529,20 @@ export class HomeComponent implements OnInit {
 
   scrollEnHaut(): void {
     this.contenuPrincipal?.scrollToTop(300);
+  }
+
+  /**
+   * La mini-nav de jours du Planning (avec le jour courant surligné) défile avec le
+   * reste du contenu plutôt que de rester fixe : ce bouton flottant (même ion-content,
+   * même seuil de défilement que "retour en haut") permet d'y revenir sans avoir à
+   * remonter manuellement toute la liste.
+   */
+  boutonAujourdhuiVisible(): boolean {
+    return this.vue() === 'planning' && this.afficherBoutonHaut() && (this.planningComponent?.aUnJourAujourdhui() ?? false);
+  }
+
+  allerAujourdhuiPlanning(): void {
+    this.planningComponent?.allerAujourdhui();
   }
 
   choisirQuartier(quartier: string | null): void {
@@ -614,6 +634,86 @@ export class HomeComponent implements OnInit {
     this.changerFiltre('tout');
     this.choisirQuartier(nomQuartier);
     this.changerVue('liste');
+  }
+
+  /**
+   * Web Share API (partage natif du système, ex: vers Messages/WhatsApp) si dispo, sinon repli
+   * sur une copie presse-papiers du texte. Une annulation du partage par l'utilisateur (fermeture
+   * de la feuille système, `AbortError`) n'est pas une erreur à signaler par toast.
+   */
+  async partagerLieu(detail: DetailLieu): Promise<void> {
+    const texte = detail.data.Localisation ? `${detail.data.Nom} — ${detail.data.Localisation}` : detail.data.Nom;
+
+    if (navigator.share) {
+      try {
+        await navigator.share({ title: detail.data.Nom, text: texte });
+      } catch (erreur) {
+        if ((erreur as DOMException)?.name !== 'AbortError') {
+          this.toastMessage.set('Impossible de partager ce lieu');
+        }
+      }
+      return;
+    }
+
+    try {
+      await navigator.clipboard.writeText(texte);
+      this.toastMessage.set('Lien copié dans le presse-papiers');
+    } catch {
+      this.toastMessage.set('Impossible de copier le lien');
+    }
+  }
+
+  /**
+   * Sauvegarde/transfert manuel des favoris+notes entre appareils : ces deux services sont
+   * 100% locaux (localStorage, pas de compte, pas de synchro entre membres du groupe), donc
+   * la seule façon de les déplacer d'un appareil à l'autre est un export/import explicite.
+   */
+  exporterDonnees(): void {
+    const donnees = {
+      version: 1,
+      exporteLe: new Date().toISOString(),
+      favoris: [...this.favorisService.favoris()],
+      notes: Object.fromEntries(this.notesService.toutes())
+    };
+    const blob = new Blob([JSON.stringify(donnees, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const lien = document.createElement('a');
+    lien.href = url;
+    lien.download = `japon-favoris-notes-${new Date().toISOString().slice(0, 10)}.json`;
+    lien.click();
+    URL.revokeObjectURL(url);
+    this.toastMessage.set('Favoris et notes exportés');
+  }
+
+  declencherImport(inputFichier: HTMLInputElement): void {
+    inputFichier.click();
+  }
+
+  /**
+   * Import "best-effort", non destructif : `FavorisService.importer`/`NotesService.importer`
+   * fusionnent avec les données déjà présentes sur l'appareil plutôt que de les remplacer
+   * (voir leurs commentaires respectifs) — restaurer une sauvegarde ne peut donc jamais faire
+   * perdre un favori/une note ajoutés depuis sur ce même appareil.
+   */
+  async onFichierImporte(event: Event): Promise<void> {
+    const input = event.target as HTMLInputElement;
+    const fichier = input.files?.[0];
+    input.value = '';
+    if (!fichier) {
+      return;
+    }
+
+    try {
+      const contenu = JSON.parse(await fichier.text());
+      const favoris = Array.isArray(contenu?.favoris) ? contenu.favoris as string[] : [];
+      const notes = contenu?.notes && typeof contenu.notes === 'object' ? contenu.notes as Record<string, string> : {};
+
+      this.favorisService.importer(favoris);
+      this.notesService.importer(notes);
+      this.toastMessage.set(`Import réussi (${favoris.length} favori(s), ${Object.keys(notes).length} note(s))`);
+    } catch {
+      this.toastMessage.set('Fichier invalide, import impossible');
+    }
   }
 
   emojiDetail(detail: DetailLieu): string {
