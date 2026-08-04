@@ -598,11 +598,9 @@
               @if (ouvert === false && prochaineReouvertureDetail(detail.data.Horaires); as reouverture) {
                 <span class="detail-badge"><ion-icon name="alarm-outline"></ion-icon>{{ reouverture }}</span>
               }
-              @for (quartier of detail.data.Quartier; track quartier.Nom) {
-                <button class="detail-badge detail-badge-lien" (click)="voirQuartier(quartier.Nom)" title="Filtrer sur ce quartier">
-                  <ion-icon name="location-outline"></ion-icon>{{ quartier.Nom }}
-                </button>
-              }
+              <button class="detail-badge detail-badge-lien" (click)="voirQuartier(detail.data.Quartier.Nom)" title="Filtrer sur ce quartier">
+                <ion-icon name="location-outline"></ion-icon>{{ detail.data.Quartier.Nom }}
+              </button>
               @if (detail.data.Type) {
                 <span class="detail-badge">{{ detail.data.Type }}</span>
               }

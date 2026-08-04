@@ -110,7 +110,7 @@ npm run horaires -- --force
 
 #### `dupliquer-quartiers.mjs` — éclate les lieux multi-quartiers
 
-Pour les lignes des feuilles Restaurants/Magasins dont la colonne "Quartier" contient plusieurs valeurs séparées par des virgules, duplique la ligne en une par quartier et tente de retrouver, pour chacune, un lien Google Maps propre à cette antenne. **Réécrit toute la feuille** en cas d'application : faites une copie du Sheet ou vérifiez son historique des versions avant d'appliquer.
+Pour les lignes des feuilles Restaurants/Magasins dont la colonne "Quartier" contient plusieurs valeurs séparées par des virgules, duplique la ligne en une par quartier et tente de retrouver, pour chacune, un lien Google Maps propre à cette antenne (même format `query_place_id` que `fetch-localisation.mjs`, voir ci-dessus). **Réécrit toute la feuille** en cas d'application : faites une copie du Sheet ou vérifiez son historique des versions avant d'appliquer.
 
 ```bash
 node --env-file=.env scripts/dupliquer-quartiers.mjs                # aperçu, aucune écriture

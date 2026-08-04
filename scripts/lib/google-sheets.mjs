@@ -46,6 +46,20 @@ export function extraireCoordonnees(lienGoogleMaps) {
   return null;
 }
 
+// Même logique que construireLienLocalisation() dans places-search.service.ts côté app.
+// Partagée par fetch-localisation.mjs et dupliquer-quartiers.mjs plutôt que dupliquée : les
+// deux scripts écrivent une colonne "Localisation" et doivent donc produire le même format.
+// query_place_id fait que Google Maps affiche la fiche complète du lieu au clic (nom, avis,
+// horaires, photos...) plutôt qu'un simple pin sur des coordonnées — voir
+// docs/architecture-et-pieges.md ("lien Localisation sans fiche lieu au clic"). Repli sur
+// l'ancien format "?q=lat,lng" (pin seul) si l'API ne renvoie pas d'id pour le résultat.
+export function construireLienLocalisation({ latitude, longitude }, placeId) {
+  if (placeId) {
+    return `https://www.google.com/maps/search/?api=1&query=${latitude},${longitude}&query_place_id=${encodeURIComponent(placeId)}`;
+  }
+  return `https://www.google.com/maps?q=${latitude},${longitude}`;
+}
+
 async function chargerJetonExistant() {
   try {
     const contenu = await fs.readFile(TOKEN_PATH);

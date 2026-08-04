@@ -11,6 +11,10 @@ export interface ResultatPlaces {
   siteWeb: string | null;
   /** Court résumé Google (quand disponible), utilisé pour deviner des plats connus. */
   resume: string | null;
+  /** URL directement utilisable en <img src>, pour aider à confirmer que c'est la bonne
+   * enseigne avant d'ajouter (utile pour les chaînes ambiguës — Daiso, Uniqlo...). null si
+   * Places ne renvoie aucune photo pour ce résultat. */
+  photoUrl: string | null;
 }
 
 /**
@@ -31,6 +35,21 @@ function construireLienLocalisation(location: { latitude: number; longitude: num
   return `https://www.google.com/maps?q=${location.latitude},${location.longitude}`;
 }
 
+/**
+ * URL directement utilisable en <img src> pour la première photo d'un résultat Places, via
+ * l'endpoint Photo media de Places API (New) : contrairement aux autres endpoints, celui-ci
+ * accepte la clé API en paramètre d'URL (`key=`) plutôt qu'en en-tête, et répond par une
+ * redirection HTTP vers l'image elle-même — exactement ce qu'un <img> sait suivre nativement,
+ * sans appel HttpClient/Observable supplémentaire ni gestion d'auth côté template.
+ */
+function construireUrlPhoto(photos?: { name: string }[]): string | null {
+  const nomPhoto = photos?.[0]?.name;
+  if (!nomPhoto) {
+    return null;
+  }
+  return `https://places.googleapis.com/v1/${nomPhoto}/media?maxWidthPx=400&key=${environment.placesApiKey}`;
+}
+
 interface PlaceApi {
   id?: string;
   displayName?: { text?: string };
@@ -38,6 +57,7 @@ interface PlaceApi {
   location?: { latitude: number; longitude: number };
   websiteUri?: string;
   editorialSummary?: { text?: string };
+  photos?: { name: string }[];
 }
 
 /**
@@ -69,7 +89,7 @@ export class PlacesSearchService {
             'X-Goog-Api-Key': environment.placesApiKey,
             // Adapter si Google fait évoluer le nom des champs de l'API Places (New).
             'X-Goog-FieldMask':
-              'places.id,places.displayName,places.formattedAddress,places.location,places.websiteUri,places.editorialSummary',
+              'places.id,places.displayName,places.formattedAddress,places.location,places.websiteUri,places.editorialSummary,places.photos',
           },
         }
       )
@@ -85,6 +105,7 @@ export class PlacesSearchService {
             lienLocalisation: construireLienLocalisation(place.location, place.id),
             siteWeb: place.websiteUri ?? null,
             resume: place.editorialSummary?.text ?? null,
+            photoUrl: construireUrlPhoto(place.photos),
           };
         }),
         catchError((err: HttpErrorResponse) => throwError(() => new Error(this.messageErreur(err))))

@@ -46,15 +46,17 @@ export class MagasinService {
             // 3. Retourner l'objet magasin complet
             const coordonnees = GeolocationService.extraireCoordonnees(row.Localisation);
 
+            // Un magasin n'a qu'un seul quartier (comme Restaurant/Activité) : si la colonne
+            // contient encore d'anciennes valeurs à virgules (avant passage de
+            // scripts/dupliquer-quartiers.mjs, qui éclate ces lignes en une par quartier),
+            // on ne garde que la première plutôt que de échouer à résoudre le quartier.
+            const premierQuartier = row.Quartier?.split(',')[0]?.trim() ?? '';
+
             return {
               ...row,
               id: genererIdLieu('magasin', row.Nom, row.Quartier),
               Avis: avisData,
-              Quartier: row.Quartier
-                .split(',')
-                .map((p: string) => p.trim())
-                .filter(Boolean)
-                .map((nom: string) => resoudreQuartier(quartiers, nom)),
+              Quartier: resoudreQuartier(quartiers, premierQuartier),
               latitude: coordonnees?.latitude ?? null,
               longitude: coordonnees?.longitude ?? null
             } as MagasinModel;

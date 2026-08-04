@@ -437,7 +437,7 @@ export class HomeComponent implements OnInit {
             id: m.id,
             type: 'magasin',
             nom: m.Nom,
-            quartier: m.Quartier[0] ?? { Nom: '', Ville: { Nom: '' }, Mood: '' },
+            quartier: m.Quartier,
             latitude: m.latitude,
             longitude: m.longitude,
             estOuvert: estOuvertMaintenant(m.Horaires) ?? undefined,

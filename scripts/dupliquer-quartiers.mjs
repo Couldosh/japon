@@ -6,6 +6,13 @@
  * un lien Google Maps propre à cette antenne via l'API Places (New), en
  * recherchant "<Nom> <Quartier>".
  *
+ * Le lien écrit est construit nous-mêmes (voir construireLienLocalisation()
+ * dans lib/google-sheets.mjs, partagée avec fetch-localisation.mjs), pas le
+ * googleMapsUri brut de Google : celui-ci est souvent un lien par cid, sans
+ * coordonnées lisibles, que GeolocationService.extraireCoordonnees ne sait
+ * pas parser côté app — une ligne dupliquée avec un tel lien perdrait
+ * silencieusement son marqueur sur la Carte (pas d'erreur, juste absente).
+ *
  * Par défaut le script ne fait qu'un aperçu (aucune écriture) ; il faut
  * passer --appliquer pour réellement modifier le Google Sheet. C'est une
  * opération difficile à annuler (elle réécrit toute la feuille) : faites une
@@ -16,7 +23,10 @@
  * des exécutions suivantes, sans rappeler l'API. Ce qui est écrit avec
  * --appliquer est donc exactement ce qui a été vu à l'aperçu, et relancer le
  * script ne recoûte aucun appel API pour les lignes déjà cherchées. Passer
- * --rafraichir pour ignorer le cache et relancer une recherche fraîche.
+ * --rafraichir pour ignorer le cache et relancer une recherche fraîche. Une
+ * entrée en cache sans coordonnées (recherche antérieure au correctif
+ * ci-dessus, qui ne demandait que googleMapsUri) est de toute façon ignorée
+ * même sans --rafraichir : la réutiliser ne corrigerait rien.
  *
  * Voir scripts/lib/google-sheets.mjs pour les prérequis d'authentification.
  * Variables d'environnement (via un fichier .env non commité) :
@@ -30,7 +40,7 @@
  */
 
 import {
-  requireEnv, attendre, extraireCoordonnees,
+  requireEnv, attendre, extraireCoordonnees, construireLienLocalisation,
   connexionSheets, trouverTitreOnglet, lireFeuille, indexColonne,
 } from './lib/google-sheets.mjs';
 import { cheminCache, chargerCache, sauvegarderCache, cleCache } from './lib/cache.mjs';
@@ -71,7 +81,7 @@ async function chercherLienMaps(nom, quartier, coordonneesApprox) {
       'Content-Type': 'application/json',
       'X-Goog-Api-Key': PLACES_API_KEY,
       // Adapter si Google fait évoluer le nom des champs de l'API Places (New).
-      'X-Goog-FieldMask': 'places.googleMapsUri,places.formattedAddress',
+      'X-Goog-FieldMask': 'places.id,places.location,places.formattedAddress',
     },
     body: JSON.stringify(corps),
   });
@@ -135,7 +145,10 @@ async function traiterFeuille(sheets, gid, cache) {
 
       if (idxLocalisation !== -1 && nom) {
         const cle = cleCache(titre, nom, quartier);
-        const entreeCache = !RAFRAICHIR ? cache[cle] : undefined;
+        // Une entrée en cache écrite avant l'ajout de places.id/location au fieldMask (voir
+        // en-tête du fichier) n'a pas de champ "location" exploitable : on l'ignore comme un
+        // cache manquant plutôt que de reconstruire un lien vide/erroné à partir d'elle.
+        const entreeCache = !RAFRAICHIR && cache[cle]?.resultat?.location ? cache[cle] : undefined;
 
         try {
           let resultat;
@@ -148,12 +161,14 @@ async function traiterFeuille(sheets, gid, cache) {
             await attendre(DELAI_ENTRE_APPELS_MS);
           }
 
-          if (resultat?.googleMapsUri) {
-            nouvelleLigne[idxLocalisation] = resultat.googleMapsUri;
+          if (resultat?.location) {
+            const lien = construireLienLocalisation(resultat.location, resultat.id);
+            nouvelleLigne[idxLocalisation] = lien;
             nbLiensTrouves++;
-            console.log(`    ${quartier} -> ${resultat.formattedAddress ?? resultat.googleMapsUri}${entreeCache ? ' (depuis le cache)' : ''}`);
+            console.log(`    ${quartier} -> ${resultat.formattedAddress ?? lien}${entreeCache ? ' (depuis le cache)' : ''}`);
+            console.log(`      ${lien}`);
           } else {
-            console.warn(`    ${quartier} : aucun lien Google Maps trouvé, à compléter manuellement.${entreeCache ? ' (depuis le cache)' : ''}`);
+            console.warn(`    ${quartier} : aucun établissement (avec localisation) trouvé, à compléter manuellement.${entreeCache ? ' (depuis le cache)' : ''}`);
           }
         } catch (erreur) {
           console.error(`    ${quartier} : échec de recherche (${erreur.message})`);

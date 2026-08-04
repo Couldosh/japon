@@ -121,6 +121,11 @@ export class AjoutLieuComponent implements OnInit {
   readonly erreur = signal<string | null>(null);
   readonly rechercheEnCours = signal(false);
   readonly rechercheMessage = signal<string | null>(null);
+  /** Photo de l'établissement trouvé par la dernière recherche Google Places (voir
+   * rechercherPlaces()), pour aider à confirmer que c'est la bonne enseigne avant d'ajouter —
+   * particulièrement utile pour les chaînes ambiguës (Daiso, Uniqlo...) avant de basculer en
+   * mode Franchise. null si aucune recherche n'a encore été faite ou si Places n'a pas de photo. */
+  readonly photoApercu = signal<string | null>(null);
   /** Champs ('liens'/'localisation') dont la valeur actuelle vient de la dernière recherche
    * Google Places, pour afficher un badge "auto" — effacé dès que l'utilisateur retouche le champ. */
   readonly champsAutoRemplis = signal<Set<'liens' | 'localisation'>>(new Set());
@@ -164,14 +169,15 @@ export class AjoutLieuComponent implements OnInit {
 
   /** Par type franchisable (restaurant/magasin), nom de lieu normalisé -> Set des quartiers
    * (normalisés) où il existe déjà dans le Sheet, pour ne pas rechercher/ajouter en double une
-   * instance de franchise déjà présente. Un magasin peut avoir plusieurs quartiers (colonne à
-   * virgules) contrairement à un restaurant, d'où indexerLieu() prenant un tableau de quartiers. */
+   * instance de franchise déjà présente (et pour avertir d'un doublon sur un ajout normal, voir
+   * confirmerDoublonSiNecessaire()). */
   private readonly quartiersParNomParType = computed(() => {
     const parType = new Map<TypeAjout, Map<string, Set<string>>>();
 
-    const indexerLieu = (type: TypeAjout, nom: string | null | undefined, quartiersDuLieu: (string | null | undefined)[]) => {
+    const indexerLieu = (type: TypeAjout, nom: string | null | undefined, quartierDuLieu: string | null | undefined) => {
       const nomNormalise = normaliser(nom ?? '');
-      if (!nomNormalise) return;
+      const quartierNormalise = normaliser(quartierDuLieu ?? '');
+      if (!nomNormalise || !quartierNormalise) return;
       if (!parType.has(type)) {
         parType.set(type, new Map());
       }
@@ -179,20 +185,14 @@ export class AjoutLieuComponent implements OnInit {
       if (!parNom.has(nomNormalise)) {
         parNom.set(nomNormalise, new Set());
       }
-      const quartiersExistants = parNom.get(nomNormalise)!;
-      for (const q of quartiersDuLieu) {
-        const quartierNormalise = normaliser(q ?? '');
-        if (quartierNormalise) {
-          quartiersExistants.add(quartierNormalise);
-        }
-      }
+      parNom.get(nomNormalise)!.add(quartierNormalise);
     };
 
     for (const r of this.restaurantsBruts()) {
-      indexerLieu('restaurant', r.Nom, [r.Quartier?.Nom]);
+      indexerLieu('restaurant', r.Nom, r.Quartier?.Nom);
     }
     for (const m of this.magasinsBruts()) {
-      indexerLieu('magasin', m.Nom, (m.Quartier ?? []).map(q => q.Nom));
+      indexerLieu('magasin', m.Nom, m.Quartier?.Nom);
     }
 
     return parType;
@@ -310,6 +310,7 @@ export class AjoutLieuComponent implements OnInit {
   changerType(type: TypeAjout): void {
     this.type.set(type);
     this.rechercheMessage.set(null);
+    this.photoApercu.set(null);
     if (!TYPES_FRANCHISABLES.includes(type)) {
       this.estFranchise.set(false);
     }
@@ -415,6 +416,7 @@ export class AjoutLieuComponent implements OnInit {
 
     this.rechercheEnCours.set(true);
     this.rechercheMessage.set(null);
+    this.photoApercu.set(null);
 
     this.placesSearch.rechercher(nom, this.quartier())
       .pipe(takeUntilDestroyed(this.destroyRef))
@@ -426,6 +428,8 @@ export class AjoutLieuComponent implements OnInit {
             this.rechercheMessage.set('Aucun établissement trouvé sur Google Places pour ce nom.');
             return;
           }
+
+          this.photoApercu.set(resultat.photoUrl);
 
           const ecraseraitLiens = !!resultat.siteWeb && this.liens().trim().length > 0;
           const ecraseraitLocalisation = this.localisation().trim().length > 0;
@@ -504,7 +508,48 @@ export class AjoutLieuComponent implements OnInit {
       return;
     }
 
-    this.ecrire(this.type());
+    this.soumettreLieuNormal(this.type());
+  }
+
+  /**
+   * Cas restaurant/activité/magasin "normal" (pas franchise) : avant d'écrire, avertit si un
+   * lieu de même nom existe déjà dans le quartier choisi (via l'index construit pour la
+   * déduplication franchise, quartiersParNomParType — donc uniquement pour restaurant/magasin,
+   * une activité ne pouvant de toute façon pas être ajoutée en franchise). But : éviter un
+   * doublon accidentel dans le Sheet partagé (ex: un membre du groupe ignore qu'un autre a déjà
+   * ajouté ce restaurant à ce quartier). Sans doublon détecté, écrit directement sans alerte.
+   */
+  private async soumettreLieuNormal(type: TypeAjout): Promise<void> {
+    if (!(await this.confirmerDoublonSiNecessaire(type))) {
+      return;
+    }
+    this.ecrire(type);
+  }
+
+  private async confirmerDoublonSiNecessaire(type: TypeAjout): Promise<boolean> {
+    const nomNormalise = normaliser(this.nom().trim());
+    const quartierNormalise = normaliser(this.quartier() ?? '');
+    if (!nomNormalise || !quartierNormalise) {
+      return true;
+    }
+
+    const existeDeja = this.quartiersParNomParType().get(type)?.get(nomNormalise)?.has(quartierNormalise);
+    if (!existeDeja) {
+      return true;
+    }
+
+    const libelleType = type === 'restaurant' ? 'restaurant' : 'magasin';
+    const alert = await this.alertController.create({
+      header: 'Déjà présent ?',
+      message: `Un ${libelleType} nommé "${this.nom().trim()}" existe déjà à ${this.quartier()} dans le Sheet. Ajouter quand même ?`,
+      buttons: [
+        { text: 'Annuler', role: 'cancel' },
+        { text: 'Ajouter quand même', role: 'confirm' },
+      ],
+    });
+    await alert.present();
+    const { role } = await alert.onDidDismiss();
+    return role === 'confirm';
   }
 
   /**
@@ -790,6 +835,7 @@ export class AjoutLieuComponent implements OnInit {
     this.villeQuartier.set(null);
     this.nouvelleVilleQuartier.set('');
     this.rechercheMessage.set(null);
+    this.photoApercu.set(null);
     this.champsAutoRemplis.set(new Set());
   }
 }

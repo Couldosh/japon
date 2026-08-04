@@ -50,7 +50,7 @@
  */
 
 import {
-  requireEnv, attendre,
+  requireEnv, attendre, construireLienLocalisation,
   connexionSheets, trouverTitreOnglet, lireFeuille,
   indexColonne, lettreColonne,
 } from './lib/google-sheets.mjs';
@@ -92,14 +92,6 @@ function premierQuartier(valeur) {
 
 function extraireContexte(valeur, colonneContexte) {
   return colonneContexte === 'Quartier' ? premierQuartier(valeur) : (valeur?.trim() || null);
-}
-
-// Même logique que construireLienLocalisation() dans places-search.service.ts côté app.
-function construireLien({ latitude, longitude }, placeId) {
-  if (placeId) {
-    return `https://www.google.com/maps/search/?api=1&query=${latitude},${longitude}&query_place_id=${encodeURIComponent(placeId)}`;
-  }
-  return `https://www.google.com/maps?q=${latitude},${longitude}`;
 }
 
 async function chercherEtablissement(nom, contexte) {
@@ -178,7 +170,7 @@ async function traiterFeuille(sheets, { gid, colonneContexte }, cache) {
         console.warn(`  ${nom} : aucun établissement (avec localisation) trouvé sur Places.${entreeCache ? ' (depuis le cache)' : ''}`);
         nbIntrouvables++;
       } else {
-        const lien = construireLien(etablissement.location, etablissement.id);
+        const lien = construireLienLocalisation(etablissement.location, etablissement.id);
 
         // Log le résultat matché pour permettre de vérifier que c'est la bonne
         // enseigne avant d'appliquer (les enseignes à succursales multiples,

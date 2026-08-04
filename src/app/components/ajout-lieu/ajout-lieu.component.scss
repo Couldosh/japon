@@ -88,6 +88,15 @@
   }
 }
 
+.ajout-lieu-photo-apercu {
+  display: block;
+  width: 100%;
+  max-height: 160px;
+  object-fit: cover;
+  border-radius: 12px;
+  margin: 0 0 8px;
+}
+
 .ajout-lieu-recherche-message {
   display: flex;
   align-items: flex-start;
