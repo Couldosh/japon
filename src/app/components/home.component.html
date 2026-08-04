@@ -23,7 +23,7 @@
   </ion-toolbar>
 </ion-header>
 
-<ion-content [scrollY]="vue() !== 'carte'">
+<ion-content #contenuPrincipal [scrollY]="vue() !== 'carte'" [scrollEvents]="true" (ionScroll)="onScrollContenu($event)">
   @if (vue() !== 'carte' && vue() !== 'planning') {
     <ion-refresher slot="fixed" (ionRefresh)="rafraichir($event)">
       <ion-refresher-content></ion-refresher-content>
@@ -272,6 +272,14 @@
         }
       }
     </div>
+  }
+
+  @if (vue() === 'liste' && afficherBoutonHaut()) {
+    <ion-fab slot="fixed" vertical="bottom" horizontal="end">
+      <ion-fab-button size="small" (click)="scrollEnHaut()" aria-label="Retour en haut" title="Retour en haut">
+        <ion-icon name="arrow-up-outline"></ion-icon>
+      </ion-fab-button>
+    </ion-fab>
   }
 </ion-content>
 

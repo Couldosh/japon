@@ -7,7 +7,8 @@ import {
   IonHeader, IonToolbar, IonSearchbar, IonChip, IonIcon, IonButton, IonButtons,
   IonLabel, IonBadge, IonTabBar, IonTabButton, IonSegment, IonSegmentButton, IonToggle,
   IonContent, IonSkeletonText, IonRefresher, IonRefresherContent,
-  IonModal, IonTitle, IonSelect, IonSelectOption, IonTextarea, IonToast
+  IonModal, IonTitle, IonSelect, IonSelectOption, IonTextarea, IonToast,
+  IonFab, IonFabButton
 } from '@ionic/angular/standalone';
 import { addIcons } from 'ionicons';
 import {
@@ -17,7 +18,7 @@ import {
   sunnyOutline, moonOutline, closeOutline, locationOutline,
   openOutline, starOutline, star, starHalf, pricetagOutline, playOutline,
   timeOutline, funnelOutline, layersOutline, chevronDownOutline, checkmarkOutline,
-  calendarOutline, alarmOutline, createOutline, addOutline
+  calendarOutline, alarmOutline, createOutline, addOutline, arrowUpOutline
 } from 'ionicons/icons';
 
 import { RestaurantService } from '../service/restaurant/restaurant.service';
@@ -74,6 +75,7 @@ type DetailLieu =
     IonLabel, IonBadge, IonTabBar, IonTabButton, IonSegment, IonSegmentButton, IonToggle,
     IonContent, IonSkeletonText, IonRefresher, IonRefresherContent,
     IonModal, IonTitle, IonSelect, IonSelectOption, IonTextarea, IonToast,
+    IonFab, IonFabButton,
     CarteComponent, PlanningComponent, AjoutLieuComponent
   ],
   templateUrl: './home.component.html',
@@ -107,6 +109,12 @@ export class HomeComponent implements OnInit {
   // paresseux de ion-modal). Utilisé pour bloquer une fermeture accidentelle
   // (swipe, tap sur le fond) tant que le formulaire contient une saisie non vide.
   @ViewChild(AjoutLieuComponent) private readonly ajoutLieuComponent?: AjoutLieuComponent;
+
+  // Référence directe (template reference variable) plutôt que @ViewChild(IonContent) :
+  // ce dernier matcherait le premier ion-content du template, mais celui des modales
+  // (détail, plat, picker quartier...) est stampé dynamiquement dans son propre
+  // ng-template, donc pas de risque de collision en pratique. On reste explicite.
+  @ViewChild('contenuPrincipal') private readonly contenuPrincipal?: IonContent;
 
   // Etat
   readonly chargement = signal(true);
@@ -153,6 +161,10 @@ export class HomeComponent implements OnInit {
   readonly detailSelectionne = signal<DetailLieu | null>(null);
   readonly platSelectionne = signal<Plat | null>(null);
   readonly toastMessage = signal<string | null>(null);
+  // Bouton "retour en haut" (vue Liste uniquement) : apparaît passé un certain
+  // défilement, seuil arbitraire au-delà duquel remonter au doigt devient pénible.
+  private static readonly SEUIL_BOUTON_HAUT = 400;
+  readonly afficherBoutonHaut = signal(false);
 
   // Debounce de la note perso (voir enregistrerNote()/flusherNote()).
   private noteEnAttente: { id: string; texte: string } | null = null;
@@ -312,7 +324,7 @@ export class HomeComponent implements OnInit {
       sunnyOutline, moonOutline, closeOutline, locationOutline,
       openOutline, starOutline, star, starHalf, pricetagOutline, playOutline,
       timeOutline, funnelOutline, layersOutline, chevronDownOutline, checkmarkOutline,
-      calendarOutline, alarmOutline, createOutline, addOutline
+      calendarOutline, alarmOutline, createOutline, addOutline, arrowUpOutline
     });
   }
 
@@ -502,6 +514,15 @@ export class HomeComponent implements OnInit {
 
   basculerRecents(): void {
     this.recentsOuvert.set(!this.recentsOuvert());
+  }
+
+  onScrollContenu(event: CustomEvent): void {
+    const scrollTop = (event.detail as { scrollTop: number }).scrollTop;
+    this.afficherBoutonHaut.set(scrollTop > HomeComponent.SEUIL_BOUTON_HAUT);
+  }
+
+  scrollEnHaut(): void {
+    this.contenuPrincipal?.scrollToTop(300);
   }
 
   choisirQuartier(quartier: string | null): void {
