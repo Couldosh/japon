@@ -9,18 +9,6 @@
         </ion-searchbar>
       }
       <div class="entete-boutons">
-        <input
-          #inputImport
-          type="file"
-          accept="application/json,.json"
-          class="input-cache"
-          (change)="onFichierImporte($event)">
-        <ion-button fill="clear" (click)="exporterDonnees()" aria-label="Exporter mes favoris et notes" title="Exporter mes favoris et notes">
-          <ion-icon slot="icon-only" name="download-outline"></ion-icon>
-        </ion-button>
-        <ion-button fill="clear" (click)="declencherImport(inputImport)" aria-label="Importer des favoris et notes" title="Importer des favoris et notes">
-          <ion-icon slot="icon-only" name="cloud-upload-outline"></ion-icon>
-        </ion-button>
         <ion-button fill="clear" (click)="ouvrirModaleAjout()" aria-label="Ajouter un lieu" title="Ajouter un lieu">
           <ion-icon slot="icon-only" name="add-outline"></ion-icon>
         </ion-button>
@@ -211,6 +199,20 @@
               title="Regrouper par ville et quartier">
               <ion-icon slot="start" name="layers-outline"></ion-icon>
               Regrouper
+            </ion-button>
+          }
+          @if (vue() === 'favoris') {
+            <input
+              #inputImport
+              type="file"
+              accept="application/json,.json"
+              class="input-cache"
+              (change)="onFichierImporte($event)">
+            <ion-button fill="clear" size="small" (click)="exporterDonnees()" aria-label="Exporter mes favoris et notes" title="Exporter mes favoris et notes">
+              <ion-icon slot="icon-only" name="download-outline"></ion-icon>
+            </ion-button>
+            <ion-button fill="clear" size="small" (click)="declencherImport(inputImport)" aria-label="Importer des favoris et notes" title="Importer des favoris et notes">
+              <ion-icon slot="icon-only" name="cloud-upload-outline"></ion-icon>
             </ion-button>
           }
         </div>

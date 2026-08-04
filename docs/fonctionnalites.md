@@ -46,6 +46,7 @@ Modale en bottom-sheet swipeable (`[breakpoints]="[0,1]"`), commune aux 3 types 
 
 - Simple filtre de `lieux()` par `FavorisService.estFavori(id)`, mêmes cartes/popup que la Liste.
 - Badge de comptage sur le bouton de la tab bar (masqué si 0).
+- Boutons Exporter/Importer (voir `exporterDonnees()`/`declencherImport()`/`onFichierImporte()`) : affichés uniquement dans l'en-tête de section de cette vue (pas dans l'en-tête global de l'app, ni sur la Liste) — ce sont des favoris/notes qu'on manipule, donc l'action n'a de sens que sur cet onglet.
 
 ## Planning (`components/planning/`)
 
