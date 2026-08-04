@@ -48,6 +48,18 @@ import { GoogleAuthService } from '../service/google/google-auth.service';
 
 type Vue = 'liste' | 'carte' | 'favoris' | 'planning';
 
+/** Normalise un nom pour regrouper les instances d'une même franchise (ex: "7-Eleven" ~ "7-eleven"), insensible casse/accents. */
+function normaliserNom(texte: string): string {
+  return texte.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
+}
+
+interface GroupeFranchise {
+  franchise: true;
+  cle: string;
+  nom: string;
+  lieux: LieuAffichable[];
+}
+
 interface GroupeQuartier {
   quartier: string;
   lieux: LieuAffichable[];
@@ -158,6 +170,10 @@ export class HomeComponent implements OnInit {
   readonly hebergements = signal<HebergementModel[]>([]);
   readonly vue = signal<Vue>('liste');
   readonly affichageGroupe = signal(false);
+  // Groupes de franchise (vue Liste à plat) actuellement dépliés, par clé
+  // (voir lieuxAffichesGroupesFranchise) — repliés par défaut, plusieurs
+  // groupes peuvent être dépliés en même temps indépendamment les uns des autres.
+  readonly franchisesOuvertes = signal<Set<string>>(new Set());
   // Repliée par défaut : la section "Vus récemment" ne doit pas prendre de place
   // tant que l'utilisateur n'a pas explicitement choisi de la consulter.
   readonly recentsOuvert = signal(false);
@@ -289,6 +305,36 @@ export class HomeComponent implements OnInit {
     }
 
     return [...resultat].sort((a, b) => a.nom.localeCompare(b.nom));
+  });
+
+  // Vue Liste à plat (non groupée par ville/quartier) : les instances d'une même
+  // franchise (ex: un konbini présent dans plusieurs quartiers) sont regroupées
+  // sous une seule entrée plutôt que dispersées dans la liste, sinon "7-Eleven"
+  // apparaîtrait autant de fois qu'il y a de quartiers et noierait les lieux
+  // uniques. Un groupe est positionné au rang de sa première occurrence dans
+  // lieuxAffiches() (donc la plus proche si la position est connue, sinon la
+  // première alphabétiquement), pour ne pas perturber le tri déjà appliqué.
+  readonly lieuxAffichesGroupesFranchise = computed((): (LieuAffichable | GroupeFranchise)[] => {
+    const lieux = this.lieuxAffiches();
+    const parCle = new Map<string, LieuAffichable[]>();
+    for (const lieu of lieux) {
+      const cle = `${lieu.type}_${normaliserNom(lieu.nom)}`;
+      if (!parCle.has(cle)) {
+        parCle.set(cle, []);
+      }
+      parCle.get(cle)!.push(lieu);
+    }
+
+    const dejaTraites = new Set<string>();
+    const resultat: (LieuAffichable | GroupeFranchise)[] = [];
+    for (const lieu of lieux) {
+      const cle = `${lieu.type}_${normaliserNom(lieu.nom)}`;
+      if (dejaTraites.has(cle)) continue;
+      dejaTraites.add(cle);
+      const groupe = parCle.get(cle)!;
+      resultat.push(groupe.length > 1 ? { franchise: true, cle, nom: lieu.nom, lieux: groupe } : lieu);
+    }
+    return resultat;
   });
 
   // Regroupement Ville -> Quartier de la liste affichée, pour la vue groupée.
@@ -516,6 +562,27 @@ export class HomeComponent implements OnInit {
 
   basculerGroupement(): void {
     this.affichageGroupe.set(!this.affichageGroupe());
+  }
+
+  /** Garde de type pour distinguer un groupe de franchise d'un lieu simple dans le template. */
+  estGroupeFranchise(item: LieuAffichable | GroupeFranchise): item is GroupeFranchise {
+    return 'franchise' in item;
+  }
+
+  /** track de @for sur lieuxAffichesGroupesFranchise() : id du lieu, ou clé du groupe pour une franchise. */
+  trackerLieuOuFranchise(item: LieuAffichable | GroupeFranchise): string {
+    return this.estGroupeFranchise(item) ? `franchise_${item.cle}` : item.id;
+  }
+
+  /** Déplie/replie la liste des quartiers d'un groupe de franchise (vue Liste à plat). */
+  basculerFranchise(cle: string): void {
+    const ouvertes = new Set(this.franchisesOuvertes());
+    if (ouvertes.has(cle)) {
+      ouvertes.delete(cle);
+    } else {
+      ouvertes.add(cle);
+    }
+    this.franchisesOuvertes.set(ouvertes);
   }
 
   basculerRecents(): void {

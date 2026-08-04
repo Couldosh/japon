@@ -279,8 +279,46 @@
           }
         }
       } @else {
-        @for (lieu of lieuxAffiches(); track lieu.id) {
-          <ng-container [ngTemplateOutlet]="carteLieuTpl" [ngTemplateOutletContext]="{ $implicit: lieu }"></ng-container>
+        @for (item of lieuxAffichesGroupesFranchise(); track trackerLieuOuFranchise(item)) {
+          @if (estGroupeFranchise(item)) {
+            <div class="carte-lieu carte-franchise" (click)="basculerFranchise(item.cle)">
+              <div class="carte-lieu-icone">
+                <span class="carte-lieu-emoji">{{ item.lieux[0].icone }}</span>
+              </div>
+              <div class="carte-lieu-contenu">
+                <div class="carte-lieu-ligne">
+                  <p class="carte-lieu-nom">{{ item.nom }}</p>
+                  <ion-badge color="medium">{{ item.lieux.length }} quartiers</ion-badge>
+                  <ion-icon
+                    name="chevron-down-outline"
+                    class="carte-franchise-chevron"
+                    [class.carte-franchise-chevron-ouvert]="franchisesOuvertes().has(item.cle)">
+                  </ion-icon>
+                </div>
+              </div>
+            </div>
+            @if (franchisesOuvertes().has(item.cle)) {
+              <div class="carte-franchise-quartiers">
+                @for (lieu of item.lieux; track lieu.id) {
+                  <button class="carte-franchise-quartier" (click)="ouvrirDetails(lieu)" [title]="lieu.quartier.Nom">
+                    <span class="carte-franchise-quartier-nom">{{ lieu.quartier.Nom }}</span>
+                    <span class="carte-franchise-quartier-meta">
+                      @if (lieu.estOuvert !== undefined) {
+                        <ion-badge [color]="lieu.estOuvert ? 'success' : 'medium'">
+                          {{ lieu.estOuvert ? 'Ouvert' : 'Fermé' }}
+                        </ion-badge>
+                      }
+                      @if (lieu.horaireTexte) {
+                        <span><ion-icon name="time-outline"></ion-icon> {{ lieu.horaireTexte }}</span>
+                      }
+                    </span>
+                  </button>
+                }
+              </div>
+            }
+          } @else {
+            <ng-container [ngTemplateOutlet]="carteLieuTpl" [ngTemplateOutletContext]="{ $implicit: item }"></ng-container>
+          }
         }
       }
     </div>

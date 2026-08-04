@@ -404,6 +404,75 @@
   margin: 10px 0 6px;
 }
 
+// En-tête d'un groupe de franchise (vue Liste à plat) : reprend l'habillage de
+// .carte-lieu (même carte que les lieux simples), le clic déplie/replie la
+// liste des quartiers plutôt que d'ouvrir un détail (une franchise n'en a pas).
+.carte-franchise {
+  margin-bottom: 0;
+}
+
+.carte-franchise-chevron {
+  flex-shrink: 0;
+  transition: transform 0.15s ease;
+}
+
+.carte-franchise-chevron-ouvert {
+  transform: rotate(180deg);
+}
+
+// Sous-liste des quartiers d'une franchise dépliée, en retrait sous l'en-tête
+// pour rester visuellement rattachée à .carte-franchise ci-dessus.
+.carte-franchise-quartiers {
+  margin: 0 0 10px 16px;
+  padding-left: 12px;
+  border-left: 2px solid var(--ion-color-light);
+}
+
+.carte-franchise-quartier {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+  border: none;
+  border-radius: 8px;
+  color: inherit;
+  text-align: left;
+  padding: 8px;
+  cursor: pointer;
+
+  // Alternance pour distinguer les quartiers d'un coup d'œil dans une liste dépliée
+  // qui peut en compter beaucoup (une franchise présente dans tout le pays).
+  &:nth-child(odd) {
+    background: none;
+  }
+
+  &:nth-child(even) {
+    background: var(--ion-color-light);
+  }
+}
+
+.carte-franchise-quartier-nom {
+  font-size: 13px;
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.carte-franchise-quartier-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+  font-size: 12px;
+  color: var(--ion-color-medium);
+
+  ion-icon {
+    vertical-align: -2px;
+  }
+}
+
 .etat-vide {
   text-align: center;
   color: var(--ion-color-medium);
