@@ -175,9 +175,18 @@
             <ion-chip
               [class.filtre-ouvert-actif]="filtreOuvertMaintenant()"
               (click)="basculerOuvertMaintenant()"
-              title="N'afficher que les lieux actuellement ouverts">
-              Ouvert
+              [title]="filtreHeureProjetee() ? 'Filtre actif : ouvert à ' + filtreHeureProjetee() : 'N\'afficher que les lieux actuellement ouverts'">
+              {{ heureProjeteeActive() ? 'Ouvert à ' + heureProjeteeActive() : 'Ouvert' }}
             </ion-chip>
+            @if (filtreOuvertMaintenant()) {
+              <input
+                type="time"
+                class="filtre-heure-projetee"
+                [value]="filtreHeureProjetee() ?? ''"
+                (click)="onClicHeureProjetee($event)"
+                (change)="onHeureProjeteeChange($event)"
+                title="Choisir une heure plutôt que 'maintenant', pour planifier à l'avance">
+            }
           }
           @if (filtreQuartier()) {
             <ion-button
@@ -256,9 +265,18 @@
                 <ion-chip
                   [class.filtre-ouvert-actif]="filtreOuvertMaintenant()"
                   (click)="basculerOuvertMaintenant()"
-                  title="N'afficher que les lieux actuellement ouverts">
-                  Ouvert
+                  [title]="filtreHeureProjetee() ? 'Filtre actif : ouvert à ' + filtreHeureProjetee() : 'N\'afficher que les lieux actuellement ouverts'">
+                  {{ heureProjeteeActive() ? 'Ouvert à ' + heureProjeteeActive() : 'Ouvert' }}
                 </ion-chip>
+                @if (filtreOuvertMaintenant()) {
+                  <input
+                    type="time"
+                    class="filtre-heure-projetee"
+                    [value]="filtreHeureProjetee() ?? ''"
+                    (click)="onClicHeureProjetee($event)"
+                    (change)="onHeureProjeteeChange($event)"
+                    title="Choisir une heure plutôt que 'maintenant', pour planifier à l'avance">
+                }
                 <ion-button
                   fill="clear"
                   size="small"
@@ -371,13 +389,20 @@
         @if (nouveauteService.estNouveau(lieu.id)) {
           <ion-badge color="tertiary">Nouveau</ion-badge>
         }
-        @if (lieu.estOuvert !== undefined) {
-          <ion-badge [color]="lieu.estOuvert ? 'success' : 'medium'">
-            {{ lieu.estOuvert ? 'Ouvert' : 'Fermé' }}
-          </ion-badge>
-        }
-        @if (fermetureImminenteDetail(lieu.horairesJson); as minutes) {
-          <ion-badge color="warning">Ferme dans {{ minutes }} min</ion-badge>
+        @if (heureProjeteeActive(); as heureProjetee) {
+          <!-- Le filtre "Ouvert" projeté ne garde déjà que les lieux ouverts à cette heure
+               (voir lieuxAffiches()) : ce badge remplace le Ouvert/Fermé "maintenant" habituel,
+               qui serait trompeur ici (ex: fermé maintenant mais qui ouvrira à l'heure choisie). -->
+          <ion-badge color="success">Ouvert à {{ heureProjetee }}</ion-badge>
+        } @else {
+          @if (lieu.estOuvert !== undefined) {
+            <ion-badge [color]="lieu.estOuvert ? 'success' : 'medium'">
+              {{ lieu.estOuvert ? 'Ouvert' : 'Fermé' }}
+            </ion-badge>
+          }
+          @if (fermetureImminenteDetail(lieu.horairesJson); as minutes) {
+            <ion-badge color="warning">Ferme dans {{ minutes }} min</ion-badge>
+          }
         }
       </div>
       @if (!affichageGroupe()) {

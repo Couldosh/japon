@@ -65,6 +65,21 @@
   --color: var(--ion-color-success-contrast);
 }
 
+// Input natif <input type="time"> plutôt qu'un ion-datetime en popover : suffit pour
+// choisir une heure, sans le poids d'un composant/import Ionic supplémentaire pour ça.
+.filtre-heure-projetee {
+  flex: 0 0 auto;
+  min-height: 32px;
+  border: none;
+  border-radius: 16px;
+  background: var(--ion-color-light);
+  color: var(--ion-text-color);
+  font: inherit;
+  font-size: 13px;
+  padding: 4px 8px;
+  color-scheme: light dark;
+}
+
 // Seul enfant de cette rangée (contrairement à l'autre .filtres, qui aligne
 // plusieurs pilules) : .filtres > * force flex-shrink:0 pour ces dernières,
 // mais un ion-segment doit au contraire pouvoir se compresser nativement pour

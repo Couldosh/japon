@@ -143,6 +143,11 @@ export class HomeComponent implements OnInit {
   // actuellement vrai. Les lieux sans horaires connus (estOuvert undefined) sont
   // exclus, comme le badge Ouvert/Fermé de la carte de lieu qui les masque déjà.
   readonly filtreOuvertMaintenant = signal(false);
+  // Heure projetée (HH:mm) : null = "maintenant" (comportement historique du chip
+  // "Ouvert"). Renseignée, elle bascule le filtre sur "sera ouvert à cette heure
+  // aujourd'hui" plutôt que l'instant présent — utile pour planifier à l'avance
+  // (ex: "qu'est-ce qui sera ouvert quand j'arriverai à 19h ?").
+  readonly filtreHeureProjetee = signal<string | null>(null);
   readonly recherche = signal('');
 
   // Filtre quartier, applicable à toutes les vues (Tout/Restaurants/Activités/Magasins)
@@ -257,7 +262,13 @@ export class HomeComponent implements OnInit {
     }
 
     if (this.filtreOuvertMaintenant()) {
-      resultat = resultat.filter(l => l.estOuvert === true);
+      const heure = this.filtreHeureProjetee();
+      if (heure) {
+        const momentProjete = this.construireMomentProjete(heure);
+        resultat = resultat.filter(l => estOuvertMaintenant(l.horairesJson, momentProjete) === true);
+      } else {
+        resultat = resultat.filter(l => l.estOuvert === true);
+      }
     }
 
     const quartierFiltre = this.filtreQuartier();
@@ -531,7 +542,51 @@ export class HomeComponent implements OnInit {
   }
 
   basculerOuvertMaintenant(): void {
-    this.filtreOuvertMaintenant.set(!this.filtreOuvertMaintenant());
+    const nouvelEtat = !this.filtreOuvertMaintenant();
+    this.filtreOuvertMaintenant.set(nouvelEtat);
+    if (!nouvelEtat) {
+      // Repart de "maintenant" au prochain réactivation plutôt que de garder une
+      // heure projetée fantôme qui ne serait plus visible nulle part une fois le chip désactivé.
+      this.filtreHeureProjetee.set(null);
+    }
+  }
+
+  onHeureProjeteeChange(event: Event): void {
+    const valeur = (event.target as HTMLInputElement).value;
+    this.filtreHeureProjetee.set(valeur || null);
+  }
+
+  /**
+   * Au clic, force les minutes à "00" (seule l'heure ronde nous intéresse pour ce filtre)
+   * et sélectionne le segment heures pour permettre de taper directement par-dessus sans
+   * devoir naviguer jusque-là. `.select()` sur un `<input type="time">` sélectionne son
+   * premier segment (heures) dans les navigateurs Chromium/Firefox testés — comportement
+   * non standardisé mais c'est la seule API disponible pour cibler un segment précis.
+   */
+  onClicHeureProjetee(event: MouseEvent): void {
+    const input = event.target as HTMLInputElement;
+    const heureActuelle = (input.value || this.filtreHeureProjetee() || '').split(':')[0]
+      || String(new Date().getHours()).padStart(2, '0');
+    const valeurArrondie = `${heureActuelle}:00`;
+
+    if (input.value !== valeurArrondie) {
+      input.value = valeurArrondie;
+      this.filtreHeureProjetee.set(valeurArrondie);
+    }
+    input.select();
+  }
+
+  /** Heure affichée sur le chip/les cartes si le filtre "Ouvert" est actif ET projeté sur une heure choisie (pas "maintenant"). */
+  heureProjeteeActive(): string | null {
+    return this.filtreOuvertMaintenant() ? this.filtreHeureProjetee() : null;
+  }
+
+  /** Date d'aujourd'hui à l'heure choisie (HH:mm) : `estOuvertMaintenant()` ne regarde que jour de semaine + heure/minute. */
+  private construireMomentProjete(heure: string): Date {
+    const [heures, minutes] = heure.split(':').map(Number);
+    const moment = new Date();
+    moment.setHours(heures, minutes, 0, 0);
+    return moment;
   }
 
   changerVue(vue: Vue): void {
