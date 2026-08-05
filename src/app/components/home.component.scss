@@ -37,6 +37,18 @@
 // (+ les sous-filtres restaurant/magasin), un flex-wrap ferait facilement 3
 // lignes sur un petit écran, poussant la liste très bas. Même principe que
 // .recents-scroll.
+// Fondu sur les bords gauche/droit des rangées qui défilent horizontalement (.filtres ici,
+// .recents-scroll plus bas, et son équivalent dupliqué dans planning.component.scss pour
+// .planning-nav-jours — l'encapsulation de vue Angular empêche de la partager entre fichiers) :
+// indice visuel qu'il y a plus de contenu à faire défiler. Simplification acceptée : le fondu
+// reste visible même quand tout le contenu tient déjà à l'écran (pas de détection JS de
+// dépassement réel, jugé inutile pour un effet aussi discret).
+.filtres,
+.recents-scroll {
+  mask-image: linear-gradient(to right, transparent, black 16px, black calc(100% - 16px), transparent);
+  -webkit-mask-image: linear-gradient(to right, transparent, black 16px, black calc(100% - 16px), transparent);
+}
+
 .filtres {
   display: flex;
   flex-wrap: nowrap;
@@ -551,6 +563,29 @@
 
 .carte-lieu-favori {
   font-size: 15px;
+}
+
+// Animation "pop" au moment où le favori est basculé (voir HomeComponent.favoriAnime) — un
+// retour visuel plus satisfaisant que le simple changement d'icône/couleur instantané.
+// Utilisée aussi bien sur le cœur de la carte de lieu que sur celui de la popup détail.
+@keyframes favori-pop {
+  0% { transform: scale(1); }
+  40% { transform: scale(1.35); }
+  100% { transform: scale(1); }
+}
+
+.favori-anime {
+  animation: favori-pop 300ms ease;
+}
+
+// Icône de rafraîchissement de l'en-tête pendant le chargement (voir rafraichissementEnCours()) :
+// remplace le seul indice "bouton désactivé", peu visible, par un vrai retour "ça travaille".
+@keyframes icone-spin {
+  to { transform: rotate(360deg); }
+}
+
+.icone-spin {
+  animation: icone-spin 1s linear infinite;
 }
 
 .carte-lieu-note {

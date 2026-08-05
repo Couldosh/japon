@@ -189,6 +189,11 @@ export class HomeComponent implements OnInit {
   // défilement, seuil arbitraire au-delà duquel remonter au doigt devient pénible.
   private static readonly SEUIL_BOUTON_HAUT = 400;
   readonly afficherBoutonHaut = signal(false);
+  // Id du lieu dont le cœur favori vient d'être basculé, le temps de l'animation "pop"
+  // (voir basculerFavori()) — un seul à la fois suffit, deux favoris tapés à la volée
+  // n'ont pas besoin d'animer indépendamment.
+  readonly favoriAnime = signal<string | null>(null);
+  private static readonly DUREE_ANIMATION_FAVORI = 300;
 
   // Debounce de la note perso (voir enregistrerNote()/flusherNote()).
   private noteEnAttente: { id: string; texte: string } | null = null;
@@ -232,6 +237,20 @@ export class HomeComponent implements OnInit {
   readonly typesMagasins = computed(() =>
     [...new Set(this.magasinsBruts().map(m => m.Type).filter(Boolean))].sort((a, b) => a.localeCompare(b))
   );
+
+  // Recherche texte dans le picker de quartier (non persistée, réinitialisée à chaque
+  // ouverture — voir ouvrirPickerQuartier()). "Tous les quartiers" reste toujours visible :
+  // c'est une action de reset, pas un résultat de recherche.
+  readonly rechercheQuartier = signal('');
+  readonly quartiersParVilleFiltres = computed((): VilleQuartiers[] => {
+    const terme = this.rechercheQuartier().toLowerCase().trim();
+    if (!terme) {
+      return this.quartiersParVille();
+    }
+    return this.quartiersParVille()
+      .map(groupe => ({ ville: groupe.ville, quartiers: groupe.quartiers.filter(q => q.toLowerCase().includes(terme)) }))
+      .filter(groupe => groupe.quartiers.length > 0);
+  });
 
   // Lieux dont la popup de détail a été ouverte récemment (voir VusRecemmentService),
   // dans l'ordre de consultation (le plus récent en premier).
@@ -649,6 +668,54 @@ export class HomeComponent implements OnInit {
     this.afficherBoutonHaut.set(scrollTop > HomeComponent.SEUIL_BOUTON_HAUT);
   }
 
+  // Ordre de navigation du swipe horizontal entre onglets (voir onTouchEndContenu()).
+  private static readonly ORDRE_VUES: Vue[] = ['liste', 'carte', 'favoris', 'planning'];
+  private static readonly SEUIL_SWIPE_X = 60;
+  private static readonly SEUIL_SWIPE_Y = 40;
+  private swipeDepart: { x: number; y: number } | null = null;
+
+  /**
+   * Point de départ du swipe, ignoré s'il démarre sur la Carte (le geste doit rester
+   * réservé au pan Leaflet, pas au changement d'onglet) ou dans une rangée qui défile
+   * elle-même horizontalement (chips de filtres, "Vus récemment", mini-nav Planning) —
+   * sinon un simple scroll horizontal de ces rangées changerait l'onglet par erreur.
+   */
+  onTouchStartContenu(event: TouchEvent): void {
+    if (this.vue() === 'carte') {
+      this.swipeDepart = null;
+      return;
+    }
+    const cible = event.target as HTMLElement;
+    if (cible.closest('.filtres, .recents-scroll, .planning-nav-jours')) {
+      this.swipeDepart = null;
+      return;
+    }
+    const touche = event.touches[0];
+    this.swipeDepart = { x: touche.clientX, y: touche.clientY };
+  }
+
+  /** Swipe horizontal net (delta X franc, delta Y faible pour ne pas interférer avec le scroll vertical) → change d'onglet. */
+  onTouchEndContenu(event: TouchEvent): void {
+    const depart = this.swipeDepart;
+    this.swipeDepart = null;
+    if (!depart) {
+      return;
+    }
+
+    const touche = event.changedTouches[0];
+    const deltaX = touche.clientX - depart.x;
+    const deltaY = touche.clientY - depart.y;
+    if (Math.abs(deltaX) < HomeComponent.SEUIL_SWIPE_X || Math.abs(deltaY) > HomeComponent.SEUIL_SWIPE_Y) {
+      return;
+    }
+
+    const indexActuel = HomeComponent.ORDRE_VUES.indexOf(this.vue());
+    const nouvelIndex = indexActuel + (deltaX < 0 ? 1 : -1);
+    if (nouvelIndex >= 0 && nouvelIndex < HomeComponent.ORDRE_VUES.length) {
+      this.changerVue(HomeComponent.ORDRE_VUES[nouvelIndex]);
+    }
+  }
+
   scrollEnHaut(): void {
     this.contenuPrincipal?.scrollToTop(300);
   }
@@ -665,6 +732,11 @@ export class HomeComponent implements OnInit {
 
   allerAujourdhuiPlanning(): void {
     this.planningComponent?.allerAujourdhui();
+  }
+
+  ouvrirPickerQuartier(): void {
+    this.rechercheQuartier.set('');
+    this.pickerQuartierOuvert.set(true);
   }
 
   choisirQuartier(quartier: string | null): void {
@@ -718,6 +790,20 @@ export class HomeComponent implements OnInit {
     this.toastMessage.set(
       succes ? (etaitFavori ? 'Retiré des favoris' : 'Ajouté aux favoris') : "Impossible d'enregistrer (stockage indisponible)"
     );
+    if (succes) {
+      this.vibrer();
+      this.favoriAnime.set(id);
+      setTimeout(() => {
+        if (this.favoriAnime() === id) {
+          this.favoriAnime.set(null);
+        }
+      }, HomeComponent.DUREE_ANIMATION_FAVORI);
+    }
+  }
+
+  /** Vibration courte best-effort (API non supportée sur iOS Safari — no-op silencieux dans ce cas). */
+  private vibrer(duree = 15): void {
+    navigator.vibrate?.(duree);
   }
 
   /**
@@ -748,6 +834,9 @@ export class HomeComponent implements OnInit {
     this.toastMessage.set(
       succes ? (texte.trim() ? 'Note enregistrée' : 'Note supprimée') : "Impossible d'enregistrer la note (stockage indisponible)"
     );
+    if (succes) {
+      this.vibrer();
+    }
   }
 
   /** Depuis le détail d'un lieu, retourne à la Liste filtrée sur ce quartier (tous types) pour explorer les alentours. */

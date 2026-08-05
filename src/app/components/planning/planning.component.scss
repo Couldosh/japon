@@ -15,6 +15,11 @@
   overflow-x: auto;
   padding-bottom: 12px;
   scrollbar-width: none;
+  // Fondu sur les bords, indice visuel qu'il y a plus de jours à faire défiler — même
+  // technique que .filtres/.recents-scroll dans home.component.scss, dupliquée ici faute
+  // de pouvoir partager du CSS entre composants Angular à vue encapsulée.
+  mask-image: linear-gradient(to right, transparent, black 16px, black calc(100% - 16px), transparent);
+  -webkit-mask-image: linear-gradient(to right, transparent, black 16px, black calc(100% - 16px), transparent);
 
   &::-webkit-scrollbar {
     display: none;

@@ -16,14 +16,20 @@
           <ion-icon slot="icon-only" [name]="themeService.theme() === 'dark' ? 'sunny-outline' : 'moon-outline'"></ion-icon>
         </ion-button>
         <ion-button fill="clear" (click)="rafraichir()" [disabled]="rafraichissementEnCours()" aria-label="Rafraîchir les données" title="Rafraîchir les données">
-          <ion-icon slot="icon-only" name="refresh-outline"></ion-icon>
+          <ion-icon slot="icon-only" name="refresh-outline" [class.icone-spin]="rafraichissementEnCours()"></ion-icon>
         </ion-button>
       </div>
     </div>
   </ion-toolbar>
 </ion-header>
 
-<ion-content #contenuPrincipal [scrollY]="vue() !== 'carte'" [scrollEvents]="true" (ionScroll)="onScrollContenu($event)">
+<ion-content
+  #contenuPrincipal
+  [scrollY]="vue() !== 'carte'"
+  [scrollEvents]="true"
+  (ionScroll)="onScrollContenu($event)"
+  (touchstart)="onTouchStartContenu($event)"
+  (touchend)="onTouchEndContenu($event)">
   @if (vue() !== 'carte' && vue() !== 'planning') {
     <ion-refresher slot="fixed" (ionRefresh)="rafraichir($event)">
       <ion-refresher-content></ion-refresher-content>
@@ -54,7 +60,7 @@
 
     <div class="filtres">
       @if (!affichageGroupe()) {
-        <button class="filtre-pilule filtre-pilule-bouton" (click)="pickerQuartierOuvert.set(true)" title="Filtrer par quartier">
+        <button class="filtre-pilule filtre-pilule-bouton" (click)="ouvrirPickerQuartier()" title="Filtrer par quartier">
           <ion-icon name="funnel-outline"></ion-icon>
           <span>{{ filtreQuartier() ?? 'Tous les quartiers' }}</span>
           <ion-icon name="chevron-down-outline" class="filtre-pilule-chevron"></ion-icon>
@@ -379,6 +385,7 @@
           <ion-icon
             slot="icon-only"
             class="carte-lieu-favori"
+            [class.favori-anime]="favoriAnime() === lieu.id"
             [color]="favorisService.estFavori(lieu.id) ? 'danger' : 'medium'"
             [name]="favorisService.estFavori(lieu.id) ? 'heart' : 'heart-outline'">
           </ion-icon>
@@ -456,7 +463,12 @@
           <ion-title>{{ detail.data.Nom }} {{ emojiDetail(detail) }}</ion-title>
           <ion-buttons slot="end">
             <ion-button (click)="basculerFavori(detail.data.id)" [attr.aria-label]="favorisService.estFavori(detail.data.id) ? 'Retirer des favoris' : 'Ajouter aux favoris'" [attr.title]="favorisService.estFavori(detail.data.id) ? 'Retirer des favoris' : 'Ajouter aux favoris'">
-              <ion-icon slot="icon-only" [name]="favorisService.estFavori(detail.data.id) ? 'heart' : 'heart-outline'" [color]="favorisService.estFavori(detail.data.id) ? 'danger' : undefined"></ion-icon>
+              <ion-icon
+                slot="icon-only"
+                [class.favori-anime]="favoriAnime() === detail.data.id"
+                [name]="favorisService.estFavori(detail.data.id) ? 'heart' : 'heart-outline'"
+                [color]="favorisService.estFavori(detail.data.id) ? 'danger' : undefined">
+              </ion-icon>
             </ion-button>
             <ion-button (click)="fermerDetails()" aria-label="Fermer" title="Fermer">
               <ion-icon slot="icon-only" name="close-outline"></ion-icon>
@@ -797,6 +809,13 @@
     </ion-header>
 
     <ion-content>
+      <ion-searchbar
+        placeholder="Rechercher un quartier..."
+        [debounce]="0"
+        [value]="rechercheQuartier()"
+        (ionInput)="rechercheQuartier.set($any($event.detail).value ?? '')">
+      </ion-searchbar>
+
       <div class="picker-quartier">
         <button
           class="picker-quartier-option picker-quartier-tous"
@@ -809,7 +828,11 @@
           }
         </button>
 
-        @for (groupe of quartiersParVille(); track groupe.ville) {
+        @if (rechercheQuartier().trim() && quartiersParVilleFiltres().length === 0) {
+          <p class="etat-vide">Aucun quartier ne correspond à "{{ rechercheQuartier() }}".</p>
+        }
+
+        @for (groupe of quartiersParVilleFiltres(); track groupe.ville) {
           <p class="picker-quartier-ville">{{ groupe.ville }}</p>
           @for (quartier of groupe.quartiers; track quartier) {
             <button
