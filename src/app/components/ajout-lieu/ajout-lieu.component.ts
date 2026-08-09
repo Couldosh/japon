@@ -1,4 +1,4 @@
-import { Component, DestroyRef, OnInit, computed, inject, output, signal } from '@angular/core';
+import { Component, DestroyRef, Input, OnInit, computed, inject, output, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { catchError, concatMap, from, of, Subscription, switchMap, tap, toArray } from 'rxjs';
 import {
@@ -20,9 +20,17 @@ import { RestaurantService } from '../../service/restaurant/restaurant.service';
 import { RestaurantModel } from '../../models/restaurant.model';
 import { MagasinService } from '../../service/magasin/magasin.service';
 import { MagasinModel } from '../../models/magasin.model';
+import { ActiviteModel } from '../../models/activite.model';
 import { IaService } from '../../service/ia/ia.service';
 
 type TypeAjout = 'restaurant' | 'activite' | 'magasin' | 'plat' | 'quartier';
+
+/** Lieu ou plat à préremplir en mode édition (voir preremplirPourModification()) — "quartier"
+ * n'est volontairement pas modifiable via ce formulaire (hors périmètre demandé). */
+export interface EditionInitiale {
+  type: TypeAjout;
+  data: RestaurantModel | ActiviteModel | MagasinModel | Plat;
+}
 
 /** Normalise un nom pour un matching insensible à la casse/aux accents (ex: "Ramen" ~ "râmen"). */
 function normaliser(texte: string): string {
@@ -87,8 +95,30 @@ export class AjoutLieuComponent implements OnInit {
    * (annulerFranchise()) — les quartiers déjà écrits avant l'annulation restent acquis. */
   private franchiseSubscription: Subscription | null = null;
 
+  /** Renseigné par HomeComponent pour ouvrir le formulaire en mode édition plutôt que création
+   * (voir modifierLieu()/modifierPlat() côté HomeComponent) — lu dans ngOnInit(), le composant
+   * étant recréé à chaque ouverture de la modale (contenu paresseux de ion-modal). */
+  @Input() editionInitiale: EditionInitiale | null = null;
+
   readonly ferme = output<void>();
   readonly ajoute = output<string>();
+  readonly modifie = output<void>();
+
+  /** Vrai si le formulaire modifie un lieu/plat existant plutôt que d'en créer un — type figé,
+   * case "Franchise" masquée, et soumettre() modifie la ligne du Sheet au lieu d'en ajouter une. */
+  readonly modeEdition = signal(false);
+  /** Nom (+ Quartier pour un lieu) au moment de l'ouverture du formulaire — sert à relocaliser
+   * la ligne à modifier même si l'utilisateur change ces champs en cours d'édition. */
+  private readonly cleOriginale = signal<{ nom: string; quartier?: string } | null>(null);
+  /** Libellé du type figé affiché en mode édition, à la place du sélecteur de type. */
+  readonly libelleTypeEdition = computed(() => {
+    switch (this.type()) {
+      case 'restaurant': return 'restaurant';
+      case 'activite': return 'activité';
+      case 'magasin': return 'magasin';
+      default: return 'plat';
+    }
+  });
 
   readonly type = signal<TypeAjout>('restaurant');
   readonly nom = signal('');
@@ -289,6 +319,57 @@ export class AjoutLieuComponent implements OnInit {
     // monte, on est déjà hors du geste utilisateur synchrone, et le popup GIS
     // (même en mode silencieux) est alors bloqué par le navigateur.
     this.rafraichirListesReference(false);
+
+    if (this.editionInitiale) {
+      this.preremplirPourModification(this.editionInitiale);
+    }
+  }
+
+  /** Préremplit le formulaire à partir d'un lieu/plat existant (voir EditionInitiale). Pour un
+   * restaurant, `platsSelectionnes` reprend directement les noms de `Plats` sans les filtrer sur
+   * `platsDisponibles()` (encore vide à cet instant, chargé de façon asynchrone par
+   * rafraichirListesReference()) — les chips se cocheront correctement une fois ce chargement
+   * terminé, `estPlatSelectionne()` ne faisant qu'un test d'appartenance. */
+  private preremplirPourModification(edition: EditionInitiale): void {
+    const { type, data } = edition;
+    this.modeEdition.set(true);
+    this.type.set(type);
+    this.nom.set(data.Nom?.trim() ?? '');
+    this.commentaires.set(data.Commentaires?.trim() ?? '');
+
+    if (type === 'plat') {
+      const plat = data as Plat;
+      this.categoriePlat.set(plat.Categorie);
+      this.description.set(plat.Description?.trim() ?? '');
+      this.wiki.set(plat.Wiki?.trim() ?? '');
+      this.cleOriginale.set({ nom: plat.Nom });
+      return;
+    }
+
+    const lieu = data as RestaurantModel | ActiviteModel | MagasinModel;
+    const quartierNom = lieu.Quartier?.Nom ?? null;
+    this.quartier.set(quartierNom);
+    this.liens.set(lieu.Liens?.trim() ?? '');
+    this.localisation.set(lieu.Localisation?.trim() ?? '');
+    this.cleOriginale.set({ nom: lieu.Nom, quartier: quartierNom ?? undefined });
+
+    if (type === 'restaurant') {
+      const restaurant = data as RestaurantModel;
+      this.description.set(restaurant.Description?.trim() ?? '');
+      this.prix.set(restaurant.Prix?.trim() ?? '');
+      this.video.set(restaurant.Video?.trim() ?? '');
+      this.menu.set(restaurant.Menu?.trim() ?? '');
+      this.platsSelectionnes.set((restaurant.Plats ?? []).map(p => p.Nom));
+    } else if (type === 'activite') {
+      const activite = data as ActiviteModel;
+      this.description.set(activite.Description?.trim() ?? '');
+      this.prix.set(activite.Prix?.trim() ?? '');
+      this.temps.set(activite.Temps?.trim() ?? '');
+    } else {
+      const magasin = data as MagasinModel;
+      this.description.set(magasin.Description?.trim() ?? '');
+      this.typeMagasin.set(magasin.Type?.trim() ?? '');
+    }
   }
 
   /**
@@ -643,6 +724,11 @@ export class AjoutLieuComponent implements OnInit {
       return;
     }
 
+    if (this.modeEdition()) {
+      this.modifierLieuExistant();
+      return;
+    }
+
     if (this.type() === 'quartier') {
       this.soumettreQuartier();
       return;
@@ -654,6 +740,36 @@ export class AjoutLieuComponent implements OnInit {
     }
 
     this.soumettreLieuNormal(this.type());
+  }
+
+  /** Modifie la ligne du Sheet correspondant à `cleOriginale()` (capturée à l'ouverture du
+   * formulaire, voir preremplirPourModification()) avec les valeurs actuelles du formulaire —
+   * même construction de valeurs que la création (construireValeurs), mais via
+   * SheetsWriteService.modifierLigne() qui ne touche que les colonnes concernées (Horaires,
+   * votes, Avis restent intacts). Contrairement à l'ajout, ferme la modale en cas de succès :
+   * une modification est une action ponctuelle, pas une saisie répétée. */
+  private modifierLieuExistant(): void {
+    const cle = this.cleOriginale();
+    if (!cle) {
+      return;
+    }
+
+    this.enCours.set(true);
+    this.erreur.set(null);
+
+    this.sheetsWrite.modifierLigne(GID_PAR_TYPE[this.type()], cle, this.construireValeurs(this.type()))
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: () => {
+          this.enCours.set(false);
+          this.modifie.emit();
+          this.ferme.emit();
+        },
+        error: (err: Error) => {
+          this.enCours.set(false);
+          this.erreur.set(err.message);
+        }
+      });
   }
 
   /**

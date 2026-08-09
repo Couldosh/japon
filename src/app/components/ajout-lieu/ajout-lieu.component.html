@@ -1,6 +1,6 @@
 <ion-header class="ion-no-border">
   <ion-toolbar>
-    <ion-title>Ajouter un lieu</ion-title>
+    <ion-title>{{ modeEdition() ? 'Modifier' : 'Ajouter un lieu' }}</ion-title>
     <ion-buttons slot="end">
       <ion-button (click)="ferme.emit()" aria-label="Fermer" title="Fermer">
         <ion-icon slot="icon-only" name="close-outline"></ion-icon>
@@ -27,13 +27,17 @@
         </div>
       }
     } @else {
-      <div class="ajout-lieu-types">
-        <ion-chip [class.ajout-lieu-type-actif]="type() === 'restaurant'" (click)="changerType('restaurant')" title="Ajouter un restaurant">Restaurant</ion-chip>
-        <ion-chip [class.ajout-lieu-type-actif]="type() === 'activite'" (click)="changerType('activite')" title="Ajouter une activité">Activité</ion-chip>
-        <ion-chip [class.ajout-lieu-type-actif]="type() === 'magasin'" (click)="changerType('magasin')" title="Ajouter un magasin">Magasin</ion-chip>
-        <ion-chip [class.ajout-lieu-type-actif]="type() === 'plat'" (click)="changerType('plat')" title="Ajouter un plat">Plat</ion-chip>
-        <ion-chip [class.ajout-lieu-type-actif]="type() === 'quartier'" (click)="changerType('quartier')" title="Ajouter un quartier">Quartier</ion-chip>
-      </div>
+      @if (!modeEdition()) {
+        <div class="ajout-lieu-types">
+          <ion-chip [class.ajout-lieu-type-actif]="type() === 'restaurant'" (click)="changerType('restaurant')" title="Ajouter un restaurant">Restaurant</ion-chip>
+          <ion-chip [class.ajout-lieu-type-actif]="type() === 'activite'" (click)="changerType('activite')" title="Ajouter une activité">Activité</ion-chip>
+          <ion-chip [class.ajout-lieu-type-actif]="type() === 'magasin'" (click)="changerType('magasin')" title="Ajouter un magasin">Magasin</ion-chip>
+          <ion-chip [class.ajout-lieu-type-actif]="type() === 'plat'" (click)="changerType('plat')" title="Ajouter un plat">Plat</ion-chip>
+          <ion-chip [class.ajout-lieu-type-actif]="type() === 'quartier'" (click)="changerType('quartier')" title="Ajouter un quartier">Quartier</ion-chip>
+        </div>
+      } @else {
+        <p class="ajout-lieu-label">Modification : {{ libelleTypeEdition() }}</p>
+      }
 
       @if (type() === 'plat') {
         <div class="ajout-lieu-ligne-nom-plat">
@@ -106,7 +110,7 @@
         </ion-item>
       }
 
-      @if (estTypeFranchisable()) {
+      @if (estTypeFranchisable() && !modeEdition()) {
         <ion-item lines="none" class="ajout-lieu-toggle-franchise">
           <ion-toggle
             [checked]="estFranchise()"
@@ -394,9 +398,11 @@
         </p>
       }
 
-      <ion-button expand="block" class="ajout-lieu-submit" [disabled]="!formValide() || enCours()" (click)="soumettre()" title="Ajouter au Sheet">
+      <ion-button expand="block" class="ajout-lieu-submit" [disabled]="!formValide() || enCours()" (click)="soumettre()" title="Enregistrer">
         @if (enCours()) {
           <ion-spinner name="dots"></ion-spinner>
+        } @else if (modeEdition()) {
+          Enregistrer les modifications
         } @else if (estLieuFranchise()) {
           Rechercher et ajouter dans chaque quartier
         } @else {

@@ -545,6 +545,10 @@
             }
 
             <div class="detail-actions">
+              <button class="action-icone action-icone-bouton" (click)="modifierLieu(detail)" title="Modifier ce lieu">
+                <span class="action-icone-cercle"><ion-icon name="create-outline"></ion-icon></span>
+                <span class="action-icone-label">Modifier</span>
+              </button>
               <button class="action-icone action-icone-bouton" (click)="partagerLieu(detail)" title="Partager ce lieu">
                 <span class="action-icone-cercle"><ion-icon name="share-outline"></ion-icon></span>
                 <span class="action-icone-label">Partager</span>
@@ -638,6 +642,10 @@
             }
 
             <div class="detail-actions">
+              <button class="action-icone action-icone-bouton" (click)="modifierLieu(detail)" title="Modifier ce lieu">
+                <span class="action-icone-cercle"><ion-icon name="create-outline"></ion-icon></span>
+                <span class="action-icone-label">Modifier</span>
+              </button>
               <button class="action-icone action-icone-bouton" (click)="partagerLieu(detail)" title="Partager ce lieu">
                 <span class="action-icone-cercle"><ion-icon name="share-outline"></ion-icon></span>
                 <span class="action-icone-label">Partager</span>
@@ -716,6 +724,10 @@
             }
 
             <div class="detail-actions">
+              <button class="action-icone action-icone-bouton" (click)="modifierLieu(detail)" title="Modifier ce lieu">
+                <span class="action-icone-cercle"><ion-icon name="create-outline"></ion-icon></span>
+                <span class="action-icone-label">Modifier</span>
+              </button>
               <button class="action-icone action-icone-bouton" (click)="partagerLieu(detail)" title="Partager ce lieu">
                 <span class="action-icone-cercle"><ion-icon name="share-outline"></ion-icon></span>
                 <span class="action-icone-label">Partager</span>
@@ -784,14 +796,18 @@
           @if (!plat.Categorie && !plat.Description && !plat.Commentaires) {
             <p class="etat-vide">Aucun détail disponible pour ce plat.</p>
           }
-          @if (plat.Wiki) {
-            <div class="detail-actions">
+          <div class="detail-actions">
+            <button class="action-icone action-icone-bouton" (click)="modifierPlat(plat)" title="Modifier ce plat">
+              <span class="action-icone-cercle"><ion-icon name="create-outline"></ion-icon></span>
+              <span class="action-icone-label">Modifier</span>
+            </button>
+            @if (plat.Wiki) {
               <a class="action-icone action-icone-principale" [href]="plat.Wiki" target="_blank" rel="noopener" title="En savoir plus">
                 <span class="action-icone-cercle"><ion-icon name="open-outline"></ion-icon></span>
                 <span class="action-icone-label">En savoir plus</span>
               </a>
-            </div>
-          }
+            }
+          </div>
         </div>
       </ion-content>
     }
@@ -855,9 +871,14 @@
   </ng-template>
 </ion-modal>
 
-<ion-modal [isOpen]="afficherModaleAjout()" (didDismiss)="afficherModaleAjout.set(false)" [canDismiss]="verifierFermetureAjout" [initialBreakpoint]="1" [breakpoints]="[0, 1]">
+<ion-modal [isOpen]="afficherModaleAjout()" (didDismiss)="fermerModaleAjout()" [canDismiss]="verifierFermetureAjout" [initialBreakpoint]="1" [breakpoints]="[0, 1]">
   <ng-template>
-    <app-ajout-lieu (ferme)="afficherModaleAjout.set(false)" (ajoute)="onLieuAjoute()"></app-ajout-lieu>
+    <app-ajout-lieu
+      [editionInitiale]="editionInitiale()"
+      (ferme)="fermerModaleAjout()"
+      (ajoute)="onLieuAjoute()"
+      (modifie)="onLieuModifie()">
+    </app-ajout-lieu>
   </ng-template>
 </ion-modal>
 

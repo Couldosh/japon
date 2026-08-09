@@ -43,7 +43,7 @@ import { emojiRestaurant, emojiActivite, emojiMagasin } from '../utils/emoji-lie
 import { estOuvertMaintenant, horairesAujourdhui, horairesSemaine, fermetureImminente, prochaineReouverture } from '../utils/horaires';
 import { CarteComponent } from './carte/carte.component';
 import { PlanningComponent } from './planning/planning.component';
-import { AjoutLieuComponent } from './ajout-lieu/ajout-lieu.component';
+import { AjoutLieuComponent, EditionInitiale } from './ajout-lieu/ajout-lieu.component';
 import { GoogleAuthService } from '../service/google/google-auth.service';
 
 type Vue = 'liste' | 'carte' | 'favoris' | 'planning';
@@ -154,6 +154,9 @@ export class HomeComponent implements OnInit {
   readonly filtreQuartier = signal<string | null>(null);
   readonly pickerQuartierOuvert = signal(false);
   readonly afficherModaleAjout = signal(false);
+  /** Renseigné par modifierLieu()/modifierPlat() pour ouvrir la modale d'ajout en mode édition —
+   * reset à null systématiquement à la fermeture pour qu'un futur "+" reparte en création. */
+  readonly editionInitiale = signal<EditionInitiale | null>(null);
 
   // Callback [canDismiss] de la modale d'ajout : arrow function (pas une méthode
   // liée par le binding Angular) pour garder un `this` correct quand Ionic
@@ -436,8 +439,38 @@ export class HomeComponent implements OnInit {
    * ouvert dans le prolongement immédiat d'un geste utilisateur.
    */
   ouvrirModaleAjout(): void {
+    this.editionInitiale.set(null);
     this.afficherModaleAjout.set(true);
     this.googleAuth.tenterReconnexionSilencieuse();
+  }
+
+  /** Ouvre la modale d'ajout en mode édition pour le lieu affiché dans la popup de détail
+   * (voir EditionInitiale) — ferme cette popup, le formulaire d'édition prenant sa place. */
+  modifierLieu(detail: DetailLieu): void {
+    this.fermerDetails();
+    this.editionInitiale.set(detail);
+    this.afficherModaleAjout.set(true);
+    this.googleAuth.tenterReconnexionSilencieuse();
+  }
+
+  /** Même principe que modifierLieu(), pour le plat affiché dans sa popup de détail. */
+  modifierPlat(plat: Plat): void {
+    this.fermerPlat();
+    this.editionInitiale.set({ type: 'plat', data: plat });
+    this.afficherModaleAjout.set(true);
+    this.googleAuth.tenterReconnexionSilencieuse();
+  }
+
+  /** Callback (didDismiss) de la modale d'ajout : reset l'état d'édition dans tous les cas
+   * (succès, fermeture manuelle) pour qu'un futur "+" reparte en mode création. */
+  fermerModaleAjout(): void {
+    this.afficherModaleAjout.set(false);
+    this.editionInitiale.set(null);
+  }
+
+  onLieuModifie(): void {
+    this.toastMessage.set('Modifications enregistrées');
+    this.chargerDonnees(true);
   }
 
   /**
