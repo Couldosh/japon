@@ -799,3 +799,13 @@
   text-align: center;
   line-height: 1.2;
 }
+
+// Ionic dimensionne une modale "sheet" (breakpoints/initialBreakpoint) sur la hauteur de son
+// contenu plutôt que sur la hauteur totale disponible quand ce contenu est court (peu de champs,
+// ex. la modale d'ajout en mode édition ou la recherche de restaurant) — --height force le plein
+// écran quel que soit le contenu, sans changer le comportement swipeable existant.
+.modale-pleine-hauteur {
+  // 100% peut ne pas se résoudre si un ancêtre n'a pas de hauteur explicite ; vh est relatif
+  // à la fenêtre elle-même, plus fiable pour forcer le plein écran ici.
+  --height: 100vh;
+}

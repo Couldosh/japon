@@ -874,7 +874,7 @@
   </ng-template>
 </ion-modal>
 
-<ion-modal [isOpen]="afficherModaleAjout()" (didDismiss)="fermerModaleAjout()" [canDismiss]="verifierFermetureAjout" [initialBreakpoint]="1" [breakpoints]="[0, 1]">
+<ion-modal class="modale-pleine-hauteur" [isOpen]="afficherModaleAjout()" (didDismiss)="fermerModaleAjout()" [canDismiss]="verifierFermetureAjout" [initialBreakpoint]="1" [breakpoints]="[0, 1]">
   <ng-template>
     <app-ajout-lieu
       [editionInitiale]="editionInitiale()"
@@ -885,7 +885,7 @@
   </ng-template>
 </ion-modal>
 
-<ion-modal [isOpen]="afficherModaleRecherche()" (didDismiss)="afficherModaleRecherche.set(false)" [initialBreakpoint]="1" [breakpoints]="[0, 1]">
+<ion-modal class="modale-pleine-hauteur" [isOpen]="afficherModaleRecherche()" (didDismiss)="afficherModaleRecherche.set(false)" [initialBreakpoint]="1" [breakpoints]="[0, 1]">
   <ng-template>
     <app-recherche-restaurant
       (ferme)="afficherModaleRecherche.set(false)"
