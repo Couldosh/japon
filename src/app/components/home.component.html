@@ -9,6 +9,9 @@
         </ion-searchbar>
       }
       <div class="entete-boutons">
+        <ion-button fill="clear" (click)="afficherModaleRecherche.set(true)" aria-label="Rechercher un restaurant" title="Rechercher un restaurant">
+          <ion-icon slot="icon-only" name="search-outline"></ion-icon>
+        </ion-button>
         <ion-button fill="clear" (click)="ouvrirModaleAjout()" aria-label="Ajouter un lieu" title="Ajouter un lieu">
           <ion-icon slot="icon-only" name="add-outline"></ion-icon>
         </ion-button>
@@ -879,6 +882,15 @@
       (ajoute)="onLieuAjoute()"
       (modifie)="onLieuModifie()">
     </app-ajout-lieu>
+  </ng-template>
+</ion-modal>
+
+<ion-modal [isOpen]="afficherModaleRecherche()" (didDismiss)="afficherModaleRecherche.set(false)" [initialBreakpoint]="1" [breakpoints]="[0, 1]">
+  <ng-template>
+    <app-recherche-restaurant
+      (ferme)="afficherModaleRecherche.set(false)"
+      (restaurantChoisi)="onRestaurantChoisi($event)">
+    </app-recherche-restaurant>
   </ng-template>
 </ion-modal>
 

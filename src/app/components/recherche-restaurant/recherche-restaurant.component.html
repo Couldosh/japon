@@ -1,0 +1,134 @@
+<ion-header class="ion-no-border">
+  <ion-toolbar>
+    <ion-title>Rechercher un restaurant</ion-title>
+    <ion-buttons slot="end">
+      <ion-button (click)="ferme.emit()" aria-label="Fermer" title="Fermer">
+        <ion-icon slot="icon-only" name="close-outline"></ion-icon>
+      </ion-button>
+    </ion-buttons>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content>
+  <div class="recherche-restaurant">
+    <ion-item>
+      <ion-input
+        label="Plat recherché *"
+        labelPlacement="stacked"
+        placeholder="Ex : ramen, sushi, okonomiyaki..."
+        [value]="plat()"
+        (ionInput)="plat.set($any($event.detail).value ?? '')">
+      </ion-input>
+    </ion-item>
+
+    <button class="ajout-lieu-quartier" (click)="pickerQuartierOuvert.set(true)" title="Choisir un quartier">
+      <ion-icon name="funnel-outline"></ion-icon>
+      <span>{{ quartier() ?? 'Tous quartiers' }}</span>
+      <ion-icon name="chevron-down-outline" class="ajout-lieu-quartier-chevron"></ion-icon>
+    </button>
+
+    <ion-item>
+      <ion-input
+        label="Gamme de prix"
+        labelPlacement="stacked"
+        placeholder="Ex : pas cher, ¥¥, environ 2000¥..."
+        [value]="gammePrix()"
+        (ionInput)="gammePrix.set($any($event.detail).value ?? '')">
+      </ion-input>
+    </ion-item>
+
+    <ion-item lines="none" class="recherche-restaurant-toggle">
+      <ion-toggle [checked]="rechercheExterne()" (ionChange)="rechercheExterne.set($any($event.detail).checked)">
+        Recherche externe
+      </ion-toggle>
+    </ion-item>
+    @if (rechercheExterne()) {
+      <p class="recherche-restaurant-hint">
+        L'IA pourra aussi suggérer des restaurants réels absents du Sheet — non vérifiés, à confirmer avant de s'y rendre.
+      </p>
+    }
+
+    <ion-button expand="block" class="recherche-restaurant-submit" [disabled]="!formValide() || enCours()" (click)="rechercher()" title="Rechercher">
+      @if (enCours()) {
+        <ion-spinner name="dots"></ion-spinner>
+      } @else {
+        <ion-icon slot="start" name="search-outline"></ion-icon>
+        Rechercher
+      }
+    </ion-button>
+
+    @if (erreur()) {
+      <p class="recherche-restaurant-erreur"><ion-icon name="alert-circle-outline"></ion-icon> {{ erreur() }}</p>
+    }
+
+    @if (rechercheEffectuee() && !enCours()) {
+      @if (resultats().length === 0) {
+        <p class="recherche-restaurant-vide">Aucun restaurant trouvé pour ces critères.</p>
+      } @else {
+        <div class="recherche-restaurant-resultats">
+          @for (suggestion of resultats(); track suggestion.nom + suggestion.quartier) {
+            <button
+              class="recherche-restaurant-carte"
+              [class.recherche-restaurant-carte-cliquable]="suggestion.connu"
+              [disabled]="!suggestion.connu"
+              (click)="choisirResultat(suggestion)">
+              <div class="recherche-restaurant-carte-entete">
+                <span class="recherche-restaurant-carte-nom">{{ suggestion.nom }}</span>
+                @if (!suggestion.connu) {
+                  <ion-chip color="warning">Suggestion externe</ion-chip>
+                }
+              </div>
+              <p class="recherche-restaurant-carte-meta">{{ suggestion.quartier }} · {{ suggestion.prix }}</p>
+              <p class="recherche-restaurant-carte-raison">{{ suggestion.raison }}</p>
+            </button>
+          }
+        </div>
+      }
+    }
+  </div>
+</ion-content>
+
+<ion-modal [isOpen]="pickerQuartierOuvert()" (didDismiss)="pickerQuartierOuvert.set(false)" [initialBreakpoint]="0.75" [breakpoints]="[0, 0.75, 1]">
+  <ng-template>
+    <ion-header class="ion-no-border">
+      <ion-toolbar>
+        <ion-title>Choisir un quartier</ion-title>
+        <ion-buttons slot="end">
+          <ion-button (click)="pickerQuartierOuvert.set(false)" aria-label="Fermer" title="Fermer">
+            <ion-icon slot="icon-only" name="close-outline"></ion-icon>
+          </ion-button>
+        </ion-buttons>
+      </ion-toolbar>
+    </ion-header>
+
+    <ion-content>
+      <div class="picker-quartier">
+        <button
+          class="picker-quartier-option"
+          [class.picker-quartier-selectionne]="quartier() === null"
+          (click)="choisirQuartier(null)"
+          title="Tous quartiers">
+          <span>Tous quartiers</span>
+          @if (quartier() === null) {
+            <ion-icon name="checkmark-outline"></ion-icon>
+          }
+        </button>
+        @for (groupe of quartiersParVille(); track groupe.ville) {
+          <p class="picker-quartier-ville">{{ groupe.ville }}</p>
+          @for (q of groupe.quartiers; track q) {
+            <button
+              class="picker-quartier-option"
+              [class.picker-quartier-selectionne]="quartier() === q"
+              (click)="choisirQuartier(q)"
+              [title]="q">
+              <span>{{ q }}</span>
+              @if (quartier() === q) {
+                <ion-icon name="checkmark-outline"></ion-icon>
+              }
+            </button>
+          }
+        }
+      </div>
+    </ion-content>
+  </ng-template>
+</ion-modal>

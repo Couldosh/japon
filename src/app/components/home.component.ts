@@ -44,6 +44,7 @@ import { estOuvertMaintenant, horairesAujourdhui, horairesSemaine, fermetureImmi
 import { CarteComponent } from './carte/carte.component';
 import { PlanningComponent } from './planning/planning.component';
 import { AjoutLieuComponent, EditionInitiale } from './ajout-lieu/ajout-lieu.component';
+import { RechercheRestaurantComponent } from './recherche-restaurant/recherche-restaurant.component';
 import { GoogleAuthService } from '../service/google/google-auth.service';
 
 type Vue = 'liste' | 'carte' | 'favoris' | 'planning';
@@ -90,7 +91,7 @@ type DetailLieu =
     IonContent, IonSkeletonText, IonRefresher, IonRefresherContent,
     IonModal, IonTitle, IonSelect, IonSelectOption, IonTextarea, IonToast,
     IonFab, IonFabButton,
-    CarteComponent, PlanningComponent, AjoutLieuComponent
+    CarteComponent, PlanningComponent, AjoutLieuComponent, RechercheRestaurantComponent
   ],
   templateUrl: './home.component.html',
   styleUrl: './home.component.scss'
@@ -157,6 +158,7 @@ export class HomeComponent implements OnInit {
   /** Renseigné par modifierLieu()/modifierPlat() pour ouvrir la modale d'ajout en mode édition —
    * reset à null systématiquement à la fermeture pour qu'un futur "+" reparte en création. */
   readonly editionInitiale = signal<EditionInitiale | null>(null);
+  readonly afficherModaleRecherche = signal(false);
 
   // Callback [canDismiss] de la modale d'ajout : arrow function (pas une méthode
   // liée par le binding Angular) pour garder un `this` correct quand Ionic
@@ -471,6 +473,14 @@ export class HomeComponent implements OnInit {
   onLieuModifie(): void {
     this.toastMessage.set('Modifications enregistrées');
     this.chargerDonnees(true);
+  }
+
+  /** Le résultat choisi dans RechercheRestaurantComponent est déjà le RestaurantModel complet
+   * (résolu côté composant depuis les restaurants connus) : ferme la recherche, ouvre la popup
+   * détail habituelle sur ce restaurant. */
+  onRestaurantChoisi(restaurant: RestaurantModel): void {
+    this.afficherModaleRecherche.set(false);
+    this.detailSelectionne.set({ type: 'restaurant', data: restaurant });
   }
 
   /**

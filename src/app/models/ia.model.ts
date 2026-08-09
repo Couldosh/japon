@@ -45,3 +45,30 @@ export interface PlatInfoResponse {
   description: string;
   wiki: string;
 }
+
+export interface RestaurantCandidat {
+  nom: string;
+  quartier: string;
+  prix: string;
+  plats: string[];
+}
+
+export interface RechercheRestaurantRequest {
+  plat: string;
+  quartier: string | null;
+  gammePrix: string | null;
+  rechercheExterne: boolean;
+  restaurantsConnus: RestaurantCandidat[];
+}
+
+export interface SuggestionRestaurant {
+  nom: string;
+  quartier: string;
+  prix: string;
+  raison: string;
+  connu: boolean;
+}
+
+export interface RechercheRestaurantResponse {
+  resultats: SuggestionRestaurant[];
+}
