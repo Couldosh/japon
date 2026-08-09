@@ -82,6 +82,26 @@
           }
         </p>
 
+        @if (resumeParJour().get(groupe.date); as resume) {
+          <p class="planning-jour-resume-ia">🤖 {{ resume }}</p>
+        } @else if (!groupe.estAujourdhui) {
+          <ion-button
+            class="planning-jour-resume-bouton"
+            fill="clear"
+            size="small"
+            [disabled]="resumeEnCoursParJour().has(groupe.date)"
+            (click)="genererResumeManuel(groupe)">
+            @if (resumeEnCoursParJour().has(groupe.date)) {
+              Génération…
+            } @else {
+              🤖 Générer un résumé IA
+            }
+          </ion-button>
+          @if (resumeErreurParJour().get(groupe.date); as erreurResume) {
+            <p class="planning-jour-resume-erreur">{{ erreurResume }}</p>
+          }
+        }
+
         @for (hebergement of groupe.departsHebergement; track hebergement.id) {
           <button class="planning-hebergement-bandeau" (click)="ouvrirHebergement(hebergement)" [title]="'Voir le détail de ' + hebergement.nom">
             <span class="planning-hebergement-icone"><ion-icon name="bed-outline"></ion-icon></span>

@@ -213,6 +213,32 @@
             (ionInput)="description.set($any($event.detail).value ?? '')">
           </ion-textarea>
         </ion-item>
+
+        @if (estUnLieu()) {
+          <ion-button
+            class="ajout-lieu-ia"
+            fill="outline"
+            size="small"
+            [disabled]="!nom().trim() || !quartier() || descriptionIaEnCours()"
+            (click)="genererDescriptionIa()"
+            title="Générer une description avec l'IA">
+            @if (descriptionIaEnCours()) {
+              <ion-spinner name="dots" slot="start"></ion-spinner>
+            } @else {
+              <ion-icon slot="start" name="sparkles-outline"></ion-icon>
+            }
+            Générer une description avec l'IA
+          </ion-button>
+
+          @if (descriptionIaErreur()) {
+            <p class="ajout-lieu-recherche-message">
+              <span>{{ descriptionIaErreur() }}</span>
+              <button class="ajout-lieu-message-fermer" (click)="descriptionIaErreur.set(null)" aria-label="Masquer ce message" title="Masquer ce message">
+                <ion-icon name="close-outline"></ion-icon>
+              </button>
+            </p>
+          }
+        }
       }
 
       @if (type() === 'restaurant' || type() === 'activite') {
@@ -229,6 +255,37 @@
 
       @if (type() === 'restaurant') {
         <p class="ajout-lieu-label">Plats</p>
+
+        <ion-button
+          class="ajout-lieu-ia"
+          fill="outline"
+          size="small"
+          [disabled]="!nom().trim() || platsIaEnCours()"
+          (click)="extrairePlatsIa()"
+          title="Extraire les plats avec l'IA">
+          @if (platsIaEnCours()) {
+            <ion-spinner name="dots" slot="start"></ion-spinner>
+          } @else {
+            <ion-icon slot="start" name="sparkles-outline"></ion-icon>
+          }
+          Extraire les plats avec l'IA
+        </ion-button>
+
+        @if (platsIaErreur()) {
+          <p class="ajout-lieu-recherche-message">
+            <span>{{ platsIaErreur() }}</span>
+            <button class="ajout-lieu-message-fermer" (click)="platsIaErreur.set(null)" aria-label="Masquer ce message" title="Masquer ce message">
+              <ion-icon name="close-outline"></ion-icon>
+            </button>
+          </p>
+        }
+
+        @if (platsSuggeresInconnus().length) {
+          <p class="ajout-lieu-hint">
+            L'IA a aussi repéré : {{ platsSuggeresInconnus().join(', ') }} — ajoute-les via le type "Plat" ci-dessus si pertinent.
+          </p>
+        }
+
         @if (platsDisponibles().length) {
           <div class="ajout-lieu-plats-chips">
             @for (nom of platsDisponibles(); track nom) {

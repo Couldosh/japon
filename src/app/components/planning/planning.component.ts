@@ -17,6 +17,7 @@ import { MeteoJour } from '../../models/meteo.model';
 import { LieuAffichable } from '../../models/lieu-affichable.model';
 import { dateISOAujourdhui, formaterDateCourte, formaterDateGroupe, statutReservation, StatutReservation } from '../../utils/planning';
 import { emojiMeteo } from '../../utils/emoji-meteo';
+import { IaService } from '../../service/ia/ia.service';
 
 /** Normalise un nom pour un matching insensible à la casse/aux accents (ex: "Ichiran" ~ "ichirân"). */
 function normaliser(texte: string): string {
@@ -48,6 +49,7 @@ interface GroupeJour {
 export class PlanningComponent implements OnInit {
   private readonly planningService = inject(PlanningService);
   private readonly meteoService = inject(MeteoService);
+  private readonly iaService = inject(IaService);
   private readonly elementRef = inject(ElementRef<HTMLElement>);
 
   /** Tous les lieux connus (non filtrés), pour retrouver la fiche détail d'une activité du planning. */
@@ -141,6 +143,17 @@ export class PlanningComponent implements OnInit {
   private readonly villesMeteoChargees = new Set<string>();
   readonly emojiMeteo = emojiMeteo;
 
+  /** Résumé quotidien généré par le backend IA (ClaudeApiTkt), indexé par date ISO du groupe.
+   * Best-effort côté "aujourd'hui" (déclenchement automatique, même philosophie que la météo :
+   * jamais d'erreur affichée) ; erreur affichée uniquement pour une génération manuelle
+   * (genererResumeManuel), où l'utilisateur attend un retour explicite après son clic. */
+  readonly resumeParJour = signal<Map<string, string>>(new Map());
+  readonly resumeEnCoursParJour = signal<Set<string>>(new Set());
+  readonly resumeErreurParJour = signal<Map<string, string>>(new Map());
+  /** Dates déjà demandées dans cette session (auto ou manuel), pour ne jamais rappeler deux fois
+   * le même jour — le cache serveur (12h) limite déjà le coût, ceci évite un appel réseau inutile. */
+  private readonly resumeDemandes = new Set<string>();
+
   // Ne déclenche le scroll auto qu'une seule fois par ouverture de l'onglet (le
   // composant est détruit/recréé à chaque changement de vue, donc ce flag ne
   // survit pas entre deux visites, ce qui est le comportement voulu).
@@ -189,12 +202,80 @@ export class PlanningComponent implements OnInit {
         });
       }
     });
+
+    // Génère automatiquement le résumé IA du jour "aujourd'hui" uniquement (pas les autres
+    // jours du voyage, qui restent à la demande via genererResumeManuel) — voir le commentaire
+    // sur resumeParJour pour le compromis coût/utilité derrière ce choix.
+    effect(() => {
+      const groupeAujourdhui = this.groupesJour().find(g => g.estAujourdhui);
+      if (!groupeAujourdhui || this.resumeDemandes.has(groupeAujourdhui.date)) {
+        return;
+      }
+      this.resumeDemandes.add(groupeAujourdhui.date);
+      this.genererResumeJour(groupeAujourdhui, false);
+    });
   }
 
   /** Prévision météo du jour affiché dans l'en-tête de groupe, null si non disponible
    * (jour hors fenêtre de prévision, ville non géolocalisable, etc. — voir MeteoService). */
   meteoJour(groupe: GroupeJour): MeteoJour | null {
     return groupe.ville ? this.meteoParVilleEtDate().get(`${groupe.ville}|${groupe.date}`) ?? null : null;
+  }
+
+  /** Déclenchement manuel (bouton "Générer un résumé IA") pour un jour autre qu'aujourd'hui —
+   * ignoré si déjà demandé dans cette session. */
+  genererResumeManuel(groupe: GroupeJour): void {
+    if (this.resumeDemandes.has(groupe.date)) {
+      return;
+    }
+    this.resumeDemandes.add(groupe.date);
+    this.genererResumeJour(groupe, true);
+  }
+
+  private genererResumeJour(groupe: GroupeJour, afficherErreur: boolean): void {
+    const enCours = new Set(this.resumeEnCoursParJour());
+    enCours.add(groupe.date);
+    this.resumeEnCoursParJour.set(enCours);
+
+    const meteo = this.meteoJour(groupe);
+    const meteoTexte = meteo ? `${this.emojiMeteo(meteo.code)} ${meteo.tempMin}°-${meteo.tempMax}°` : null;
+
+    this.iaService.genererResumeQuotidien({
+      jour: groupe.titre,
+      ville: groupe.ville,
+      activites: groupe.activites.map(a => `${a.heureDebut} ${a.activite}`),
+      meteo: meteoTexte,
+      hebergement: this.hebergementTexte(groupe),
+    }).subscribe({
+      next: reponse => {
+        this.retirerResumeEnCours(groupe.date);
+        const map = new Map(this.resumeParJour());
+        map.set(groupe.date, reponse.resume);
+        this.resumeParJour.set(map);
+      },
+      error: (err: Error) => {
+        this.retirerResumeEnCours(groupe.date);
+        if (afficherErreur) {
+          const erreurs = new Map(this.resumeErreurParJour());
+          erreurs.set(groupe.date, err.message);
+          this.resumeErreurParJour.set(erreurs);
+        }
+      }
+    });
+  }
+
+  private retirerResumeEnCours(date: string): void {
+    const enCours = new Set(this.resumeEnCoursParJour());
+    enCours.delete(date);
+    this.resumeEnCoursParJour.set(enCours);
+  }
+
+  private hebergementTexte(groupe: GroupeJour): string | null {
+    const parts: string[] = [
+      ...groupe.arriveesHebergement.map(h => `Arrivée ${h.nom} (check-in ${h.heureCheckIn})`),
+      ...groupe.departsHebergement.map(h => `Départ ${h.nom} (check-out ${h.heureCheckOut})`),
+    ];
+    return parts.length > 0 ? parts.join('; ') : null;
   }
 
   ngOnInit(): void {

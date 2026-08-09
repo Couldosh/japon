@@ -6,7 +6,7 @@ import {
   IonChip, IonItem, IonInput, IonTextarea, IonModal, IonSpinner, IonToggle, AlertController
 } from '@ionic/angular/standalone';
 import { addIcons } from 'ionicons';
-import { closeOutline, checkmarkOutline, funnelOutline, chevronDownOutline, alertCircleOutline, searchOutline } from 'ionicons/icons';
+import { closeOutline, checkmarkOutline, funnelOutline, chevronDownOutline, alertCircleOutline, searchOutline, sparklesOutline } from 'ionicons/icons';
 import { GoogleAuthService } from '../../service/google/google-auth.service';
 import { SheetsWriteService } from '../../service/google/sheets-write.service';
 import { QuartierService } from '../../service/quartier/quartier.service';
@@ -20,6 +20,7 @@ import { RestaurantService } from '../../service/restaurant/restaurant.service';
 import { RestaurantModel } from '../../models/restaurant.model';
 import { MagasinService } from '../../service/magasin/magasin.service';
 import { MagasinModel } from '../../models/magasin.model';
+import { IaService } from '../../service/ia/ia.service';
 
 type TypeAjout = 'restaurant' | 'activite' | 'magasin' | 'plat' | 'quartier';
 
@@ -76,6 +77,7 @@ export class AjoutLieuComponent implements OnInit {
   private readonly villeService = inject(VilleService);
   private readonly platService = inject(PlatService);
   private readonly placesSearch = inject(PlacesSearchService);
+  private readonly iaService = inject(IaService);
   private readonly restaurantService = inject(RestaurantService);
   private readonly magasinService = inject(MagasinService);
   private readonly alertController = inject(AlertController);
@@ -129,6 +131,18 @@ export class AjoutLieuComponent implements OnInit {
   /** Champs ('liens'/'localisation') dont la valeur actuelle vient de la dernière recherche
    * Google Places, pour afficher un badge "auto" — effacé dès que l'utilisateur retouche le champ. */
   readonly champsAutoRemplis = signal<Set<'liens' | 'localisation'>>(new Set());
+  /** Résumé Google Places de la dernière recherche (rechercherPlaces()), conservé pour les
+   * boutons IA (génération de description, extraction de plats) qui peuvent être utilisés
+   * après coup, indépendamment de preselectionnerPlats() qui ne fait que le consommer. */
+  readonly resumeGooglePlaces = signal<string | null>(null);
+
+  readonly descriptionIaEnCours = signal(false);
+  readonly descriptionIaErreur = signal<string | null>(null);
+  readonly platsIaEnCours = signal(false);
+  readonly platsIaErreur = signal<string | null>(null);
+  /** Plats renvoyés par l'extraction IA mais absents de platsDisponibles() : affichés en
+   * texte, pas en chip (la liste de chips reste fermée au référentiel "Plats" du Sheet). */
+  readonly platsSuggeresInconnus = signal<string[]>([]);
 
   private readonly quartiers = signal<QuartierModel[]>([]);
   private readonly villes = signal<VilleModel[]>([]);
@@ -264,7 +278,7 @@ export class AjoutLieuComponent implements OnInit {
   );
 
   constructor() {
-    addIcons({ closeOutline, checkmarkOutline, funnelOutline, chevronDownOutline, alertCircleOutline, searchOutline });
+    addIcons({ closeOutline, checkmarkOutline, funnelOutline, chevronDownOutline, alertCircleOutline, searchOutline, sparklesOutline });
   }
 
   ngOnInit(): void {
@@ -311,6 +325,8 @@ export class AjoutLieuComponent implements OnInit {
     this.type.set(type);
     this.rechercheMessage.set(null);
     this.photoApercu.set(null);
+    this.resumeGooglePlaces.set(null);
+    this.platsSuggeresInconnus.set([]);
     if (!TYPES_FRANCHISABLES.includes(type)) {
       this.estFranchise.set(false);
     }
@@ -417,6 +433,8 @@ export class AjoutLieuComponent implements OnInit {
     this.rechercheEnCours.set(true);
     this.rechercheMessage.set(null);
     this.photoApercu.set(null);
+    this.resumeGooglePlaces.set(null);
+    this.platsSuggeresInconnus.set([]);
 
     this.placesSearch.rechercher(nom, this.quartier())
       .pipe(takeUntilDestroyed(this.destroyRef))
@@ -430,6 +448,7 @@ export class AjoutLieuComponent implements OnInit {
           }
 
           this.photoApercu.set(resultat.photoUrl);
+          this.resumeGooglePlaces.set(resultat.resume);
 
           const ecraseraitLiens = !!resultat.siteWeb && this.liens().trim().length > 0;
           const ecraseraitLocalisation = this.localisation().trim().length > 0;
@@ -491,6 +510,88 @@ export class AjoutLieuComponent implements OnInit {
       return;
     }
     this.platsSelectionnes.set([...new Set([...this.platsSelectionnes(), ...trouves])]);
+  }
+
+  /** Génère une description via le backend IA (ClaudeApiTkt) à partir de Nom/Type/Quartier et
+   * du résumé Google Places de la dernière recherche. Demande confirmation avant d'écraser une
+   * description déjà saisie, comme pour Lien/Localisation (confirmerEcrasement). */
+  async genererDescriptionIa(): Promise<void> {
+    const nom = this.nom().trim();
+    if (!nom || !this.quartier() || this.descriptionIaEnCours()) {
+      return;
+    }
+
+    if (this.description().trim().length > 0 && !(await this.confirmerEcrasement())) {
+      return;
+    }
+
+    this.descriptionIaEnCours.set(true);
+    this.descriptionIaErreur.set(null);
+
+    this.iaService.genererDescription({
+      nom,
+      type: this.type(),
+      quartier: this.quartier(),
+      resumeGoogle: this.resumeGooglePlaces(),
+    })
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: reponse => {
+          this.descriptionIaEnCours.set(false);
+          this.description.set(reponse.description);
+        },
+        error: (err: Error) => {
+          this.descriptionIaEnCours.set(false);
+          this.descriptionIaErreur.set(err.message);
+        }
+      });
+  }
+
+  /** Extrait les plats via le backend IA à partir du résumé Google Places, en complément de
+   * preselectionnerPlats() (heuristique locale gratuite, toujours appliquée en premier après une
+   * recherche Places). Les plats trouvés qui matchent un plat connu (normaliser(), même logique
+   * que preselectionnerPlats) sont ajoutés à la sélection ; les autres sont affichés à part,
+   * sans créer de chip libre. */
+  extrairePlatsIa(): void {
+    const nom = this.nom().trim();
+    if (!nom || this.platsIaEnCours()) {
+      return;
+    }
+
+    this.platsIaEnCours.set(true);
+    this.platsIaErreur.set(null);
+    this.platsSuggeresInconnus.set([]);
+
+    this.iaService.extrairePlats({
+      nomRestaurant: nom,
+      resumeGoogle: this.resumeGooglePlaces(),
+      platsConnus: this.platsDisponibles(),
+    })
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: reponse => {
+          this.platsIaEnCours.set(false);
+          const connus = this.platsDisponibles();
+          const trouves: string[] = [];
+          const inconnus: string[] = [];
+          for (const suggestion of reponse.plats) {
+            const match = connus.find(candidat => normaliser(candidat) === normaliser(suggestion.nom));
+            if (match) {
+              trouves.push(match);
+            } else {
+              inconnus.push(suggestion.nom);
+            }
+          }
+          if (trouves.length > 0) {
+            this.platsSelectionnes.set([...new Set([...this.platsSelectionnes(), ...trouves])]);
+          }
+          this.platsSuggeresInconnus.set(inconnus);
+        },
+        error: (err: Error) => {
+          this.platsIaEnCours.set(false);
+          this.platsIaErreur.set(err.message);
+        }
+      });
   }
 
   soumettre(): void {
@@ -837,5 +938,9 @@ export class AjoutLieuComponent implements OnInit {
     this.rechercheMessage.set(null);
     this.photoApercu.set(null);
     this.champsAutoRemplis.set(new Set());
+    this.resumeGooglePlaces.set(null);
+    this.descriptionIaErreur.set(null);
+    this.platsIaErreur.set(null);
+    this.platsSuggeresInconnus.set([]);
   }
 }
