@@ -19,8 +19,7 @@ import {
   openOutline, starOutline, star, starHalf, pricetagOutline, playOutline,
   timeOutline, funnelOutline, layersOutline, chevronDownOutline, checkmarkOutline,
   calendarOutline, alarmOutline, createOutline, addOutline, arrowUpOutline,
-  shareOutline, downloadOutline, cloudUploadOutline, todayOutline,
-  logInOutline, checkmarkCircleOutline
+  shareOutline, downloadOutline, cloudUploadOutline, todayOutline
 } from 'ionicons/icons';
 
 import { RestaurantService } from '../service/restaurant/restaurant.service';
@@ -405,25 +404,13 @@ export class HomeComponent implements OnInit {
       openOutline, starOutline, star, starHalf, pricetagOutline, playOutline,
       timeOutline, funnelOutline, layersOutline, chevronDownOutline, checkmarkOutline,
       calendarOutline, alarmOutline, createOutline, addOutline, arrowUpOutline,
-      shareOutline, downloadOutline, cloudUploadOutline, todayOutline,
-      logInOutline, checkmarkCircleOutline
+      shareOutline, downloadOutline, cloudUploadOutline, todayOutline
     });
   }
 
   ngOnInit(): void {
     this.geoloc.demarrerSuivi();
     this.chargerDonnees();
-  }
-
-  /**
-   * Connexion Google pour "Ajouter un lieu" (Sheets) — les fonctionnalités IA n'ont plus besoin
-   * de connexion utilisateur, elles passent par le reverse proxy same-origin (voir IaService).
-   * Doit rester appelée directement depuis ce (click), même contrainte que
-   * tenterReconnexionSilencieuse() (voir GoogleAuthService) : le popup GIS est bloqué s'il n'est
-   * pas ouvert dans le prolongement immédiat d'un geste utilisateur.
-   */
-  seConnecter(): void {
-    this.googleAuth.connecter();
   }
 
   /** Force le rechargement des données depuis Google Sheets en ignorant le cache. */
