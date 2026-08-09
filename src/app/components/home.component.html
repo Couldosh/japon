@@ -714,6 +714,9 @@
               </div>
             }
 
+            @if (detail.data.Description) {
+              <p class="detail-texte">{{ detail.data.Description }}</p>
+            }
             @if (detail.data.Commentaires) {
               <p class="detail-sous-titre">Commentaires</p>
               <p class="detail-texte">{{ detail.data.Commentaires }}</p>

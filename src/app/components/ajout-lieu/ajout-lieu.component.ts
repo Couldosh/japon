@@ -143,6 +143,8 @@ export class AjoutLieuComponent implements OnInit {
   /** Plats renvoyés par l'extraction IA mais absents de platsDisponibles() : affichés en
    * texte, pas en chip (la liste de chips reste fermée au référentiel "Plats" du Sheet). */
   readonly platsSuggeresInconnus = signal<string[]>([]);
+  readonly platInfoIaEnCours = signal(false);
+  readonly platInfoIaErreur = signal<string | null>(null);
 
   private readonly quartiers = signal<QuartierModel[]>([]);
   private readonly villes = signal<VilleModel[]>([]);
@@ -486,11 +488,14 @@ export class AjoutLieuComponent implements OnInit {
       });
   }
 
-  /** Confirmation avant de remplacer un Lien/Localisation déjà renseigné manuellement par le résultat Places. */
-  private async confirmerEcrasement(): Promise<boolean> {
+  /** Confirmation avant de remplacer des champs déjà renseignés manuellement — message
+   * paramétrable, réutilisé pour Lien/Localisation (Places) et Description/Wiki (IA Plat). */
+  private async confirmerEcrasement(
+    message = 'Le lien et/ou la localisation contiennent déjà une valeur. Le résultat trouvé sur Google Places va la remplacer.'
+  ): Promise<boolean> {
     const alert = await this.alertController.create({
       header: 'Remplacer les champs déjà remplis ?',
-      message: 'Le lien et/ou la localisation contiennent déjà une valeur. Le résultat trouvé sur Google Places va la remplacer.',
+      message,
       buttons: [
         { text: 'Garder mes valeurs', role: 'cancel' },
         { text: 'Remplacer', role: 'destructive' },
@@ -590,6 +595,45 @@ export class AjoutLieuComponent implements OnInit {
         error: (err: Error) => {
           this.platsIaEnCours.set(false);
           this.platsIaErreur.set(err.message);
+        }
+      });
+  }
+
+  /** Génère description + lien Wikipedia pour un plat (type "Plat") via le backend IA, à
+   * partir du nom et de la catégorie. Demande confirmation avant d'écraser des valeurs déjà
+   * saisies (même garde-fou que pour Lien/Localisation, voir confirmerEcrasement). Le lien
+   * Wikipedia proposé reste une suggestion : le prompt système demande explicitement à l'IA de
+   * le laisser vide plutôt que d'inventer un lien pour un plat trop obscur — à vérifier avant
+   * publication comme n'importe quel champ auto-rempli par ailleurs dans ce formulaire. */
+  async genererPlatInfoIa(): Promise<void> {
+    const nom = this.nom().trim();
+    if (!nom || this.platInfoIaEnCours()) {
+      return;
+    }
+
+    const remplaceraitQuelqueChose = this.description().trim().length > 0 || this.wiki().trim().length > 0;
+    if (remplaceraitQuelqueChose && !(await this.confirmerEcrasement(
+      'La description et/ou le lien Wikipedia contiennent déjà une valeur. Le résultat de l\'IA va la remplacer.'
+    ))) {
+      return;
+    }
+
+    this.platInfoIaEnCours.set(true);
+    this.platInfoIaErreur.set(null);
+
+    this.iaService.genererPlatInfo({ nom, categorie: this.categoriePlat() })
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: reponse => {
+          this.platInfoIaEnCours.set(false);
+          this.description.set(reponse.description);
+          if (reponse.wiki) {
+            this.wiki.set(reponse.wiki);
+          }
+        },
+        error: (err: Error) => {
+          this.platInfoIaEnCours.set(false);
+          this.platInfoIaErreur.set(err.message);
         }
       });
   }
@@ -801,6 +845,7 @@ export class AjoutLieuComponent implements OnInit {
 
     return {
       ...commun,
+      Description: this.description().trim(),
       Type: this.typeMagasin().trim(),
     };
   }
@@ -913,6 +958,7 @@ export class AjoutLieuComponent implements OnInit {
 
     return {
       ...commun,
+      Description: this.description().trim(),
       Type: this.typeMagasin().trim(),
     };
   }
@@ -942,5 +988,6 @@ export class AjoutLieuComponent implements OnInit {
     this.descriptionIaErreur.set(null);
     this.platsIaErreur.set(null);
     this.platsSuggeresInconnus.set([]);
+    this.platInfoIaErreur.set(null);
   }
 }

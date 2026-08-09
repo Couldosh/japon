@@ -201,9 +201,33 @@
             (ionInput)="wiki.set($any($event.detail).value ?? '')">
           </ion-input>
         </ion-item>
+
+        <ion-button
+          class="ajout-lieu-ia"
+          fill="outline"
+          size="small"
+          [disabled]="!nom().trim() || platInfoIaEnCours()"
+          (click)="genererPlatInfoIa()"
+          title="Générer description et Wikipedia avec l'IA">
+          @if (platInfoIaEnCours()) {
+            <ion-spinner name="dots" slot="start"></ion-spinner>
+          } @else {
+            <ion-icon slot="start" name="sparkles-outline"></ion-icon>
+          }
+          Générer description et Wikipedia avec l'IA
+        </ion-button>
+
+        @if (platInfoIaErreur()) {
+          <p class="ajout-lieu-recherche-message">
+            <span>{{ platInfoIaErreur() }}</span>
+            <button class="ajout-lieu-message-fermer" (click)="platInfoIaErreur.set(null)" aria-label="Masquer ce message" title="Masquer ce message">
+              <ion-icon name="close-outline"></ion-icon>
+            </button>
+          </p>
+        }
       }
 
-      @if (type() !== 'magasin' && type() !== 'quartier') {
+      @if (type() !== 'quartier') {
         <ion-item>
           <ion-textarea
             label="Description"

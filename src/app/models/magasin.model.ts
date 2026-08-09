@@ -8,6 +8,7 @@ export class MagasinModel {
   Quartier: QuartierModel;
   Nom: string;
   Type: string;
+  Description?: string; // absent des lignes écrites avant l'ajout de cette colonne au Sheet
   Commentaires: string;
   Avis: Avis;
   latitude: number | null;

@@ -35,3 +35,13 @@ export interface ResumeQuotidienRequest {
 export interface ResumeQuotidienResponse {
   resume: string;
 }
+
+export interface PlatInfoRequest {
+  nom: string;
+  categorie: string;
+}
+
+export interface PlatInfoResponse {
+  description: string;
+  wiki: string;
+}
