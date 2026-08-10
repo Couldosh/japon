@@ -476,10 +476,10 @@ export class HomeComponent implements OnInit {
   }
 
   /** Le résultat choisi dans RechercheRestaurantComponent est déjà le RestaurantModel complet
-   * (résolu côté composant depuis les restaurants connus) : ferme la recherche, ouvre la popup
-   * détail habituelle sur ce restaurant. */
+   * (résolu côté composant depuis les restaurants connus) : ouvre la popup détail habituelle
+   * par-dessus, sans fermer la recherche — l'utilisateur peut la retrouver telle quelle (mêmes
+   * critères, mêmes résultats) une fois le détail refermé, pour comparer plusieurs suggestions. */
   onRestaurantChoisi(restaurant: RestaurantModel): void {
-    this.afficherModaleRecherche.set(false);
     this.detailSelectionne.set({ type: 'restaurant', data: restaurant });
   }
 
