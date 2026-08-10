@@ -84,6 +84,13 @@ export class RechercheRestaurantComponent implements OnInit {
       .map(([ville, quartiers]) => ({ ville, quartiers: [...quartiers].sort((a, b) => a.localeCompare(b)) }));
   });
 
+  /** Villes du voyage en cours (déduites des quartiers connus), envoyées en contexte pour la
+   * recherche externe — voir RechercheLieuService côté backend pour le même principe : donner
+   * la ville plutôt que la liste exacte des quartiers déjà catalogués évite que l'IA se limite
+   * à tort aux quelques quartiers déjà présents dans le Sheet quand elle cherche un restaurant
+   * hors du Sheet. */
+  readonly villesConnues = computed(() => this.quartiersParVille().map(g => g.ville));
+
   readonly formValide = computed(() => this.plat().trim().length > 0);
 
   constructor() {
@@ -132,6 +139,7 @@ export class RechercheRestaurantComponent implements OnInit {
       gammePrix: this.gammePrix().trim() || null,
       rechercheExterne: this.rechercheExterne(),
       restaurantsConnus,
+      villesConnues: this.villesConnues(),
     })
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({

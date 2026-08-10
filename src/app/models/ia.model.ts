@@ -59,6 +59,7 @@ export interface RechercheRestaurantRequest {
   gammePrix: string | null;
   rechercheExterne: boolean;
   restaurantsConnus: RestaurantCandidat[];
+  villesConnues: string[];
 }
 
 export interface SuggestionRestaurant {
@@ -76,7 +77,7 @@ export interface RechercheRestaurantResponse {
 export interface RechercheLieuRequest {
   nom: string;
   type: string;
-  quartiersConnus: string[];
+  villesConnues: string[];
 }
 
 export interface SuggestionLieu {

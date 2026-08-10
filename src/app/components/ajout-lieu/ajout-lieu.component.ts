@@ -226,12 +226,6 @@ export class AjoutLieuComponent implements OnInit {
    * recherche Google Places quartier par quartier d'un restaurant "franchise". */
   readonly quartiersConnus = computed(() => this.quartiersParVille().flatMap(g => g.quartiers));
 
-  /** Quartiers connus formatés "Quartier (Ville)", envoyés en contexte à /ai/recherche-lieu
-   * pour que l'IA priorise les quartiers du voyage en cours quand ils correspondent. */
-  private readonly quartiersConnusFormates = computed(() =>
-    this.quartiersParVille().flatMap(g => g.quartiers.map(q => `${q} (${g.ville})`))
-  );
-
   /** Par type franchisable (restaurant/magasin), nom de lieu normalisé -> Set des quartiers
    * (normalisés) où il existe déjà dans le Sheet, pour ne pas rechercher/ajouter en double une
    * instance de franchise déjà présente (et pour avertir d'un doublon sur un ajout normal, voir
@@ -275,7 +269,11 @@ export class AjoutLieuComponent implements OnInit {
 
   /** Villes déjà connues dans la feuille de référence "Villes" (VilleService), pour choisir
    * plutôt que ressaisir une ville existante — et détecter si une saisie manuelle correspond
-   * à une nouvelle ville à ajouter au Sheet (voir soumettreQuartier()). */
+   * à une nouvelle ville à ajouter au Sheet (voir soumettreQuartier()). Réutilisée aussi comme
+   * contexte pour /ai/recherche-lieu (rechercherSuggestionsIa()) : envoyer les villes du voyage
+   * plutôt que les seuls quartiers déjà catalogués laisse l'IA citer n'importe quel quartier
+   * réel de ces villes, au lieu de se limiter aux quelques quartiers déjà présents dans le
+   * Sheet. */
   readonly villesConnues = computed(() =>
     [...new Set(this.villes().map(v => v.Nom?.trim()).filter((n): n is string => !!n))]
       .sort((a, b) => a.localeCompare(b))
@@ -540,7 +538,7 @@ export class AjoutLieuComponent implements OnInit {
     this.iaService.rechercherLieu({
       nom,
       type: this.libelleTypeEdition(),
-      quartiersConnus: this.quartiersConnusFormates(),
+      villesConnues: this.villesConnues(),
     })
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
