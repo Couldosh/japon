@@ -2,10 +2,10 @@ import { Component, DestroyRef, OnInit, computed, inject, output, signal } from 
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import {
   IonHeader, IonToolbar, IonTitle, IonButtons, IonButton, IonIcon, IonContent,
-  IonItem, IonInput, IonToggle, IonSpinner, IonModal, IonChip
+  IonItem, IonInput, IonToggle, IonSpinner, IonModal, IonChip, IonSearchbar
 } from '@ionic/angular/standalone';
 import { addIcons } from 'ionicons';
-import { closeOutline, alertCircleOutline, funnelOutline, chevronDownOutline, checkmarkOutline, searchOutline } from 'ionicons/icons';
+import { closeOutline, alertCircleOutline, funnelOutline, chevronDownOutline, chevronForwardOutline, checkmarkOutline, searchOutline } from 'ionicons/icons';
 import { IaService } from '../../service/ia/ia.service';
 import { RestaurantService } from '../../service/restaurant/restaurant.service';
 import { RestaurantModel } from '../../models/restaurant.model';
@@ -44,7 +44,7 @@ interface VilleQuartiers {
   standalone: true,
   imports: [
     IonHeader, IonToolbar, IonTitle, IonButtons, IonButton, IonIcon, IonContent,
-    IonItem, IonInput, IonToggle, IonSpinner, IonModal, IonChip
+    IonItem, IonInput, IonToggle, IonSpinner, IonModal, IonChip, IonSearchbar
   ],
   templateUrl: './recherche-restaurant.component.html',
   styleUrl: './recherche-restaurant.component.scss'
@@ -107,8 +107,21 @@ export class RechercheRestaurantComponent implements OnInit {
 
   readonly formValide = computed(() => this.plat().trim().length > 0);
 
+  // Recherche texte dans le picker de quartier (non persistée, réinitialisée à chaque
+  // ouverture — voir ouvrirPickerQuartier()) — même pattern que HomeComponent.rechercheQuartier.
+  readonly rechercheQuartier = signal('');
+  readonly quartiersParVilleFiltres = computed((): VilleQuartiers[] => {
+    const terme = this.rechercheQuartier().toLowerCase().trim();
+    if (!terme) {
+      return this.quartiersParVille();
+    }
+    return this.quartiersParVille()
+      .map(groupe => ({ ville: groupe.ville, quartiers: groupe.quartiers.filter(q => q.toLowerCase().includes(terme)) }))
+      .filter(groupe => groupe.quartiers.length > 0);
+  });
+
   constructor() {
-    addIcons({ closeOutline, alertCircleOutline, funnelOutline, chevronDownOutline, checkmarkOutline, searchOutline });
+    addIcons({ closeOutline, alertCircleOutline, funnelOutline, chevronDownOutline, chevronForwardOutline, checkmarkOutline, searchOutline });
   }
 
   ngOnInit(): void {
@@ -119,6 +132,11 @@ export class RechercheRestaurantComponent implements OnInit {
     this.restaurantService.getRestaurants()
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe(restaurants => this.restaurantsBruts.set(restaurants));
+  }
+
+  ouvrirPickerQuartier(): void {
+    this.rechercheQuartier.set('');
+    this.pickerQuartierOuvert.set(true);
   }
 
   choisirQuartier(nom: string | null): void {

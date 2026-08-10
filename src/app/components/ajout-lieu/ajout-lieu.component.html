@@ -149,6 +149,10 @@
           Identifier avec l'IA (nom seul)
         </ion-button>
 
+        @if (!nom().trim()) {
+          <p class="ajout-lieu-hint">Saisis un nom ci-dessus pour activer l'identification IA.</p>
+        }
+
         @if (suggestionsIaErreur()) {
           <p class="ajout-lieu-recherche-message">
             <span>{{ suggestionsIaErreur() }}</span>
@@ -159,6 +163,15 @@
         }
 
         @if (suggestionsIa().length) {
+          <div class="ajout-lieu-suggestions-ia-entete">
+            <p class="ajout-lieu-hint ajout-lieu-hint-ia">
+              <ion-icon name="sparkles-outline"></ion-icon>
+              Suggestions IA — à vérifier
+            </p>
+            <button class="ajout-lieu-message-fermer" (click)="suggestionsIa.set([])" aria-label="Masquer les suggestions" title="Masquer les suggestions">
+              <ion-icon name="close-outline"></ion-icon>
+            </button>
+          </div>
           <div class="ajout-lieu-suggestions-ia">
             @for (suggestion of suggestionsIa(); track suggestion.nom + suggestion.quartier) {
               <button
@@ -471,7 +484,7 @@
   </div>
 </ion-content>
 
-<ion-modal [isOpen]="pickerQuartierOuvert()" (didDismiss)="pickerQuartierOuvert.set(false)" [initialBreakpoint]="0.75" [breakpoints]="[0, 0.75, 1]">
+<ion-modal [isOpen]="pickerQuartierOuvert()" (didDismiss)="pickerQuartierOuvert.set(false)" [initialBreakpoint]="0.75" [breakpoints]="[0, 0.75, 1]" [expandToScroll]="false">
   <ng-template>
     <ion-header class="ion-no-border">
       <ion-toolbar>

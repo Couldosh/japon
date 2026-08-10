@@ -21,7 +21,7 @@
       </ion-input>
     </ion-item>
 
-    <button class="ajout-lieu-quartier" [class.recherche-restaurant-quartier-desactive]="prochDeMoi()" (click)="pickerQuartierOuvert.set(true)" title="Choisir un quartier">
+    <button class="ajout-lieu-quartier" [class.recherche-restaurant-quartier-desactive]="prochDeMoi()" (click)="ouvrirPickerQuartier()" title="Choisir un quartier">
       <ion-icon name="funnel-outline"></ion-icon>
       <span>{{ prochDeMoi() ? 'Près de moi' : (quartier() ?? 'Tous quartiers') }}</span>
       <ion-icon name="chevron-down-outline" class="ajout-lieu-quartier-chevron"></ion-icon>
@@ -77,7 +77,17 @@
 
     @if (rechercheEffectuee() && !enCours()) {
       @if (resultats().length === 0) {
-        <p class="recherche-restaurant-vide">Aucun restaurant trouvé pour ces critères.</p>
+        <div class="recherche-restaurant-vide">
+          <p>Aucun restaurant trouvé pour ces critères.</p>
+          @if (!rechercheExterne()) {
+            <p class="recherche-restaurant-vide-nudge">
+              <button class="recherche-restaurant-lien" (click)="rechercheExterne.set(true)" title="Activer la recherche externe">
+                Activer "Recherche externe"
+              </button>
+              pour laisser l'IA suggérer des restaurants réels absents du Sheet, puis relance la recherche.
+            </p>
+          }
+        </div>
       } @else {
         <div class="recherche-restaurant-resultats">
           @for (suggestion of resultats(); track suggestion.nom + suggestion.quartier) {
@@ -86,19 +96,24 @@
               [class.recherche-restaurant-carte-cliquable]="suggestion.connu"
               [disabled]="!suggestion.connu"
               (click)="choisirResultat(suggestion)">
-              <div class="recherche-restaurant-carte-entete">
-                <span class="recherche-restaurant-carte-nom">{{ suggestion.nom }}</span>
-                @if (!suggestion.connu) {
-                  <ion-chip color="warning">Suggestion externe</ion-chip>
-                }
+              <div class="recherche-restaurant-carte-texte">
+                <div class="recherche-restaurant-carte-entete">
+                  <span class="recherche-restaurant-carte-nom">{{ suggestion.nom }}</span>
+                  @if (!suggestion.connu) {
+                    <ion-chip color="warning">Suggestion externe</ion-chip>
+                  }
+                </div>
+                <p class="recherche-restaurant-carte-meta">
+                  {{ suggestion.quartier }} · {{ suggestion.prix }}
+                  @if (distanceSuggestion(suggestion); as distance) {
+                    · {{ distance }}
+                  }
+                </p>
+                <p class="recherche-restaurant-carte-raison">{{ suggestion.raison }}</p>
               </div>
-              <p class="recherche-restaurant-carte-meta">
-                {{ suggestion.quartier }} · {{ suggestion.prix }}
-                @if (distanceSuggestion(suggestion); as distance) {
-                  · {{ distance }}
-                }
-              </p>
-              <p class="recherche-restaurant-carte-raison">{{ suggestion.raison }}</p>
+              @if (suggestion.connu) {
+                <ion-icon name="chevron-forward-outline" class="recherche-restaurant-carte-chevron"></ion-icon>
+              }
             </button>
           }
         </div>
@@ -107,7 +122,7 @@
   </div>
 </ion-content>
 
-<ion-modal [isOpen]="pickerQuartierOuvert()" (didDismiss)="pickerQuartierOuvert.set(false)" [initialBreakpoint]="0.75" [breakpoints]="[0, 0.75, 1]">
+<ion-modal [isOpen]="pickerQuartierOuvert()" (didDismiss)="pickerQuartierOuvert.set(false)" [initialBreakpoint]="0.75" [breakpoints]="[0, 0.75, 1]" [expandToScroll]="false">
   <ng-template>
     <ion-header class="ion-no-border">
       <ion-toolbar>
@@ -121,6 +136,13 @@
     </ion-header>
 
     <ion-content>
+      <ion-searchbar
+        placeholder="Rechercher un quartier..."
+        [debounce]="0"
+        [value]="rechercheQuartier()"
+        (ionInput)="rechercheQuartier.set($any($event.detail).value ?? '')">
+      </ion-searchbar>
+
       <div class="picker-quartier">
         <button
           class="picker-quartier-option"
@@ -132,7 +154,12 @@
             <ion-icon name="checkmark-outline"></ion-icon>
           }
         </button>
-        @for (groupe of quartiersParVille(); track groupe.ville) {
+
+        @if (rechercheQuartier().trim() && quartiersParVilleFiltres().length === 0) {
+          <p class="recherche-restaurant-vide">Aucun quartier ne correspond à "{{ rechercheQuartier() }}".</p>
+        }
+
+        @for (groupe of quartiersParVilleFiltres(); track groupe.ville) {
           <p class="picker-quartier-ville">{{ groupe.ville }}</p>
           @for (q of groupe.quartiers; track q) {
             <button

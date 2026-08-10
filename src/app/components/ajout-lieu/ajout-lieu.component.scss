@@ -91,6 +91,9 @@
 .ajout-lieu-ia {
   margin: 4px 0 8px;
   --border-radius: 12px;
+  --background: rgba(var(--ion-color-secondary-rgb), 0.08);
+  --border-color: var(--ion-color-secondary);
+  --color: var(--ion-color-secondary-shade);
 
   ion-spinner {
     width: 16px;
@@ -178,6 +181,27 @@
   margin: 4px 0;
 }
 
+.ajout-lieu-suggestions-ia-entete {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  margin: 8px 0 6px;
+}
+
+.ajout-lieu-hint-ia {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  text-align: left;
+  margin: 0;
+  color: var(--ion-color-secondary-shade);
+
+  ion-icon {
+    font-size: 14px;
+  }
+}
+
 .ajout-lieu-suggestions-ia {
   display: flex;
   flex-direction: column;
@@ -190,6 +214,7 @@
   flex-direction: column;
   gap: 2px;
   border: none;
+  border-inline-start: 3px solid var(--ion-color-secondary);
   background: var(--ion-color-light);
   border-radius: 12px;
   padding: 8px 12px;

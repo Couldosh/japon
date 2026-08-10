@@ -76,6 +76,26 @@
   text-align: center;
   color: var(--ion-color-medium);
   padding: 32px 0;
+
+  p {
+    margin: 0;
+  }
+}
+
+.recherche-restaurant-vide-nudge {
+  font-size: 13px;
+  margin-top: 8px;
+  padding: 0 16px;
+}
+
+.recherche-restaurant-lien {
+  border: none;
+  background: transparent;
+  color: var(--ion-color-primary);
+  font: inherit;
+  font-weight: 600;
+  padding: 0;
+  cursor: pointer;
 }
 
 .recherche-restaurant-resultats {
@@ -86,7 +106,9 @@
 }
 
 .recherche-restaurant-carte {
-  display: block;
+  display: flex;
+  align-items: center;
+  gap: 8px;
   width: 100%;
   text-align: left;
   border: none;
@@ -96,6 +118,17 @@
   font: inherit;
   color: inherit;
   cursor: default;
+}
+
+.recherche-restaurant-carte-texte {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.recherche-restaurant-carte-chevron {
+  flex-shrink: 0;
+  font-size: 16px;
+  color: var(--ion-color-medium);
 }
 
 .recherche-restaurant-carte-cliquable {
