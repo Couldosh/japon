@@ -72,3 +72,20 @@ export interface SuggestionRestaurant {
 export interface RechercheRestaurantResponse {
   resultats: SuggestionRestaurant[];
 }
+
+export interface RechercheLieuRequest {
+  nom: string;
+  type: string;
+  quartiersConnus: string[];
+}
+
+export interface SuggestionLieu {
+  nom: string;
+  quartier: string;
+  ville: string;
+  raison: string;
+}
+
+export interface RechercheLieuResponse {
+  resultats: SuggestionLieu[];
+}

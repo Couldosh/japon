@@ -16,6 +16,7 @@ import { VilleModel } from '../../models/ville.model';
 import { PlatService } from '../../service/plat/plat.service';
 import { Plat, PlatCategory } from '../../models/plat.model';
 import { PlacesSearchService, ResultatPlaces } from '../../service/google/places-search.service';
+import { SuggestionLieu } from '../../models/ia.model';
 import { RestaurantService } from '../../service/restaurant/restaurant.service';
 import { RestaurantModel } from '../../models/restaurant.model';
 import { MagasinService } from '../../service/magasin/magasin.service';
@@ -166,6 +167,18 @@ export class AjoutLieuComponent implements OnInit {
    * après coup, indépendamment de preselectionnerPlats() qui ne fait que le consommer. */
   readonly resumeGooglePlaces = signal<string | null>(null);
 
+  /** Suggestions de l'IA (backend /ai/recherche-lieu) à partir du seul Nom saisi, avant même
+   * d'avoir choisi un quartier — voir rechercherSuggestionsIa(). Sélectionner une suggestion
+   * (choisirSuggestionIa()) préremplit le quartier puis enchaîne automatiquement sur
+   * rechercherPlaces(), le "combo IA puis Google Places" : l'IA dégrossit l'identification
+   * (nom exact, quartier, ville) à partir d'un nom parfois partiel, Places confirme ensuite
+   * l'adresse exacte et le lien Google Maps. */
+  readonly suggestionsIaEnCours = signal(false);
+  readonly suggestionsIaErreur = signal<string | null>(null);
+  readonly suggestionsIa = signal<SuggestionLieu[]>([]);
+  /** Distingue "pas encore cherché" de "cherché, aucune suggestion" pour l'affichage. */
+  readonly suggestionsIaEffectuee = signal(false);
+
   readonly descriptionIaEnCours = signal(false);
   readonly descriptionIaErreur = signal<string | null>(null);
   readonly platsIaEnCours = signal(false);
@@ -212,6 +225,12 @@ export class AjoutLieuComponent implements OnInit {
   /** Liste à plat de tous les quartiers connus (toutes villes confondues), pour la
    * recherche Google Places quartier par quartier d'un restaurant "franchise". */
   readonly quartiersConnus = computed(() => this.quartiersParVille().flatMap(g => g.quartiers));
+
+  /** Quartiers connus formatés "Quartier (Ville)", envoyés en contexte à /ai/recherche-lieu
+   * pour que l'IA priorise les quartiers du voyage en cours quand ils correspondent. */
+  private readonly quartiersConnusFormates = computed(() =>
+    this.quartiersParVille().flatMap(g => g.quartiers.map(q => `${q} (${g.ville})`))
+  );
 
   /** Par type franchisable (restaurant/magasin), nom de lieu normalisé -> Set des quartiers
    * (normalisés) où il existe déjà dans le Sheet, pour ne pas rechercher/ajouter en double une
@@ -410,6 +429,9 @@ export class AjoutLieuComponent implements OnInit {
     this.photoApercu.set(null);
     this.resumeGooglePlaces.set(null);
     this.platsSuggeresInconnus.set([]);
+    this.suggestionsIa.set([]);
+    this.suggestionsIaEffectuee.set(false);
+    this.suggestionsIaErreur.set(null);
     if (!TYPES_FRANCHISABLES.includes(type)) {
       this.estFranchise.set(false);
     }
@@ -496,6 +518,56 @@ export class AjoutLieuComponent implements OnInit {
     await alert.present();
     const { role } = await alert.onDidDismiss();
     return role === 'destructive';
+  }
+
+  /**
+   * Recherche IA (backend /ai/recherche-lieu) de ce qui pourrait correspondre au seul Nom
+   * saisi — pas besoin d'avoir déjà choisi un quartier, contrairement à rechercherPlaces().
+   * Renvoie jusqu'à 5 candidats plausibles (nom, quartier, ville, raison), à confirmer par
+   * l'utilisateur via choisirSuggestionIa() avant d'enchaîner sur Google Places.
+   */
+  rechercherSuggestionsIa(): void {
+    const nom = this.nom().trim();
+    if (!nom || this.suggestionsIaEnCours()) {
+      return;
+    }
+
+    this.suggestionsIaEnCours.set(true);
+    this.suggestionsIaErreur.set(null);
+    this.suggestionsIa.set([]);
+    this.suggestionsIaEffectuee.set(false);
+
+    this.iaService.rechercherLieu({
+      nom,
+      type: this.libelleTypeEdition(),
+      quartiersConnus: this.quartiersConnusFormates(),
+    })
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: reponse => {
+          this.suggestionsIaEnCours.set(false);
+          this.suggestionsIaEffectuee.set(true);
+          this.suggestionsIa.set(reponse.resultats);
+        },
+        error: (err: Error) => {
+          this.suggestionsIaEnCours.set(false);
+          this.suggestionsIaErreur.set(err.message);
+        }
+      });
+  }
+
+  /** Sélectionne une suggestion IA : reprend son nom exact et son quartier (matché sur la
+   * liste connue de QuartierService si possible, sinon la valeur suggérée telle quelle — un
+   * quartier hors référentiel reste utilisable comme texte de recherche Places), referme la
+   * liste de suggestions, puis enchaîne automatiquement sur rechercherPlaces() pour affiner
+   * Lien/Localisation avec l'adresse exacte. */
+  choisirSuggestionIa(suggestion: SuggestionLieu): void {
+    this.nom.set(suggestion.nom);
+    const quartierConnu = this.quartiersConnus().find(q => normaliser(q) === normaliser(suggestion.quartier));
+    this.quartier.set(quartierConnu ?? suggestion.quartier);
+    this.suggestionsIa.set([]);
+    this.suggestionsIaEffectuee.set(false);
+    this.rechercherPlaces();
   }
 
   /**
@@ -1101,6 +1173,9 @@ export class AjoutLieuComponent implements OnInit {
     this.photoApercu.set(null);
     this.champsAutoRemplis.set(new Set());
     this.resumeGooglePlaces.set(null);
+    this.suggestionsIa.set([]);
+    this.suggestionsIaEffectuee.set(false);
+    this.suggestionsIaErreur.set(null);
     this.descriptionIaErreur.set(null);
     this.platsIaErreur.set(null);
     this.platsSuggeresInconnus.set([]);

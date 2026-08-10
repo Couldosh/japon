@@ -9,6 +9,8 @@ import {
   ExtractionPlatsResponse,
   PlatInfoRequest,
   PlatInfoResponse,
+  RechercheLieuRequest,
+  RechercheLieuResponse,
   RechercheRestaurantRequest,
   RechercheRestaurantResponse,
   ResumeQuotidienRequest,
@@ -54,6 +56,12 @@ export class IaService {
   rechercherRestaurant(request: RechercheRestaurantRequest): Observable<RechercheRestaurantResponse> {
     return this.http
       .post<RechercheRestaurantResponse>(`${environment.iaApiUrl}/recherche-restaurant`, request)
+      .pipe(catchError((err: HttpErrorResponse) => throwError(() => new Error(this.messageErreur(err)))));
+  }
+
+  rechercherLieu(request: RechercheLieuRequest): Observable<RechercheLieuResponse> {
+    return this.http
+      .post<RechercheLieuResponse>(`${environment.iaApiUrl}/recherche-lieu`, request)
       .pipe(catchError((err: HttpErrorResponse) => throwError(() => new Error(this.messageErreur(err)))));
   }
 
