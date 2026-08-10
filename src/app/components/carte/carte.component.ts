@@ -49,7 +49,10 @@ export class CarteComponent implements AfterViewInit, OnDestroy {
 
   readonly lieux = input.required<LieuAffichable[]>();
   readonly position = input<{ latitude: number; longitude: number } | null>(null);
-  /** True quand l'onglet Carte est effectivement affiché (le composant, lui, reste monté en permanence). */
+  /** True quand l'onglet Carte est effectivement affiché (le composant, lui, reste monté en
+   * permanence). Déclenche l'initialisation de la carte (donc le premier chargement de tuiles
+   * MapTiler) à son premier passage à true, voir carteInitialisee/essayerInitialiser() ;
+   * ensuite, ne sert plus qu'à invalidateSize() à chaque réaffichage. */
   readonly actif = input<boolean>(true);
   readonly lieuClique = output<LieuAffichable>();
 
@@ -96,24 +99,49 @@ export class CarteComponent implements AfterViewInit, OnDestroy {
   // sur Tokyo qui pourrait laisser tous les lieux hors champ.
   private vueInitialeAjustee = false;
 
+  /** True dès qu'une tentative d'initialisation (réussie ou en erreur) a eu lieu — l'init
+   * elle-même (donc les requêtes de tuiles MapTiler) est différée au premier passage à
+   * `actif`, pas déclenchée au montage du composant. Le composant reste monté en
+   * permanence (voir docs/architecture-et-pieges.md), mais tant que l'onglet Carte n'a
+   * jamais été ouvert, aucune tuile n'est chargée — évite de consommer le quota MapTiler
+   * pour les utilisateurs qui ne visitent jamais cet onglet. */
+  private carteInitialisee = false;
+
   constructor() {
     addIcons({ locateOutline, heart, heartOutline, timeOutline });
 
     effect(() => this.mettreAJourMarqueursLieux(this.lieuxFiltres()));
     effect(() => this.mettreAJourMarqueurPosition(this.position()));
 
-    // Le composant reste monté même masqué (voir home.component.html) ; Leaflet
-    // calcule sa taille de tuiles au moment de la création et ne se corrige pas
-    // tout seul quand le conteneur redevient visible. On force le recalcul à
-    // chaque passage à l'état actif (le rAF laisse le temps au CSS de s'appliquer).
+    // Premier passage à actif=true : initialise la carte (voir carteInitialisee ci-dessus).
+    // Passages suivants : le composant reste monté même masqué (voir home.component.html) ;
+    // Leaflet calcule sa taille de tuiles au moment de la création et ne se corrige pas tout
+    // seul quand le conteneur redevient visible, d'où l'invalidateSize() à chaque réactivation
+    // (le rAF laisse le temps au CSS de s'appliquer).
     effect(() => {
-      if (this.actif()) {
+      if (!this.actif()) {
+        return;
+      }
+      if (!this.carteInitialisee) {
+        this.essayerInitialiser();
+      } else {
         requestAnimationFrame(() => this.carte?.invalidateSize());
       }
     });
   }
 
   ngAfterViewInit(): void {
+    // Cas où l'onglet Carte est déjà actif au montage (ex: état initial de l'app) : l'effect
+    // ci-dessus a pu s'exécuter avant que #carteEl soit disponible, on retente ici où Angular
+    // garantit que les ViewChild sont peuplés.
+    this.essayerInitialiser();
+  }
+
+  private essayerInitialiser(): void {
+    if (this.carteInitialisee || !this.actif() || !this.carteEl) {
+      return;
+    }
+    this.carteInitialisee = true;
     this.initialiserCarte();
   }
 

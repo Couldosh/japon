@@ -121,8 +121,9 @@
   }
 
   <!-- Toujours présent (juste masqué) pour ne pas recréer la carte à chaque
-       passage sur l'onglet. [actif] déclenche le recalcul de taille Leaflet
-       au moment où le conteneur redevient visible. -->
+       passage sur l'onglet. [actif] déclenche l'initialisation (donc le premier
+       chargement de tuiles MapTiler) à son premier passage à true, puis le
+       recalcul de taille Leaflet à chaque réaffichage. -->
   <app-carte
     class="vue-carte"
     [class.masquee]="vue() !== 'carte'"
