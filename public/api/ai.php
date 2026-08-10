@@ -22,7 +22,7 @@ $clientSecret = '65b7604710711bf8bdb5e4c4ea883a3bb18376249f9bec21a2beaf9de2664e5
 $backendBase = 'https://ia.faburisu.com/ai';
 
 $pathInfo = $_SERVER['PATH_INFO'] ?? '';
-$routesAutorisees = ['/description', '/plats', '/resume-quotidien', '/plat-info', '/recherche-restaurant'];
+$routesAutorisees = ['/description', '/plats', '/resume-quotidien', '/plat-info', '/recherche-restaurant', '/recherche-lieu'];
 
 header('Content-Type: application/json');
 
