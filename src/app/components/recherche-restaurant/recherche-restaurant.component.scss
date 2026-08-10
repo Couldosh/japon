@@ -1,3 +1,11 @@
+// Sans ça, l'élément hôte <app-recherche-restaurant> (display: inline par défaut) s'insère
+// entre <ng-template> et ion-header/ion-content dans la modale, et casse le calcul de hauteur
+// de ion-content (voir la même correction sur ajout-lieu.component.scss). display: contents
+// retire l'hôte du flux pour que ses enfants se comportent comme des enfants directs du modal.
+:host {
+  display: contents;
+}
+
 .recherche-restaurant {
   padding: 8px 16px 24px;
   display: flex;

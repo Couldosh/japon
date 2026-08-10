@@ -802,10 +802,11 @@
 
 // Ionic dimensionne une modale "sheet" (breakpoints/initialBreakpoint) sur la hauteur de son
 // contenu plutôt que sur la hauteur totale disponible quand ce contenu est court (peu de champs,
-// ex. la modale d'ajout en mode édition ou la recherche de restaurant) — --height force le plein
-// écran quel que soit le contenu, sans changer le comportement swipeable existant.
-.modale-pleine-hauteur {
-  // 100% peut ne pas se résoudre si un ancêtre n'a pas de hauteur explicite ; vh est relatif
-  // à la fenêtre elle-même, plus fiable pour forcer le plein écran ici.
-  --height: 100vh;
-}
+// ex. la modale d'ajout en mode édition ou la recherche de restaurant) : le composant définit
+// lui-même, dans son shadow DOM, `:host(.modal-sheet) { --height: calc(...) }`. Une règle CSS
+// externe ciblant `ion-modal` (classe, même répétée) ne bat pas cette règle de façon fiable — le
+// `:host()` compte comme une pseudo-classe plus la spécificité de son argument `.modal-sheet`,
+// soit (0,2,0), difficile à dépasser sans dépendre de l'ordre light/shadow DOM. Le style forcé
+// (`--height: 100vh`) est donc posé en style inline directement sur chaque `<ion-modal>` dans
+// home.component.html (`[style.--height]="'100vh'"`) : un style inline gagne toujours face à
+// n'importe quelle règle de feuille de style, quelle que soit sa spécificité.
