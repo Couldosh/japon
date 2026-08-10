@@ -44,6 +44,10 @@
   flex-shrink: 0;
 }
 
+.recherche-restaurant-quartier-desactive {
+  opacity: 0.6;
+}
+
 .recherche-restaurant-toggle {
   --padding-start: 0;
   margin-top: 4px;

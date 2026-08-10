@@ -12,6 +12,13 @@ import { RestaurantModel } from '../../models/restaurant.model';
 import { QuartierService } from '../../service/quartier/quartier.service';
 import { QuartierModel } from '../../models/quartier.model';
 import { RestaurantCandidat, SuggestionRestaurant } from '../../models/ia.model';
+import { GeolocationService } from '../../service/geolocation/GeolocationService';
+
+/** Rayon dans lequel un restaurant est considéré "près de moi" (mètres). Si aucun restaurant
+ * connu n'est dans ce rayon, on retombe sur les N plus proches plutôt que de renvoyer une
+ * liste vide à l'IA (mieux vaut un restaurant un peu plus loin qu'aucun candidat du tout). */
+const RAYON_PROCHE_METRES = 2000;
+const NB_PLUS_PROCHES_REPLI = 15;
 
 /** Normalise un nom pour un matching insensible à la casse/aux accents — même principe que
  * ajout-lieu.component.ts/planning.component.ts (dupliquée, pas partagée à ce jour). */
@@ -46,6 +53,7 @@ export class RechercheRestaurantComponent implements OnInit {
   private readonly iaService = inject(IaService);
   private readonly restaurantService = inject(RestaurantService);
   private readonly quartierService = inject(QuartierService);
+  protected readonly geoloc = inject(GeolocationService);
   private readonly destroyRef = inject(DestroyRef);
 
   readonly ferme = output<void>();
@@ -55,6 +63,12 @@ export class RechercheRestaurantComponent implements OnInit {
   readonly quartier = signal<string | null>(null);
   readonly gammePrix = signal('');
   readonly rechercheExterne = signal(false);
+  /** Recherche parmi les restaurants connus les plus proches de la position actuelle plutôt
+   * que par quartier — alternative au picker de quartier (les deux sont mutuellement exclusifs,
+   * voir basculerProchDeMoi()/choisirQuartier()). N'affecte que la liste envoyée à l'IA pour les
+   * restaurants déjà connus du Sheet : une suggestion "externe" reste au mieux au niveau de la
+   * ville, l'IA n'ayant pas de notion réelle de distance/coordonnées. */
+  readonly prochDeMoi = signal(false);
   readonly pickerQuartierOuvert = signal(false);
 
   readonly enCours = signal(false);
@@ -109,7 +123,19 @@ export class RechercheRestaurantComponent implements OnInit {
 
   choisirQuartier(nom: string | null): void {
     this.quartier.set(nom);
+    if (nom) {
+      this.prochDeMoi.set(false);
+    }
     this.pickerQuartierOuvert.set(false);
+  }
+
+  /** Bascule le mode "près de moi" — mutuellement exclusif avec le filtre par quartier
+   * (l'activer efface le quartier choisi, choisir un quartier le désactive). */
+  basculerProchDeMoi(actif: boolean): void {
+    this.prochDeMoi.set(actif);
+    if (actif) {
+      this.quartier.set(null);
+    }
   }
 
   rechercher(): void {
@@ -117,14 +143,33 @@ export class RechercheRestaurantComponent implements OnInit {
       return;
     }
 
+    let restaurants = this.restaurantsBruts();
+    let quartierPourPrompt = this.quartier();
+
+    if (this.prochDeMoi()) {
+      const position = this.geoloc.position();
+      if (!position) {
+        this.erreur.set("Position actuelle introuvable — active la géolocalisation puis réessaie.");
+        return;
+      }
+
+      const avecDistance = restaurants
+        .filter(r => r.latitude != null && r.longitude != null)
+        .map(r => ({ restaurant: r, distance: GeolocationService.distanceMetres(position, { latitude: r.latitude!, longitude: r.longitude! }) }))
+        .sort((a, b) => a.distance - b.distance);
+
+      const proches = avecDistance.filter(x => x.distance <= RAYON_PROCHE_METRES);
+      restaurants = (proches.length > 0 ? proches : avecDistance.slice(0, NB_PLUS_PROCHES_REPLI)).map(x => x.restaurant);
+      // Déjà filtrés par proximité (potentiellement à cheval sur plusieurs quartiers) : pas de
+      // restriction de quartier supplémentaire à passer au prompt.
+      quartierPourPrompt = null;
+    } else if (quartierPourPrompt) {
+      restaurants = restaurants.filter(r => normaliser(r.Quartier?.Nom ?? '') === normaliser(quartierPourPrompt!));
+    }
+
     this.enCours.set(true);
     this.erreur.set(null);
     this.resultats.set([]);
-
-    const quartierFiltre = this.quartier();
-    const restaurants = quartierFiltre
-      ? this.restaurantsBruts().filter(r => normaliser(r.Quartier?.Nom ?? '') === normaliser(quartierFiltre))
-      : this.restaurantsBruts();
 
     const restaurantsConnus: RestaurantCandidat[] = restaurants.map(r => ({
       nom: r.Nom,
@@ -135,7 +180,7 @@ export class RechercheRestaurantComponent implements OnInit {
 
     this.iaService.rechercherRestaurant({
       plat: this.plat().trim(),
-      quartier: quartierFiltre,
+      quartier: quartierPourPrompt,
       gammePrix: this.gammePrix().trim() || null,
       rechercheExterne: this.rechercheExterne(),
       restaurantsConnus,
@@ -168,5 +213,24 @@ export class RechercheRestaurantComponent implements OnInit {
     if (match) {
       this.restaurantChoisi.emit(match);
     }
+  }
+
+  /** Distance formatée jusqu'à un résultat connu, si la position et les coordonnées du
+   * restaurant sont disponibles — affichée sur les cartes de résultat pour confirmer visuellement
+   * la proximité en mode "près de moi" (mais calculée systématiquement dès que possible, pas
+   * seulement dans ce mode). Une suggestion externe (connu=false) n'a pas de fiche à géolocaliser. */
+  distanceSuggestion(suggestion: SuggestionRestaurant): string | null {
+    const position = this.geoloc.position();
+    if (!position || !suggestion.connu) {
+      return null;
+    }
+    const match = this.restaurantsBruts().find(r =>
+      normaliser(r.Nom) === normaliser(suggestion.nom) &&
+      normaliser(r.Quartier?.Nom ?? '') === normaliser(suggestion.quartier)
+    );
+    if (!match || match.latitude == null || match.longitude == null) {
+      return null;
+    }
+    return GeolocationService.formaterDistance(GeolocationService.distanceMetres(position, { latitude: match.latitude, longitude: match.longitude }));
   }
 }

@@ -21,11 +21,22 @@
       </ion-input>
     </ion-item>
 
-    <button class="ajout-lieu-quartier" (click)="pickerQuartierOuvert.set(true)" title="Choisir un quartier">
+    <button class="ajout-lieu-quartier" [class.recherche-restaurant-quartier-desactive]="prochDeMoi()" (click)="pickerQuartierOuvert.set(true)" title="Choisir un quartier">
       <ion-icon name="funnel-outline"></ion-icon>
-      <span>{{ quartier() ?? 'Tous quartiers' }}</span>
+      <span>{{ prochDeMoi() ? 'Près de moi' : (quartier() ?? 'Tous quartiers') }}</span>
       <ion-icon name="chevron-down-outline" class="ajout-lieu-quartier-chevron"></ion-icon>
     </button>
+
+    <ion-item lines="none" class="recherche-restaurant-toggle">
+      <ion-toggle [checked]="prochDeMoi()" (ionChange)="basculerProchDeMoi($any($event.detail).checked)">
+        Près de moi
+      </ion-toggle>
+    </ion-item>
+    @if (prochDeMoi() && !geoloc.position()) {
+      <p class="recherche-restaurant-hint">
+        Position actuelle non disponible pour l'instant — active la géolocalisation puis réessaie.
+      </p>
+    }
 
     <ion-item>
       <ion-input
@@ -45,6 +56,9 @@
     @if (rechercheExterne()) {
       <p class="recherche-restaurant-hint">
         L'IA pourra aussi suggérer des restaurants réels absents du Sheet — non vérifiés, à confirmer avant de s'y rendre.
+        @if (prochDeMoi()) {
+          Ces suggestions restent au niveau de la ville, l'IA n'ayant pas de notion réelle de distance.
+        }
       </p>
     }
 
@@ -78,7 +92,12 @@
                   <ion-chip color="warning">Suggestion externe</ion-chip>
                 }
               </div>
-              <p class="recherche-restaurant-carte-meta">{{ suggestion.quartier }} · {{ suggestion.prix }}</p>
+              <p class="recherche-restaurant-carte-meta">
+                {{ suggestion.quartier }} · {{ suggestion.prix }}
+                @if (distanceSuggestion(suggestion); as distance) {
+                  · {{ distance }}
+                }
+              </p>
               <p class="recherche-restaurant-carte-raison">{{ suggestion.raison }}</p>
             </button>
           }
