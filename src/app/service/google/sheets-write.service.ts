@@ -68,8 +68,13 @@ export class SheetsWriteService {
     return this.recupererMeta(gid, headers).pipe(
       switchMap(({ titre, entetes }) => {
         const ligne = entetes.map(entete => valeurs[entete?.trim()] ?? '');
+        // Plage explicitement bornée aux colonnes des en-têtes (A:<dernière colonne>), plutôt
+        // que la feuille entière : sans ça, values.append peut repérer une donnée isolée plus
+        // loin dans la feuille (hors colonne A) et y ancrer le "tableau" détecté, décalant la
+        // nouvelle ligne vers la droite au lieu de l'aligner sur les colonnes réelles.
+        const derniereColonne = lettreColonne(Math.max(entetes.length - 1, 0));
         const url =
-          `${this.baseUrl}/values/${encodeURIComponent(titre)}:append` +
+          `${this.baseUrl}/values/${encodeURIComponent(titre)}!A:${derniereColonne}:append` +
           `?valueInputOption=USER_ENTERED&insertDataOption=INSERT_ROWS`;
         return this.http.post(url, { values: [ligne] }, { headers });
       }),
