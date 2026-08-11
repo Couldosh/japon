@@ -30,8 +30,9 @@ function lettreColonne(index: number): string {
 }
 
 /**
- * Écriture dans le Google Sheet via l'API Sheets v4 (values.append), pour la
- * fonctionnalité "Ajouter un lieu" — voir docs/architecture-et-pieges.md.
+ * Écriture dans le Google Sheet via l'API Sheets v4 (values.update sur une ligne calculée,
+ * voir ajouterLigne()), pour la fonctionnalité "Ajouter un lieu" — voir
+ * docs/architecture-et-pieges.md.
  *
  * Le mapping colonne -> index est lu dynamiquement depuis la ligne d'en-têtes
  * de chaque onglet plutôt que codé en dur, en reprenant le même principe que
@@ -57,17 +58,18 @@ export class SheetsWriteService {
    * nom de colonne du Sheet (ex. "Nom", "Quartier") à sa valeur ; les colonnes
    * non fournies (votes, Horaires...) sont laissées vides.
    *
-   * values.append reste nécessaire (plutôt que values.update sur une ligne calculée
-   * nous-mêmes) car lui seul agrandit automatiquement la grille de la feuille si besoin —
-   * values.update échoue avec "exceeds grid limits" dès que la ligne visée dépasse le nombre
-   * de lignes déjà définies dans la grille. Mais son heuristique de détection du "tableau" à
-   * l'intérieur d'une plage OUVERTE (ex: A:S) peut s'ancrer sur la colonne la plus à gauche où
-   * elle trouve des données plutôt que sur la colonne A elle-même, décalant silencieusement la
-   * nouvelle ligne vers la droite. Pour lever l'ambiguïté sans perdre l'agrandissement
-   * automatique, on lit d'abord l'étendue réelle des données (A:<dernière colonne>) pour
-   * borner la plage d'ajout exactement sur ce bloc existant (A1:<dernière colonne><dernière
-   * ligne de données>) — un rectangle fermé ne laisse plus de place à l'heuristique pour se
-   * tromper de colonne de départ, tout en laissant INSERT_ROWS insérer la ligne suivante.
+   * N'utilise volontairement PAS values.append : quelle que soit la plage donnée (ouverte,
+   * ou même fermée bornée sur l'étendue réelle des données), son heuristique de détection du
+   * "tableau" s'est révélée peu fiable en pratique — elle peut s'ancrer sur une colonne autre
+   * que A si une ligne de la plage a un profil de cellules vides atypique (ex: une ligne
+   * orpheline dont il ne reste qu'une valeur isolée dans une colonne de fin comme Horaires).
+   * À la place, on calcule nous-mêmes la prochaine ligne vide (nombre de lignes déjà présentes
+   * dans A:<dernière colonne>) et on écrit avec values.update sur une plage cible explicite —
+   * cible déterministe, aucune heuristique. Contrepartie : values.update n'agrandit pas la
+   * grille de la feuille automatiquement (contrairement à values.append+INSERT_ROWS) ; si la
+   * ligne visée dépasse le nombre de lignes déjà définies dans la grille ("exceeds grid
+   * limits"), on agrandit la grille via spreadsheets.batchUpdate (appendDimension) puis on
+   * réessaie une fois.
    */
   ajouterLigne(gid: string, valeurs: Record<string, string>): Observable<void> {
     const token = this.googleAuth.token();
@@ -81,23 +83,63 @@ export class SheetsWriteService {
       switchMap(({ titre, entetes }) => {
         const ligne = entetes.map(entete => valeurs[entete?.trim()] ?? '');
         const derniereColonne = lettreColonne(Math.max(entetes.length - 1, 0));
-        const plageColonnes = `${encodeURIComponent(titre)}!A:${derniereColonne}`;
-
-        return this.http.get<{ values?: string[][] }>(`${this.baseUrl}/values/${plageColonnes}`, { headers }).pipe(
-          switchMap(reponse => {
-            const derniereLigneDonnees = Math.max(reponse.values?.length ?? 1, 1);
-            const plageTableau = `${encodeURIComponent(titre)}!A1:${derniereColonne}${derniereLigneDonnees}`;
-            const url =
-              `${this.baseUrl}/values/${plageTableau}:append` +
-              `?valueInputOption=USER_ENTERED&insertDataOption=INSERT_ROWS`;
-            return this.http.post(url, { values: [ligne] }, { headers });
-          })
-        );
+        return this.ecrireProchaineLigne(gid, titre, derniereColonne, ligne, headers);
       }),
       map(() => {
         this.sheetsApi.clearCache(gid);
       }),
       catchError((err: HttpErrorResponse) => throwError(() => new Error(this.messageErreur(err))))
+    );
+  }
+
+  /** Calcule la prochaine ligne vide (nombre de lignes déjà présentes dans A:<dernière
+   * colonne>) et y écrit `ligne` via values.update sur une plage explicite A<n>:<dernière
+   * colonne><n>. Agrandit la grille et réessaie une fois si la ligne visée dépasse les
+   * dimensions actuelles de la feuille (voir ajouterLigne). */
+  private ecrireProchaineLigne(
+    gid: string,
+    titre: string,
+    derniereColonne: string,
+    ligne: string[],
+    headers: HttpHeaders
+  ): Observable<unknown> {
+    const plageColonnes = `${encodeURIComponent(titre)}!A:${derniereColonne}`;
+
+    return this.http.get<{ values?: string[][] }>(`${this.baseUrl}/values/${plageColonnes}`, { headers }).pipe(
+      switchMap(reponse => {
+        const prochaineLigne = (reponse.values?.length ?? 0) + 1;
+        const plageCible = `${encodeURIComponent(titre)}!A${prochaineLigne}:${derniereColonne}${prochaineLigne}`;
+        const ecrire = () =>
+          this.http.put(
+            `${this.baseUrl}/values/${plageCible}?valueInputOption=USER_ENTERED`,
+            { values: [ligne] },
+            { headers }
+          );
+
+        return ecrire().pipe(
+          catchError((err: HttpErrorResponse) => {
+            if (!this.depasseLimitesGrille(err)) {
+              return throwError(() => err);
+            }
+            return this.agrandirGrille(gid, headers).pipe(switchMap(() => ecrire()));
+          })
+        );
+      })
+    );
+  }
+
+  private depasseLimitesGrille(err: HttpErrorResponse): boolean {
+    return err.status === 400 && typeof err.error?.error?.message === 'string'
+      && err.error.error.message.includes('exceeds grid limits');
+  }
+
+  /** Agrandit la grille de la feuille `gid` de 200 lignes — tampon volontairement généreux
+   * pour ne pas avoir à ré-agrandir à chaque ajout une fois la grille pleine. */
+  private agrandirGrille(gid: string, headers: HttpHeaders): Observable<unknown> {
+    return this.http.post(
+      `${this.baseUrl}:batchUpdate`,
+      { requests: [{ appendDimension: { sheetId: Number(gid), dimension: 'ROWS', length: 200 } }] },
+      { headers }
     );
   }
 
