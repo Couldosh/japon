@@ -11,27 +11,42 @@
 
 <ion-content>
   <div class="recherche-restaurant">
+    @if (!rechercheEffectuee() && !enCours()) {
+      <div class="recherche-restaurant-intro">
+        <ion-icon name="sparkles-outline"></ion-icon>
+        <p>Décris le plat recherché : l'IA propose des restaurants parmi ceux déjà connus, et — avec la recherche externe — au-delà du Sheet.</p>
+      </div>
+    }
+
     <ion-item>
       <ion-input
         label="Plat recherché *"
         labelPlacement="stacked"
         placeholder="Ex : ramen, sushi, okonomiyaki..."
+        autofocus
+        enterkeyhint="search"
         [value]="plat()"
-        (ionInput)="plat.set($any($event.detail).value ?? '')">
+        (ionInput)="plat.set($any($event.detail).value ?? '')"
+        (keyup.enter)="rechercher()">
       </ion-input>
     </ion-item>
 
-    <button class="ajout-lieu-quartier" [class.recherche-restaurant-quartier-desactive]="prochDeMoi()" (click)="ouvrirPickerQuartier()" title="Choisir un quartier">
-      <ion-icon name="funnel-outline"></ion-icon>
-      <span>{{ prochDeMoi() ? 'Près de moi' : (quartier() ?? 'Tous quartiers') }}</span>
-      <ion-icon name="chevron-down-outline" class="ajout-lieu-quartier-chevron"></ion-icon>
-    </button>
-
-    <ion-item lines="none" class="recherche-restaurant-toggle">
-      <ion-toggle [checked]="prochDeMoi()" (ionChange)="basculerProchDeMoi($any($event.detail).checked)">
+    <p class="recherche-restaurant-section-label">Où</p>
+    <div class="recherche-restaurant-lieu-row">
+      <button class="ajout-lieu-quartier" [class.recherche-restaurant-quartier-desactive]="prochDeMoi()" (click)="ouvrirPickerQuartier()" title="Choisir un quartier">
+        <ion-icon name="funnel-outline"></ion-icon>
+        <span>{{ quartier() ?? 'Tous quartiers' }}</span>
+        <ion-icon name="chevron-down-outline" class="ajout-lieu-quartier-chevron"></ion-icon>
+      </button>
+      <button
+        class="recherche-restaurant-chip-proche"
+        [class.recherche-restaurant-chip-proche-actif]="prochDeMoi()"
+        (click)="basculerProchDeMoi(!prochDeMoi())"
+        title="Restreindre aux restaurants connus les plus proches de moi">
+        <ion-icon name="locate-outline"></ion-icon>
         Près de moi
-      </ion-toggle>
-    </ion-item>
+      </button>
+    </div>
     @if (prochDeMoi() && !geoloc.position()) {
       <p class="recherche-restaurant-hint">
         Position actuelle non disponible pour l'instant — active la géolocalisation puis réessaie.
@@ -44,23 +59,36 @@
         labelPlacement="stacked"
         placeholder="Ex : pas cher, ¥¥, environ 2000¥..."
         [value]="gammePrix()"
-        (ionInput)="gammePrix.set($any($event.detail).value ?? '')">
+        (ionInput)="gammePrix.set($any($event.detail).value ?? '')"
+        (keyup.enter)="rechercher()">
       </ion-input>
     </ion-item>
+    <div class="recherche-restaurant-chips-prix">
+      @for (option of optionsPrixRapides; track option) {
+        <ion-chip [class.recherche-restaurant-chip-selectionnee]="gammePrix() === option" (click)="choisirPrixRapide(option)">
+          {{ option }}
+        </ion-chip>
+      }
+    </div>
 
-    <ion-item lines="none" class="recherche-restaurant-toggle">
-      <ion-toggle [checked]="rechercheExterne()" (ionChange)="rechercheExterne.set($any($event.detail).checked)">
-        Recherche externe
-      </ion-toggle>
-    </ion-item>
-    @if (rechercheExterne()) {
+    <div class="recherche-restaurant-externe" [class.recherche-restaurant-externe-actif]="rechercheExterne()">
+      <ion-item lines="none" class="recherche-restaurant-toggle">
+        <ion-icon slot="start" name="globe-outline"></ion-icon>
+        <ion-toggle [checked]="rechercheExterne()" (ionChange)="rechercheExterne.set($any($event.detail).checked)">
+          Recherche externe
+        </ion-toggle>
+      </ion-item>
       <p class="recherche-restaurant-hint">
-        L'IA pourra aussi suggérer des restaurants réels absents du Sheet — non vérifiés, à confirmer avant de s'y rendre.
-        @if (prochDeMoi()) {
-          Ces suggestions restent au niveau de la ville, l'IA n'ayant pas de notion réelle de distance.
+        @if (rechercheExterne()) {
+          L'IA peut aussi suggérer des restaurants réels absents du Sheet — non vérifiés, à confirmer avant de s'y rendre.
+          @if (prochDeMoi()) {
+            Ces suggestions restent au niveau de la ville, l'IA n'ayant pas de notion réelle de distance.
+          }
+        } @else {
+          Désactivée : l'IA ne choisit que parmi les restaurants déjà présents dans le Sheet.
         }
       </p>
-    }
+    </div>
 
     <ion-button expand="block" class="recherche-restaurant-submit" [disabled]="!formValide() || enCours()" (click)="rechercher()" title="Rechercher">
       @if (enCours()) {
@@ -73,6 +101,20 @@
 
     @if (erreur()) {
       <p class="recherche-restaurant-erreur"><ion-icon name="alert-circle-outline"></ion-icon> {{ erreur() }}</p>
+    }
+
+    @if (enCours()) {
+      <div class="recherche-restaurant-resultats" aria-hidden="true">
+        @for (_ of [1, 2, 3]; track $index) {
+          <div class="recherche-restaurant-carte recherche-restaurant-squelette">
+            <div class="recherche-restaurant-carte-texte">
+              <div class="squelette-ligne squelette-ligne-titre"></div>
+              <div class="squelette-ligne squelette-ligne-meta"></div>
+              <div class="squelette-ligne squelette-ligne-raison"></div>
+            </div>
+          </div>
+        }
+      </div>
     }
 
     @if (rechercheEffectuee() && !enCours()) {
@@ -91,30 +133,38 @@
       } @else {
         <div class="recherche-restaurant-resultats">
           @for (suggestion of resultats(); track suggestion.nom + suggestion.quartier) {
-            <button
-              class="recherche-restaurant-carte"
-              [class.recherche-restaurant-carte-cliquable]="suggestion.connu"
-              [disabled]="!suggestion.connu"
-              (click)="choisirResultat(suggestion)">
-              <div class="recherche-restaurant-carte-texte">
-                <div class="recherche-restaurant-carte-entete">
-                  <span class="recherche-restaurant-carte-nom">{{ suggestion.nom }}</span>
-                  @if (!suggestion.connu) {
-                    <ion-chip color="warning">Suggestion externe</ion-chip>
-                  }
+            @if (suggestion.connu) {
+              <button class="recherche-restaurant-carte recherche-restaurant-carte-cliquable" (click)="choisirResultat(suggestion)">
+                <div class="recherche-restaurant-carte-texte">
+                  <div class="recherche-restaurant-carte-entete">
+                    <span class="recherche-restaurant-carte-nom">{{ suggestion.nom }}</span>
+                  </div>
+                  <p class="recherche-restaurant-carte-meta">
+                    {{ suggestion.quartier }} · {{ suggestion.prix }}
+                    @if (distanceSuggestion(suggestion); as distance) {
+                      · {{ distance }}
+                    }
+                  </p>
+                  <p class="recherche-restaurant-carte-raison">{{ suggestion.raison }}</p>
                 </div>
-                <p class="recherche-restaurant-carte-meta">
-                  {{ suggestion.quartier }} · {{ suggestion.prix }}
-                  @if (distanceSuggestion(suggestion); as distance) {
-                    · {{ distance }}
-                  }
-                </p>
-                <p class="recherche-restaurant-carte-raison">{{ suggestion.raison }}</p>
-              </div>
-              @if (suggestion.connu) {
                 <ion-icon name="chevron-forward-outline" class="recherche-restaurant-carte-chevron"></ion-icon>
-              }
-            </button>
+              </button>
+            } @else {
+              <div class="recherche-restaurant-carte">
+                <div class="recherche-restaurant-carte-texte">
+                  <div class="recherche-restaurant-carte-entete">
+                    <span class="recherche-restaurant-carte-nom">{{ suggestion.nom }}</span>
+                    <ion-chip color="warning">Suggestion externe</ion-chip>
+                  </div>
+                  <p class="recherche-restaurant-carte-meta">{{ suggestion.quartier }} · {{ suggestion.prix }}</p>
+                  <p class="recherche-restaurant-carte-raison">{{ suggestion.raison }}</p>
+                  <a class="recherche-restaurant-carte-maps" [href]="lienMapsSuggestion(suggestion)" target="_blank" rel="noopener" title="Rechercher sur Google Maps">
+                    <ion-icon name="map-outline"></ion-icon>
+                    Voir sur Maps
+                  </a>
+                </div>
+              </div>
+            }
           }
         </div>
       }

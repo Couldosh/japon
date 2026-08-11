@@ -12,6 +12,49 @@
   flex-direction: column;
 }
 
+.recherche-restaurant-intro {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  background: var(--ion-color-light);
+  border-radius: 12px;
+  padding: 12px 14px;
+  margin: 4px 0 12px;
+
+  ion-icon {
+    font-size: 18px;
+    color: var(--ion-color-primary);
+    flex-shrink: 0;
+    margin-top: 1px;
+  }
+
+  p {
+    margin: 0;
+    font-size: 13px;
+    color: var(--ion-color-medium-shade);
+  }
+}
+
+.recherche-restaurant-section-label {
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--ion-color-primary);
+  margin: 14px 0 4px;
+}
+
+.recherche-restaurant-lieu-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 8px;
+
+  .ajout-lieu-quartier {
+    margin: 0;
+  }
+}
+
 .ajout-lieu-quartier {
   display: flex;
   align-items: center;
@@ -26,6 +69,8 @@
   font: inherit;
   color: inherit;
   cursor: pointer;
+  flex: 1 1 auto;
+  min-width: 0;
 
   > ion-icon:first-child {
     font-size: 14px;
@@ -36,6 +81,9 @@
   span {
     flex: 1 1 auto;
     text-align: left;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 }
 
@@ -48,9 +96,45 @@
   opacity: 0.6;
 }
 
+.recherche-restaurant-chip-proche {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 44px;
+  flex-shrink: 0;
+  background: var(--ion-color-light);
+  border: none;
+  border-radius: 12px;
+  padding: 0 14px;
+  font: inherit;
+  font-size: 13px;
+  color: inherit;
+  cursor: pointer;
+  white-space: nowrap;
+
+  ion-icon {
+    font-size: 15px;
+    color: var(--ion-color-medium);
+  }
+}
+
+.recherche-restaurant-chip-proche-actif {
+  background: var(--ion-color-primary);
+  color: var(--ion-color-primary-contrast);
+
+  ion-icon {
+    color: var(--ion-color-primary-contrast);
+  }
+}
+
 .recherche-restaurant-toggle {
   --padding-start: 0;
   margin-top: 4px;
+
+  ion-icon {
+    color: var(--ion-color-primary);
+    margin-inline-end: 8px;
+  }
 }
 
 .recherche-restaurant-hint {
@@ -59,8 +143,37 @@
   margin: 0 0 8px;
 }
 
+.recherche-restaurant-chips-prix {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 6px 0 8px;
+}
+
+.recherche-restaurant-chip-selectionnee {
+  --background: var(--ion-color-primary);
+  --color: var(--ion-color-primary-contrast);
+}
+
+.recherche-restaurant-externe {
+  border-radius: 12px;
+  border: 1px solid var(--ion-color-light-shade);
+  padding: 2px 12px 8px;
+  margin-top: 10px;
+  transition: border-color 0.2s ease, background 0.2s ease;
+
+  .recherche-restaurant-hint {
+    margin: 0;
+  }
+}
+
+.recherche-restaurant-externe-actif {
+  border-color: var(--ion-color-primary);
+  background: rgba(var(--ion-color-primary-rgb), 0.06);
+}
+
 .recherche-restaurant-submit {
-  margin-top: 12px;
+  margin-top: 16px;
 }
 
 .recherche-restaurant-erreur {
@@ -137,6 +250,52 @@
   &:active {
     background: var(--ion-color-light-shade);
   }
+}
+
+.recherche-restaurant-carte-maps {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ion-color-primary);
+  text-decoration: none;
+
+  ion-icon {
+    font-size: 14px;
+  }
+}
+
+.recherche-restaurant-squelette {
+  cursor: default;
+}
+
+.squelette-ligne {
+  height: 10px;
+  border-radius: 6px;
+  background: var(--ion-color-light-shade);
+  animation: recherche-restaurant-pulse 1.2s ease-in-out infinite;
+}
+
+.squelette-ligne-titre {
+  width: 55%;
+  height: 13px;
+  margin-bottom: 8px;
+}
+
+.squelette-ligne-meta {
+  width: 40%;
+  margin-bottom: 8px;
+}
+
+.squelette-ligne-raison {
+  width: 85%;
+}
+
+@keyframes recherche-restaurant-pulse {
+  0%, 100% { opacity: 0.5; }
+  50% { opacity: 1; }
 }
 
 .recherche-restaurant-carte-entete {

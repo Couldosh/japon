@@ -5,7 +5,7 @@ import {
   IonItem, IonInput, IonToggle, IonSpinner, IonModal, IonChip, IonSearchbar
 } from '@ionic/angular/standalone';
 import { addIcons } from 'ionicons';
-import { closeOutline, alertCircleOutline, funnelOutline, chevronDownOutline, chevronForwardOutline, checkmarkOutline, searchOutline } from 'ionicons/icons';
+import { closeOutline, alertCircleOutline, funnelOutline, chevronDownOutline, chevronForwardOutline, checkmarkOutline, searchOutline, locateOutline, globeOutline, sparklesOutline, mapOutline } from 'ionicons/icons';
 import { IaService } from '../../service/ia/ia.service';
 import { RestaurantService } from '../../service/restaurant/restaurant.service';
 import { RestaurantModel } from '../../models/restaurant.model';
@@ -19,6 +19,10 @@ import { GeolocationService } from '../../service/geolocation/GeolocationService
  * liste vide à l'IA (mieux vaut un restaurant un peu plus loin qu'aucun candidat du tout). */
 const RAYON_PROCHE_METRES = 2000;
 const NB_PLUS_PROCHES_REPLI = 15;
+
+/** Suggestions rapides pour le champ "Gamme de prix" (texte libre par ailleurs) — reprend les
+ * exemples déjà donnés en placeholder, en tap-to-fill plutôt qu'à retaper à la main. */
+const OPTIONS_PRIX_RAPIDES = ['Pas cher', '¥¥', 'Cher'];
 
 /** Normalise un nom pour un matching insensible à la casse/aux accents — même principe que
  * ajout-lieu.component.ts/planning.component.ts (dupliquée, pas partagée à ce jour). */
@@ -120,8 +124,10 @@ export class RechercheRestaurantComponent implements OnInit {
       .filter(groupe => groupe.quartiers.length > 0);
   });
 
+  readonly optionsPrixRapides = OPTIONS_PRIX_RAPIDES;
+
   constructor() {
-    addIcons({ closeOutline, alertCircleOutline, funnelOutline, chevronDownOutline, chevronForwardOutline, checkmarkOutline, searchOutline });
+    addIcons({ closeOutline, alertCircleOutline, funnelOutline, chevronDownOutline, chevronForwardOutline, checkmarkOutline, searchOutline, locateOutline, globeOutline, sparklesOutline, mapOutline });
   }
 
   ngOnInit(): void {
@@ -154,6 +160,12 @@ export class RechercheRestaurantComponent implements OnInit {
     if (actif) {
       this.quartier.set(null);
     }
+  }
+
+  /** Tap-to-fill sur une suggestion de prix rapide — un second tap sur la même option la retire
+   * (le champ reste éditable en texte libre par ailleurs, ceci n'est qu'un raccourci). */
+  choisirPrixRapide(option: string): void {
+    this.gammePrix.set(this.gammePrix() === option ? '' : option);
   }
 
   rechercher(): void {
@@ -250,5 +262,13 @@ export class RechercheRestaurantComponent implements OnInit {
       return null;
     }
     return GeolocationService.formaterDistance(GeolocationService.distanceMetres(position, { latitude: match.latitude, longitude: match.longitude }));
+  }
+
+  /** Une suggestion externe (connu=false) n'a pas de fiche interne à ouvrir : lien de recherche
+   * Google Maps par texte (nom + quartier), seule action possible pour vérifier/localiser le
+   * lieu — pas de coordonnées disponibles puisque l'IA ne les fournit pas. */
+  lienMapsSuggestion(suggestion: SuggestionRestaurant): string {
+    const texte = `${suggestion.nom} ${suggestion.quartier}`.trim();
+    return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(texte)}`;
   }
 }
