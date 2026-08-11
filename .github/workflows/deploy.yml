@@ -22,6 +22,12 @@ jobs:
       - name: Installation des dépendances
         run: npm ci
 
+      - name: Vérification des types (tsc --noEmit)
+        run: npx tsc --noEmit -p tsconfig.app.json
+
+      - name: Tests unitaires (headless)
+        run: npx ng test --watch=false --browsers=ChromeHeadless
+
       - name: Build de l'application Angular
         run: npm run build -- --configuration production
 
