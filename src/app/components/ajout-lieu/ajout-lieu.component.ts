@@ -920,6 +920,12 @@ export class AjoutLieuComponent implements OnInit {
     this.erreur.set(null);
     this.progressionFranchise.set({ traites: 0, trouves: 0, total: quartiers.length });
 
+    // Erreurs d'écriture Sheets (distinctes d'un "non trouvé" sur Places) — journalisées ici
+    // plutôt que silencieusement fondues dans le même booléen que "aucun résultat Places",
+    // pour pouvoir diagnostiquer un échec d'écriture (ex: 403/429) au lieu de laisser croire
+    // à une absence de résultat Places.
+    const erreursEcriture: string[] = [];
+
     this.franchiseSubscription = from(quartiers)
       .pipe(
         concatMap(quartierCourant =>
@@ -929,7 +935,15 @@ export class AjoutLieuComponent implements OnInit {
               resultat
                 ? this.sheetsWrite
                     .ajouterLigne(GID_PAR_TYPE[type], this.construireValeursFranchise(type, quartierCourant, resultat))
-                    .pipe(switchMap(() => of(true)), catchError(() => of(false)))
+                    .pipe(
+                      switchMap(() => of(true)),
+                      catchError((err: Error) => {
+                        const message = `${quartierCourant} : ${err.message}`;
+                        erreursEcriture.push(message);
+                        console.error(`[soumettreFranchise] Échec d'écriture pour "${nom}" — ${message}`);
+                        return of(false);
+                      })
+                    )
                 : of(false)
             ),
             tap(ajoute => {
@@ -952,6 +966,9 @@ export class AjoutLieuComponent implements OnInit {
         const suffixeDejaCouverts = dejaCouverts.length > 0
           ? ` (${dejaCouverts.length} déjà couvert${dejaCouverts.length > 1 ? 's' : ''}, ignoré${dejaCouverts.length > 1 ? 's' : ''})`
           : '';
+        const suffixeErreurs = erreursEcriture.length > 0
+          ? ` — ${erreursEcriture.length} échec${erreursEcriture.length > 1 ? 's' : ''} d'écriture (voir console)`
+          : '';
         this.franchiseSubscription = null;
         this.enCours.set(false);
         this.progressionFranchise.set(null);
@@ -959,8 +976,8 @@ export class AjoutLieuComponent implements OnInit {
         this.rafraichirListesReference(true);
         this.rechercheMessage.set(
           trouves > 0
-            ? `Franchise "${nom}" ajoutée dans ${trouves} nouveau${trouves > 1 ? 'x' : ''} quartier${trouves > 1 ? 's' : ''} sur ${quartiers.length} recherché${quartiers.length > 1 ? 's' : ''}${suffixeDejaCouverts}.`
-            : `Aucune nouvelle instance de "${nom}" trouvée sur Google Places parmi les ${quartiers.length} quartier${quartiers.length > 1 ? 's' : ''} restant${quartiers.length > 1 ? 's' : ''}${suffixeDejaCouverts}.`
+            ? `Franchise "${nom}" ajoutée dans ${trouves} nouveau${trouves > 1 ? 'x' : ''} quartier${trouves > 1 ? 's' : ''} sur ${quartiers.length} recherché${quartiers.length > 1 ? 's' : ''}${suffixeDejaCouverts}${suffixeErreurs}.`
+            : `Aucune nouvelle instance de "${nom}" trouvée sur Google Places parmi les ${quartiers.length} quartier${quartiers.length > 1 ? 's' : ''} restant${quartiers.length > 1 ? 's' : ''}${suffixeDejaCouverts}${suffixeErreurs}.`
         );
         this.ajoute.emit(type);
       });
