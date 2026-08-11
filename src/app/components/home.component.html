@@ -438,7 +438,7 @@
 </ng-template>
 
 <ion-tab-bar slot="bottom">
-  <ion-tab-button tab="liste" [selected]="vue() === 'liste'" (click)="changerVue('liste')" title="Liste des lieux">
+  <ion-tab-button tab="liste" [selected]="vue() === 'liste'" (click)="onTapTabListe()" title="Liste des lieux">
     <ion-icon name="list-outline"></ion-icon>
     <ion-label>Liste</ion-label>
   </ion-tab-button>
@@ -902,3 +902,22 @@
   position="bottom"
   (didDismiss)="toastMessage.set(null)">
 </ion-toast>
+
+<!-- Easter egg : 4 taps sur l'onglet Liste en moins de 3s (voir onTapTabListe()) fait
+     tomber des pétales de sakura, clin d'œil au voyage. Purement décoratif, pointer-events
+     none pour ne jamais gêner l'interaction en dessous. -->
+@if (sakuraActif()) {
+  <div class="sakura-overlay" aria-hidden="true">
+    @for (petale of sakuraPetales(); track $index) {
+      <span
+        class="sakura-petale"
+        [style.left.%]="petale.gauche"
+        [style.font-size.px]="petale.taille"
+        [style.animation-delay.s]="petale.delai"
+        [style.animation-duration.s]="petale.duree"
+        [style.--sakura-derive]="petale.derive + 'px'">
+        🌸
+      </span>
+    }
+  </div>
+}

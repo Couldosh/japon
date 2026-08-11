@@ -822,3 +822,37 @@
 // (`--height: 100vh`) est donc posé en style inline directement sur chaque `<ion-modal>` dans
 // home.component.html (`[style.--height]="'100vh'"`) : un style inline gagne toujours face à
 // n'importe quelle règle de feuille de style, quelle que soit sa spécificité.
+
+// Easter egg (voir HomeComponent.onTapTabListe()) : pétales de sakura qui tombent en boucle
+// courte au-dessus de tout le reste de l'app. pointer-events: none pour ne jamais intercepter
+// un tap destiné au contenu en dessous ; z-index élevé pour passer au-dessus des modales.
+.sakura-overlay {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 99999;
+}
+
+.sakura-petale {
+  position: absolute;
+  top: -10%;
+  animation-name: sakura-chute;
+  animation-timing-function: ease-in;
+  animation-fill-mode: forwards;
+  opacity: 0;
+}
+
+@keyframes sakura-chute {
+  0% {
+    transform: translate(0, 0) rotate(0deg);
+    opacity: 0;
+  }
+  10% {
+    opacity: 0.9;
+  }
+  100% {
+    transform: translate(var(--sakura-derive, 40px), 115vh) rotate(360deg);
+    opacity: 0.8;
+  }
+}

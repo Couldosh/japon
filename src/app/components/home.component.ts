@@ -77,6 +77,16 @@ interface VilleQuartiers {
   quartiers: string[];
 }
 
+/** Un pétale de l'animation sakura (easter egg, voir onTapTabListe()) — valeurs tirées au
+ * hasard à chaque déclenchement pour que la chute ne soit pas identique à chaque fois. */
+interface PetaleSakura {
+  gauche: number;  // position horizontale, %
+  taille: number;  // px
+  delai: number;   // s avant le début de la chute
+  duree: number;   // s de chute
+  derive: number;  // px de dérive horizontale pendant la chute
+}
+
 type DetailLieu =
   | { type: 'restaurant'; data: RestaurantModel }
   | { type: 'activite'; data: ActiviteModel }
@@ -191,6 +201,9 @@ export class HomeComponent implements OnInit {
   readonly detailSelectionne = signal<DetailLieu | null>(null);
   readonly platSelectionne = signal<Plat | null>(null);
   readonly toastMessage = signal<string | null>(null);
+  // Easter egg (voir onTapTabListe()) : pétales de sakura affichées quelques secondes.
+  readonly sakuraActif = signal(false);
+  readonly sakuraPetales = signal<PetaleSakura[]>([]);
   // Bouton "retour en haut" (vue Liste uniquement) : apparaît passé un certain
   // défilement, seuil arbitraire au-delà duquel remonter au doigt devient pénible.
   private static readonly SEUIL_BOUTON_HAUT = 400;
@@ -655,6 +668,41 @@ export class HomeComponent implements OnInit {
 
   changerVue(vue: Vue): void {
     this.vue.set(vue);
+  }
+
+  // Easter egg : 4 taps sur l'onglet Liste en moins de 3s. Compteur remis à zéro si le
+  // délai est dépassé entre deux taps, pour ne pas se déclencher au fil d'une session normale
+  // où l'onglet Liste est de toute façon cliqué très souvent.
+  private static readonly SAKURA_SEUIL_TAPS = 4;
+  private static readonly SAKURA_FENETRE_MS = 3000;
+  private static readonly SAKURA_DUREE_MS = 4500;
+  private sakuraTaps = 0;
+  private sakuraTapsTimeout?: ReturnType<typeof setTimeout>;
+
+  onTapTabListe(): void {
+    this.changerVue('liste');
+
+    this.sakuraTaps++;
+    clearTimeout(this.sakuraTapsTimeout);
+    this.sakuraTapsTimeout = setTimeout(() => (this.sakuraTaps = 0), HomeComponent.SAKURA_FENETRE_MS);
+
+    if (this.sakuraTaps >= HomeComponent.SAKURA_SEUIL_TAPS) {
+      this.sakuraTaps = 0;
+      clearTimeout(this.sakuraTapsTimeout);
+      this.declencherSakura();
+    }
+  }
+
+  private declencherSakura(): void {
+    this.sakuraPetales.set(Array.from({ length: 24 }, () => ({
+      gauche: Math.random() * 100,
+      taille: 14 + Math.random() * 10,
+      delai: Math.random() * 1.5,
+      duree: 4 + Math.random() * 3,
+      derive: 30 + Math.random() * 60 * (Math.random() < 0.5 ? -1 : 1),
+    })));
+    this.sakuraActif.set(true);
+    setTimeout(() => this.sakuraActif.set(false), HomeComponent.SAKURA_DUREE_MS);
   }
 
   /**
