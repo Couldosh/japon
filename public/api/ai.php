@@ -52,11 +52,32 @@ curl_setopt($ch, CURLOPT_HTTPHEADER, [
 curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
 curl_setopt($ch, CURLOPT_TIMEOUT, 300);
 
+// DEBUG TEMPORAIRE (diagnostic du 302 Cloudflare Access, à retirer une fois résolu) : capture
+// Location/WWW-Authenticate de la réponse amont sans rien changer au comportement normal —
+// exposées seulement si le header X-Debug-Ai-Relay est présent, jamais envoyé par l'app.
+$debugHeadersAmont = [];
+curl_setopt($ch, CURLOPT_HEADERFUNCTION, function ($curl, $enteteBrut) use (&$debugHeadersAmont) {
+    $parties = explode(':', $enteteBrut, 2);
+    if (count($parties) === 2) {
+        $nom = strtolower(trim($parties[0]));
+        if (in_array($nom, ['location', 'www-authenticate'], true)) {
+            $debugHeadersAmont[$nom] = trim($parties[1]);
+        }
+    }
+    return strlen($enteteBrut);
+});
+
 $reponse = curl_exec($ch);
 $statut = curl_getinfo($ch, CURLINFO_HTTP_CODE);
 $erreurCurl = curl_error($ch);
 $erreurNo = curl_errno($ch);
 curl_close($ch);
+
+if (($_SERVER['HTTP_X_DEBUG_AI_RELAY'] ?? '') === 'lieu-diag-1') {
+    header('X-Debug-Upstream-Status: ' . $statut);
+    header('X-Debug-Upstream-Location: ' . ($debugHeadersAmont['location'] ?? '(absent)'));
+    header('X-Debug-Upstream-WWW-Authenticate: ' . ($debugHeadersAmont['www-authenticate'] ?? '(absent)'));
+}
 
 if ($reponse === false) {
     http_response_code($erreurNo === CURLE_OPERATION_TIMEDOUT ? 504 : 502);
