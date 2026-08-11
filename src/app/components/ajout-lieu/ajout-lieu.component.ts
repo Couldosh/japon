@@ -532,9 +532,15 @@ export class AjoutLieuComponent implements OnInit {
    * bon bouton dans le bon ordre.
    * - Pas encore de quartier connu → identification IA à partir du seul Nom
    *   (rechercherSuggestionsIa()) ; choisir une suggestion (choisirSuggestionIa()) enchaîne
-   *   ensuite automatiquement sur completerAutomatiquement().
+   *   ensuite automatiquement sur completerAutomatiquement(). En parallèle, pour un Restaurant
+   *   sans plat encore sélectionné, lance aussi l'extraction IA des plats (extrairePlatsIa()) à
+   *   partir du seul Nom (sans résumé Google, donc reposant uniquement sur la connaissance de
+   *   l'IA de l'enseigne — best-effort, comme le reste de l'identification à ce stade) : pas
+   *   besoin d'attendre la recherche Places pour deviner par exemple qu'un "Sushiro" sert des
+   *   sushis.
    * - Quartier déjà connu (saisi manuellement, ou déjà présent en mode édition) → enchaîne
-   *   directement sur completerAutomatiquement().
+   *   directement sur completerAutomatiquement(), qui retente l'extraction des plats avec le
+   *   résumé Google Places cette fois si elle n'a pas déjà abouti ci-dessus.
    */
   async remplirAutomatiquement(): Promise<void> {
     if (!this.nom().trim() || this.remplissageAutoEnCours()) {
@@ -542,7 +548,11 @@ export class AjoutLieuComponent implements OnInit {
     }
 
     if (!this.quartier()) {
-      await this.rechercherSuggestionsIa();
+      const taches = [this.rechercherSuggestionsIa()];
+      if (this.type() === 'restaurant' && this.platsSelectionnes().length === 0) {
+        taches.push(this.extrairePlatsIa());
+      }
+      await Promise.all(taches);
       return;
     }
 
