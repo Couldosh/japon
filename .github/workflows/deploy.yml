@@ -31,6 +31,24 @@ jobs:
       - name: Build de l'application Angular
         run: npm run build -- --configuration production
 
+      - name: Injection des secrets Cloudflare Access dans le relais IA (public/api/ai.php)
+        env:
+          CF_ACCESS_CLIENT_ID: ${{ secrets.CF_ACCESS_CLIENT_ID }}
+          CF_ACCESS_CLIENT_SECRET: ${{ secrets.CF_ACCESS_CLIENT_SECRET }}
+        run: |
+          python3 - <<'EOF'
+          import os
+          chemin = "dist/primeng-quickstart/browser/api/ai.php"
+          with open(chemin, "r", encoding="utf-8") as f:
+              contenu = f.read()
+          # Remplacement littéral (pas de regex) : évite tout souci de caractère spécial
+          # (&, /, \...) qui pourrait apparaître dans la valeur du secret.
+          contenu = contenu.replace("__CF_ACCESS_CLIENT_ID__", os.environ["CF_ACCESS_CLIENT_ID"])
+          contenu = contenu.replace("__CF_ACCESS_CLIENT_SECRET__", os.environ["CF_ACCESS_CLIENT_SECRET"])
+          with open(chemin, "w", encoding="utf-8") as f:
+              f.write(contenu)
+          EOF
+
       - name: Déploiement via FTP
         uses: SamKirkland/FTP-Deploy-Action@v4.3.5
         with:

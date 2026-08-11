@@ -5,19 +5,20 @@
  * ce script fait l'appel serveur-à-serveur — évite tout problème de cookie/CORS cross-site
  * (voir la mémoire "project-ai-backend-cloudflare-oauth" côté ClaudeApiTkt pour l'historique).
  *
- * IMPORTANT : ce fichier contient un secret (Service Token). Il n'est jamais exposé au
- * navigateur (PHP exécuté côté serveur), mais s'il finit dans un dépôt git public, remplace
- * ces valeurs par des variables d'environnement lues via getenv() et configurées dans Plesk
- * (Hosting Settings > Variables d'environnement PHP) plutôt que codées en dur ici.
+ * Le Service Token (Client ID/Secret) n'est plus codé en dur ici : les deux placeholders
+ * ci-dessous sont substitués par le workflow de déploiement (.github/workflows/deploy.yml,
+ * step "Injection des secrets Cloudflare Access") juste avant l'upload FTP, à partir des
+ * secrets du dépôt GitHub (Settings > Secrets and variables > Actions) — jamais commités.
+ * En local (`ng serve`), ce fichier n'est pas exécuté (voir environment.ts, iaApiUrl pointe
+ * en dev directement sur le backend) donc les placeholders non substitués n'y posent pas de
+ * problème.
  *
  * Appelé via une URL du type /api/ai.php/description (PATH_INFO), voir environment.prod.ts
  * (iaApiUrl: '/api/ai.php') et IaService, qui construit les chemins par simple concatenation.
  */
 
-// À remplacer par le Client ID / Client Secret du Service Token créé dans
-// Cloudflare Zero Trust (Access > Service Auth > Service Tokens).
-$clientId = 'd22db8938fa53a8c501c3c99d30393e1.access';
-$clientSecret = '65b7604710711bf8bdb5e4c4ea883a3bb18376249f9bec21a2beaf9de2664e5e';
+$clientId = '__CF_ACCESS_CLIENT_ID__';
+$clientSecret = '__CF_ACCESS_CLIENT_SECRET__';
 
 $backendBase = 'https://ia.faburisu.com/ai';
 
