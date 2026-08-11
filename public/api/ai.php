@@ -77,6 +77,15 @@ if (($_SERVER['HTTP_X_DEBUG_AI_RELAY'] ?? '') === 'lieu-diag-1') {
     header('X-Debug-Upstream-Status: ' . $statut);
     header('X-Debug-Upstream-Location: ' . ($debugHeadersAmont['location'] ?? '(absent)'));
     header('X-Debug-Upstream-WWW-Authenticate: ' . ($debugHeadersAmont['www-authenticate'] ?? '(absent)'));
+    // Jamais la valeur complète : longueur + 4 derniers caractères seulement, pour confirmer
+    // que $clientId/$clientSecret sont bien substitués (pas vides, pas le placeholder littéral)
+    // sans exposer le secret lui-même dans une réponse HTTP.
+    header('X-Debug-ClientId-Len: ' . strlen($clientId));
+    header('X-Debug-ClientId-Tail: ' . substr($clientId, -4));
+    header('X-Debug-ClientId-IsPlaceholder: ' . ($clientId === '__CF_ACCESS_CLIENT_ID__' ? 'oui' : 'non'));
+    header('X-Debug-ClientSecret-Len: ' . strlen($clientSecret));
+    header('X-Debug-ClientSecret-Tail: ' . substr($clientSecret, -4));
+    header('X-Debug-ClientSecret-IsPlaceholder: ' . ($clientSecret === '__CF_ACCESS_CLIENT_SECRET__' ? 'oui' : 'non'));
 }
 
 if ($reponse === false) {
