@@ -19,7 +19,8 @@ import {
   openOutline, starOutline, star, starHalf, pricetagOutline, playOutline,
   timeOutline, funnelOutline, layersOutline, chevronDownOutline, checkmarkOutline,
   calendarOutline, alarmOutline, createOutline, addOutline, arrowUpOutline,
-  shareOutline, downloadOutline, cloudUploadOutline, todayOutline
+  shareOutline, downloadOutline, cloudUploadOutline, todayOutline,
+  appsOutline, compassOutline, sparklesOutline
 } from 'ionicons/icons';
 
 import { RestaurantService } from '../service/restaurant/restaurant.service';
@@ -409,7 +410,8 @@ export class HomeComponent implements OnInit {
       openOutline, starOutline, star, starHalf, pricetagOutline, playOutline,
       timeOutline, funnelOutline, layersOutline, chevronDownOutline, checkmarkOutline,
       calendarOutline, alarmOutline, createOutline, addOutline, arrowUpOutline,
-      shareOutline, downloadOutline, cloudUploadOutline, todayOutline
+      shareOutline, downloadOutline, cloudUploadOutline, todayOutline,
+      appsOutline, compassOutline, sparklesOutline
     });
   }
 

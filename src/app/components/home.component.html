@@ -9,8 +9,8 @@
         </ion-searchbar>
       }
       <div class="entete-boutons">
-        <ion-button fill="clear" (click)="afficherModaleRecherche.set(true)" aria-label="Rechercher un restaurant" title="Rechercher un restaurant">
-          <ion-icon slot="icon-only" name="search-outline"></ion-icon>
+        <ion-button fill="clear" (click)="afficherModaleRecherche.set(true)" aria-label="Rechercher un restaurant avec l'IA" title="Rechercher un restaurant avec l'IA">
+          <ion-icon slot="icon-only" name="sparkles-outline"></ion-icon>
         </ion-button>
         <ion-button fill="clear" (click)="ouvrirModaleAjout()" aria-label="Ajouter un lieu" title="Ajouter un lieu">
           <ion-icon slot="icon-only" name="add-outline"></ion-icon>
@@ -46,17 +46,17 @@
   @if (vue() !== 'planning') {
     <div class="filtres filtres-segment">
       <ion-segment [value]="filtreActif()" (ionChange)="changerFiltre($any($event.detail).value)" title="Filtrer par type de lieu">
-        <ion-segment-button value="tout">
-          <ion-label>Tout</ion-label>
+        <ion-segment-button value="tout" aria-label="Tout" title="Tout">
+          <ion-icon name="apps-outline"></ion-icon>
         </ion-segment-button>
-        <ion-segment-button value="restaurant">
-          <ion-label>Restaurants</ion-label>
+        <ion-segment-button value="restaurant" aria-label="Restaurants" title="Restaurants">
+          <ion-icon name="restaurant-outline"></ion-icon>
         </ion-segment-button>
-        <ion-segment-button value="activite">
-          <ion-label>Activités</ion-label>
+        <ion-segment-button value="activite" aria-label="Activités" title="Activités">
+          <ion-icon name="compass-outline"></ion-icon>
         </ion-segment-button>
-        <ion-segment-button value="magasin">
-          <ion-label>Magasins</ion-label>
+        <ion-segment-button value="magasin" aria-label="Magasins" title="Magasins">
+          <ion-icon name="storefront-outline"></ion-icon>
         </ion-segment-button>
       </ion-segment>
     </div>

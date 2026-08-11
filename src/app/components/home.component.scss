@@ -104,6 +104,18 @@
     flex-shrink: 1;
     min-width: 0;
   }
+
+  // Icônes plutôt que du texte (Tout/Restaurants/Activités/Magasins) : sur un petit écran,
+  // 4 boutons texte dans un ion-segment se compressaient au point de rendre le texte tronqué
+  // et illisible. Une icône reste lisible même très compressée ; min-width évite qu'un bouton
+  // finisse quand même écrasé à une largeur inférieure à sa zone de tap.
+  ion-segment-button {
+    min-width: 44px;
+
+    ion-icon {
+      font-size: 20px;
+    }
+  }
 }
 
 .filtre-pilule {
