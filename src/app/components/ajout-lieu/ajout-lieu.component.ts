@@ -1,12 +1,12 @@
 import { Component, DestroyRef, Input, OnInit, computed, inject, output, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { catchError, concatMap, from, of, Subscription, switchMap, tap, toArray } from 'rxjs';
+import { catchError, concatMap, firstValueFrom, from, of, Subscription, switchMap, tap, toArray } from 'rxjs';
 import {
   IonHeader, IonToolbar, IonTitle, IonButtons, IonButton, IonIcon, IonContent,
   IonChip, IonItem, IonInput, IonTextarea, IonModal, IonSpinner, IonToggle, AlertController
 } from '@ionic/angular/standalone';
 import { addIcons } from 'ionicons';
-import { closeOutline, checkmarkOutline, funnelOutline, chevronDownOutline, alertCircleOutline, searchOutline, sparklesOutline } from 'ionicons/icons';
+import { closeOutline, checkmarkOutline, funnelOutline, chevronDownOutline, alertCircleOutline, sparklesOutline } from 'ionicons/icons';
 import { GoogleAuthService } from '../../service/google/google-auth.service';
 import { SheetsWriteService } from '../../service/google/sheets-write.service';
 import { QuartierService } from '../../service/quartier/quartier.service';
@@ -189,6 +189,13 @@ export class AjoutLieuComponent implements OnInit {
   readonly platInfoIaEnCours = signal(false);
   readonly platInfoIaErreur = signal<string | null>(null);
 
+  /** Pilote le bouton unique "Remplir automatiquement" (remplirAutomatiquement()), qui
+   * remplace les anciens boutons séparés Identifier IA / Google Places / Description IA /
+   * Plats IA : vrai tant que l'une de leurs étapes est en cours. */
+  readonly remplissageAutoEnCours = computed(() =>
+    this.suggestionsIaEnCours() || this.rechercheEnCours() || this.descriptionIaEnCours() || this.platsIaEnCours()
+  );
+
   private readonly quartiers = signal<QuartierModel[]>([]);
   private readonly villes = signal<VilleModel[]>([]);
   private readonly platsBruts = signal<Plat[]>([]);
@@ -327,7 +334,7 @@ export class AjoutLieuComponent implements OnInit {
   );
 
   constructor() {
-    addIcons({ closeOutline, checkmarkOutline, funnelOutline, chevronDownOutline, alertCircleOutline, searchOutline, sparklesOutline });
+    addIcons({ closeOutline, checkmarkOutline, funnelOutline, chevronDownOutline, alertCircleOutline, sparklesOutline });
   }
 
   ngOnInit(): void {
@@ -519,12 +526,55 @@ export class AjoutLieuComponent implements OnInit {
   }
 
   /**
+   * Bouton unique "Remplir automatiquement" (remplace les 4 boutons précédents Identifier IA /
+   * Google Places / Description IA / Plats IA) : décide lui-même quels services appeler selon
+   * ce qui est déjà renseigné dans le formulaire plutôt que de laisser l'utilisateur choisir le
+   * bon bouton dans le bon ordre.
+   * - Pas encore de quartier connu → identification IA à partir du seul Nom
+   *   (rechercherSuggestionsIa()) ; choisir une suggestion (choisirSuggestionIa()) enchaîne
+   *   ensuite automatiquement sur completerAutomatiquement().
+   * - Quartier déjà connu (saisi manuellement, ou déjà présent en mode édition) → enchaîne
+   *   directement sur completerAutomatiquement().
+   */
+  async remplirAutomatiquement(): Promise<void> {
+    if (!this.nom().trim() || this.remplissageAutoEnCours()) {
+      return;
+    }
+
+    if (!this.quartier()) {
+      await this.rechercherSuggestionsIa();
+      return;
+    }
+
+    await this.completerAutomatiquement();
+  }
+
+  /** Une fois Nom + Quartier connus, enchaîne tout ce qui manque encore dans le formulaire —
+   * chaque étape est sautée si l'info est déjà présente, pour ne relancer que ce qui manque
+   * réellement plutôt que d'écraser des champs déjà remplis (rechercherPlaces()/
+   * genererDescriptionIa() redemandent de toute façon confirmation avant d'écraser une valeur
+   * existante, mais autant éviter l'appel réseau et le popup si le champ est déjà vide) :
+   * Google Places (Lien/Localisation), puis description IA, puis — pour un restaurant —
+   * extraction des plats IA. */
+  private async completerAutomatiquement(): Promise<void> {
+    if (!this.liens().trim() && !this.localisation().trim()) {
+      await this.rechercherPlaces();
+    }
+    if (!this.description().trim()) {
+      await this.genererDescriptionIa();
+    }
+    if (this.type() === 'restaurant' && this.platsSelectionnes().length === 0) {
+      await this.extrairePlatsIa();
+    }
+  }
+
+  /**
    * Recherche IA (backend /ai/recherche-lieu) de ce qui pourrait correspondre au seul Nom
    * saisi — pas besoin d'avoir déjà choisi un quartier, contrairement à rechercherPlaces().
    * Renvoie jusqu'à 5 candidats plausibles (nom, quartier, ville, raison), à confirmer par
    * l'utilisateur via choisirSuggestionIa() avant d'enchaîner sur Google Places.
    */
-  rechercherSuggestionsIa(): void {
+  async rechercherSuggestionsIa(): Promise<void> {
     const nom = this.nom().trim();
     if (!nom || this.suggestionsIaEnCours()) {
       return;
@@ -535,37 +585,36 @@ export class AjoutLieuComponent implements OnInit {
     this.suggestionsIa.set([]);
     this.suggestionsIaEffectuee.set(false);
 
-    this.iaService.rechercherLieu({
-      nom,
-      type: this.libelleTypeEdition(),
-      villesConnues: this.villesConnues(),
-    })
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe({
-        next: reponse => {
-          this.suggestionsIaEnCours.set(false);
-          this.suggestionsIaEffectuee.set(true);
-          this.suggestionsIa.set(reponse.resultats);
-        },
-        error: (err: Error) => {
-          this.suggestionsIaEnCours.set(false);
-          this.suggestionsIaErreur.set(err.message);
-        }
-      });
+    try {
+      const reponse = await firstValueFrom(
+        this.iaService.rechercherLieu({
+          nom,
+          type: this.libelleTypeEdition(),
+          villesConnues: this.villesConnues(),
+        }).pipe(takeUntilDestroyed(this.destroyRef))
+      );
+      this.suggestionsIaEnCours.set(false);
+      this.suggestionsIaEffectuee.set(true);
+      this.suggestionsIa.set(reponse.resultats);
+    } catch (err) {
+      this.suggestionsIaEnCours.set(false);
+      this.suggestionsIaErreur.set((err as Error).message);
+    }
   }
 
   /** Sélectionne une suggestion IA : reprend son nom exact et son quartier (matché sur la
    * liste connue de QuartierService si possible, sinon la valeur suggérée telle quelle — un
    * quartier hors référentiel reste utilisable comme texte de recherche Places), referme la
-   * liste de suggestions, puis enchaîne automatiquement sur rechercherPlaces() pour affiner
-   * Lien/Localisation avec l'adresse exacte. */
+   * liste de suggestions, puis enchaîne automatiquement sur completerAutomatiquement() (Places,
+   * puis description et plats si toujours vides) — même suite que déclenchée par le bouton
+   * unique remplirAutomatiquement() une fois un quartier connu. */
   choisirSuggestionIa(suggestion: SuggestionLieu): void {
     this.nom.set(suggestion.nom);
     const quartierConnu = this.quartiersConnus().find(q => normaliser(q) === normaliser(suggestion.quartier));
     this.quartier.set(quartierConnu ?? suggestion.quartier);
     this.suggestionsIa.set([]);
     this.suggestionsIaEffectuee.set(false);
-    this.rechercherPlaces();
+    void this.completerAutomatiquement();
   }
 
   /**
@@ -577,7 +626,7 @@ export class AjoutLieuComponent implements OnInit {
    * confirmation avant de l'écraser (confirmerEcrasement) plutôt que de le
    * faire silencieusement.
    */
-  rechercherPlaces(): void {
+  async rechercherPlaces(): Promise<void> {
     const nom = this.nom().trim();
     if (!nom || !this.quartier() || this.rechercheEnCours()) {
       return;
@@ -589,54 +638,52 @@ export class AjoutLieuComponent implements OnInit {
     this.resumeGooglePlaces.set(null);
     this.platsSuggeresInconnus.set([]);
 
-    this.placesSearch.rechercher(nom, this.quartier())
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe({
-        next: async resultat => {
-          this.rechercheEnCours.set(false);
+    try {
+      const resultat = await firstValueFrom(
+        this.placesSearch.rechercher(nom, this.quartier()).pipe(takeUntilDestroyed(this.destroyRef))
+      );
+      this.rechercheEnCours.set(false);
 
-          if (!resultat) {
-            this.rechercheMessage.set('Aucun établissement trouvé sur Google Places pour ce nom.');
-            return;
-          }
+      if (!resultat) {
+        this.rechercheMessage.set('Aucun établissement trouvé sur Google Places pour ce nom.');
+        return;
+      }
 
-          this.photoApercu.set(resultat.photoUrl);
-          this.resumeGooglePlaces.set(resultat.resume);
+      this.photoApercu.set(resultat.photoUrl);
+      this.resumeGooglePlaces.set(resultat.resume);
 
-          const ecraseraitLiens = !!resultat.siteWeb && this.liens().trim().length > 0;
-          const ecraseraitLocalisation = this.localisation().trim().length > 0;
+      const ecraseraitLiens = !!resultat.siteWeb && this.liens().trim().length > 0;
+      const ecraseraitLocalisation = this.localisation().trim().length > 0;
 
-          if ((ecraseraitLiens || ecraseraitLocalisation) && !(await this.confirmerEcrasement())) {
-            if (this.type() === 'restaurant' && resultat.resume) {
-              this.preselectionnerPlats(resultat.resume);
-            }
-            this.rechercheMessage.set(
-              `Trouvé : ${resultat.nom}${resultat.adresse ? ' — ' + resultat.adresse : ''}. Lien/Localisation existants conservés.`
-            );
-            return;
-          }
-
-          this.localisation.set(resultat.lienLocalisation);
-          const champsRemplis = new Set<'liens' | 'localisation'>(['localisation']);
-          if (resultat.siteWeb) {
-            this.liens.set(resultat.siteWeb);
-            champsRemplis.add('liens');
-          }
-          this.champsAutoRemplis.set(champsRemplis);
-
-          if (this.type() === 'restaurant' && resultat.resume) {
-            this.preselectionnerPlats(resultat.resume);
-          }
-
-          this.rechercheMessage.set(
-            `Trouvé : ${resultat.nom}${resultat.adresse ? ' — ' + resultat.adresse : ''}. Vérifie que c'est la bonne enseigne avant d'ajouter.`
-          );
-        },
-        error: (err: Error) => {
-          this.rechercheEnCours.set(false);
-          this.rechercheMessage.set(err.message);
+      if ((ecraseraitLiens || ecraseraitLocalisation) && !(await this.confirmerEcrasement())) {
+        if (this.type() === 'restaurant' && resultat.resume) {
+          this.preselectionnerPlats(resultat.resume);
         }
-      });
+        this.rechercheMessage.set(
+          `Trouvé : ${resultat.nom}${resultat.adresse ? ' — ' + resultat.adresse : ''}. Lien/Localisation existants conservés.`
+        );
+        return;
+      }
+
+      this.localisation.set(resultat.lienLocalisation);
+      const champsRemplis = new Set<'liens' | 'localisation'>(['localisation']);
+      if (resultat.siteWeb) {
+        this.liens.set(resultat.siteWeb);
+        champsRemplis.add('liens');
+      }
+      this.champsAutoRemplis.set(champsRemplis);
+
+      if (this.type() === 'restaurant' && resultat.resume) {
+        this.preselectionnerPlats(resultat.resume);
+      }
+
+      this.rechercheMessage.set(
+        `Trouvé : ${resultat.nom}${resultat.adresse ? ' — ' + resultat.adresse : ''}. Vérifie que c'est la bonne enseigne avant d'ajouter.`
+      );
+    } catch (err) {
+      this.rechercheEnCours.set(false);
+      this.rechercheMessage.set((err as Error).message);
+    }
   }
 
   /** Confirmation avant de remplacer des champs déjà renseignés manuellement — message
@@ -684,23 +731,21 @@ export class AjoutLieuComponent implements OnInit {
     this.descriptionIaEnCours.set(true);
     this.descriptionIaErreur.set(null);
 
-    this.iaService.genererDescription({
-      nom,
-      type: this.type(),
-      quartier: this.quartier(),
-      resumeGoogle: this.resumeGooglePlaces(),
-    })
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe({
-        next: reponse => {
-          this.descriptionIaEnCours.set(false);
-          this.description.set(reponse.description);
-        },
-        error: (err: Error) => {
-          this.descriptionIaEnCours.set(false);
-          this.descriptionIaErreur.set(err.message);
-        }
-      });
+    try {
+      const reponse = await firstValueFrom(
+        this.iaService.genererDescription({
+          nom,
+          type: this.type(),
+          quartier: this.quartier(),
+          resumeGoogle: this.resumeGooglePlaces(),
+        }).pipe(takeUntilDestroyed(this.destroyRef))
+      );
+      this.descriptionIaEnCours.set(false);
+      this.description.set(reponse.description);
+    } catch (err) {
+      this.descriptionIaEnCours.set(false);
+      this.descriptionIaErreur.set((err as Error).message);
+    }
   }
 
   /** Extrait les plats via le backend IA à partir du résumé Google Places, en complément de
@@ -708,7 +753,7 @@ export class AjoutLieuComponent implements OnInit {
    * recherche Places). Les plats trouvés qui matchent un plat connu (normaliser(), même logique
    * que preselectionnerPlats) sont ajoutés à la sélection ; les autres sont affichés à part,
    * sans créer de chip libre. */
-  extrairePlatsIa(): void {
+  async extrairePlatsIa(): Promise<void> {
     const nom = this.nom().trim();
     if (!nom || this.platsIaEnCours()) {
       return;
@@ -718,36 +763,34 @@ export class AjoutLieuComponent implements OnInit {
     this.platsIaErreur.set(null);
     this.platsSuggeresInconnus.set([]);
 
-    this.iaService.extrairePlats({
-      nomRestaurant: nom,
-      resumeGoogle: this.resumeGooglePlaces(),
-      platsConnus: this.platsDisponibles(),
-    })
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe({
-        next: reponse => {
-          this.platsIaEnCours.set(false);
-          const connus = this.platsDisponibles();
-          const trouves: string[] = [];
-          const inconnus: string[] = [];
-          for (const suggestion of reponse.plats) {
-            const match = connus.find(candidat => normaliser(candidat) === normaliser(suggestion.nom));
-            if (match) {
-              trouves.push(match);
-            } else {
-              inconnus.push(suggestion.nom);
-            }
-          }
-          if (trouves.length > 0) {
-            this.platsSelectionnes.set([...new Set([...this.platsSelectionnes(), ...trouves])]);
-          }
-          this.platsSuggeresInconnus.set(inconnus);
-        },
-        error: (err: Error) => {
-          this.platsIaEnCours.set(false);
-          this.platsIaErreur.set(err.message);
+    try {
+      const reponse = await firstValueFrom(
+        this.iaService.extrairePlats({
+          nomRestaurant: nom,
+          resumeGoogle: this.resumeGooglePlaces(),
+          platsConnus: this.platsDisponibles(),
+        }).pipe(takeUntilDestroyed(this.destroyRef))
+      );
+      this.platsIaEnCours.set(false);
+      const connus = this.platsDisponibles();
+      const trouves: string[] = [];
+      const inconnus: string[] = [];
+      for (const suggestion of reponse.plats) {
+        const match = connus.find(candidat => normaliser(candidat) === normaliser(suggestion.nom));
+        if (match) {
+          trouves.push(match);
+        } else {
+          inconnus.push(suggestion.nom);
         }
-      });
+      }
+      if (trouves.length > 0) {
+        this.platsSelectionnes.set([...new Set([...this.platsSelectionnes(), ...trouves])]);
+      }
+      this.platsSuggeresInconnus.set(inconnus);
+    } catch (err) {
+      this.platsIaEnCours.set(false);
+      this.platsIaErreur.set((err as Error).message);
+    }
   }
 
   /** Génère description + lien Wikipedia pour un plat (type "Plat") via le backend IA, à

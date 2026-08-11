@@ -133,24 +133,36 @@
         }
       }
 
-      @if (estUnLieu() && !estLieuFranchise() && !modeEdition()) {
+      @if (estUnLieu() && !estLieuFranchise()) {
         <ion-button
           class="ajout-lieu-ia"
           fill="outline"
           size="small"
-          [disabled]="!nom().trim() || suggestionsIaEnCours()"
-          (click)="rechercherSuggestionsIa()"
-          title="Identifier ce lieu avec l'IA, puis affiner sur Google Places">
-          @if (suggestionsIaEnCours()) {
+          [disabled]="!nom().trim() || remplissageAutoEnCours()"
+          (click)="remplirAutomatiquement()"
+          [title]="quartier() ? 'Compléter automatiquement (Google Places, description, plats) avec l\'IA' : 'Identifier ce lieu avec l\'IA, puis affiner sur Google Places'">
+          @if (remplissageAutoEnCours()) {
             <ion-spinner name="dots" slot="start"></ion-spinner>
           } @else {
             <ion-icon slot="start" name="sparkles-outline"></ion-icon>
           }
-          Identifier avec l'IA (nom seul)
+          @if (suggestionsIaEnCours()) {
+            Identification en cours...
+          } @else if (rechercheEnCours()) {
+            Recherche Google Places...
+          } @else if (descriptionIaEnCours()) {
+            Génération de la description...
+          } @else if (platsIaEnCours()) {
+            Extraction des plats...
+          } @else if (quartier()) {
+            Compléter automatiquement avec l'IA
+          } @else {
+            Identifier ce lieu avec l'IA
+          }
         </ion-button>
 
         @if (!nom().trim()) {
-          <p class="ajout-lieu-hint">Saisis un nom ci-dessus pour activer l'identification IA.</p>
+          <p class="ajout-lieu-hint">Saisis un nom ci-dessus pour activer le remplissage automatique.</p>
         }
 
         @if (suggestionsIaErreur()) {
@@ -195,21 +207,6 @@
           <span>{{ quartier() ?? 'Choisir un quartier *' }}</span>
           <ion-icon name="chevron-down-outline" class="ajout-lieu-quartier-chevron"></ion-icon>
         </button>
-
-        <ion-button
-          class="ajout-lieu-places"
-          fill="outline"
-          size="small"
-          [disabled]="!nom().trim() || !quartier() || rechercheEnCours()"
-          (click)="rechercherPlaces()"
-          title="Rechercher sur Google Places">
-          @if (rechercheEnCours()) {
-            <ion-spinner name="dots" slot="start"></ion-spinner>
-          } @else {
-            <ion-icon slot="start" name="search-outline"></ion-icon>
-          }
-          Rechercher sur Google Places
-        </ion-button>
 
         @if (photoApercu()) {
           <img class="ajout-lieu-photo-apercu" [src]="photoApercu()" alt="Photo Google Places de l'établissement trouvé" />
@@ -299,21 +296,6 @@
         </ion-item>
 
         @if (estUnLieu()) {
-          <ion-button
-            class="ajout-lieu-ia"
-            fill="outline"
-            size="small"
-            [disabled]="!nom().trim() || !quartier() || descriptionIaEnCours()"
-            (click)="genererDescriptionIa()"
-            title="Générer une description avec l'IA">
-            @if (descriptionIaEnCours()) {
-              <ion-spinner name="dots" slot="start"></ion-spinner>
-            } @else {
-              <ion-icon slot="start" name="sparkles-outline"></ion-icon>
-            }
-            Générer une description avec l'IA
-          </ion-button>
-
           @if (descriptionIaErreur()) {
             <p class="ajout-lieu-recherche-message">
               <span>{{ descriptionIaErreur() }}</span>
@@ -339,21 +321,6 @@
 
       @if (type() === 'restaurant') {
         <p class="ajout-lieu-label">Plats</p>
-
-        <ion-button
-          class="ajout-lieu-ia"
-          fill="outline"
-          size="small"
-          [disabled]="!nom().trim() || platsIaEnCours()"
-          (click)="extrairePlatsIa()"
-          title="Extraire les plats avec l'IA">
-          @if (platsIaEnCours()) {
-            <ion-spinner name="dots" slot="start"></ion-spinner>
-          } @else {
-            <ion-icon slot="start" name="sparkles-outline"></ion-icon>
-          }
-          Extraire les plats avec l'IA
-        </ion-button>
 
         @if (platsIaErreur()) {
           <p class="ajout-lieu-recherche-message">
