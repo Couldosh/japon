@@ -57,15 +57,17 @@ export class SheetsWriteService {
    * nom de colonne du Sheet (ex. "Nom", "Quartier") à sa valeur ; les colonnes
    * non fournies (votes, Horaires...) sont laissées vides.
    *
-   * N'utilise volontairement PAS values.append : son heuristique de détection du "tableau"
-   * dans la plage donnée peut s'ancrer sur la colonne la plus à gauche où elle trouve des
-   * données existantes plutôt que sur la colonne A elle-même (par exemple si une ligne du
-   * Sheet a des cellules vides en tête), décalant silencieusement toute la nouvelle ligne vers
-   * la droite — même en bornant la plage aux colonnes réelles (A:<dernière colonne>), ça
-   * n'élimine pas le problème. À la place, on calcule nous-mêmes la prochaine ligne vide (à
-   * partir du nombre de lignes déjà présentes dans A:<dernière colonne>) et on écrit avec
-   * values.update sur une plage explicite — même principe que scripts/lib/google-sheets.mjs
-   * côté Node, qui n'utilise jamais non plus values.append pour cette raison.
+   * values.append reste nécessaire (plutôt que values.update sur une ligne calculée
+   * nous-mêmes) car lui seul agrandit automatiquement la grille de la feuille si besoin —
+   * values.update échoue avec "exceeds grid limits" dès que la ligne visée dépasse le nombre
+   * de lignes déjà définies dans la grille. Mais son heuristique de détection du "tableau" à
+   * l'intérieur d'une plage OUVERTE (ex: A:S) peut s'ancrer sur la colonne la plus à gauche où
+   * elle trouve des données plutôt que sur la colonne A elle-même, décalant silencieusement la
+   * nouvelle ligne vers la droite. Pour lever l'ambiguïté sans perdre l'agrandissement
+   * automatique, on lit d'abord l'étendue réelle des données (A:<dernière colonne>) pour
+   * borner la plage d'ajout exactement sur ce bloc existant (A1:<dernière colonne><dernière
+   * ligne de données>) — un rectangle fermé ne laisse plus de place à l'heuristique pour se
+   * tromper de colonne de départ, tout en laissant INSERT_ROWS insérer la ligne suivante.
    */
   ajouterLigne(gid: string, valeurs: Record<string, string>): Observable<void> {
     const token = this.googleAuth.token();
@@ -83,13 +85,12 @@ export class SheetsWriteService {
 
         return this.http.get<{ values?: string[][] }>(`${this.baseUrl}/values/${plageColonnes}`, { headers }).pipe(
           switchMap(reponse => {
-            const prochaineLigne = (reponse.values?.length ?? 0) + 1;
-            const plageCible = `${encodeURIComponent(titre)}!A${prochaineLigne}:${derniereColonne}${prochaineLigne}`;
-            return this.http.put(
-              `${this.baseUrl}/values/${plageCible}?valueInputOption=USER_ENTERED`,
-              { values: [ligne] },
-              { headers }
-            );
+            const derniereLigneDonnees = Math.max(reponse.values?.length ?? 1, 1);
+            const plageTableau = `${encodeURIComponent(titre)}!A1:${derniereColonne}${derniereLigneDonnees}`;
+            const url =
+              `${this.baseUrl}/values/${plageTableau}:append` +
+              `?valueInputOption=USER_ENTERED&insertDataOption=INSERT_ROWS`;
+            return this.http.post(url, { values: [ligne] }, { headers });
           })
         );
       }),
