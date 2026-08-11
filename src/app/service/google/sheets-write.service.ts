@@ -56,6 +56,16 @@ export class SheetsWriteService {
    * Ajoute une ligne à l'onglet identifié par son gid. `valeurs` associe un
    * nom de colonne du Sheet (ex. "Nom", "Quartier") à sa valeur ; les colonnes
    * non fournies (votes, Horaires...) sont laissées vides.
+   *
+   * N'utilise volontairement PAS values.append : son heuristique de détection du "tableau"
+   * dans la plage donnée peut s'ancrer sur la colonne la plus à gauche où elle trouve des
+   * données existantes plutôt que sur la colonne A elle-même (par exemple si une ligne du
+   * Sheet a des cellules vides en tête), décalant silencieusement toute la nouvelle ligne vers
+   * la droite — même en bornant la plage aux colonnes réelles (A:<dernière colonne>), ça
+   * n'élimine pas le problème. À la place, on calcule nous-mêmes la prochaine ligne vide (à
+   * partir du nombre de lignes déjà présentes dans A:<dernière colonne>) et on écrit avec
+   * values.update sur une plage explicite — même principe que scripts/lib/google-sheets.mjs
+   * côté Node, qui n'utilise jamais non plus values.append pour cette raison.
    */
   ajouterLigne(gid: string, valeurs: Record<string, string>): Observable<void> {
     const token = this.googleAuth.token();
@@ -68,15 +78,20 @@ export class SheetsWriteService {
     return this.recupererMeta(gid, headers).pipe(
       switchMap(({ titre, entetes }) => {
         const ligne = entetes.map(entete => valeurs[entete?.trim()] ?? '');
-        // Plage explicitement bornée aux colonnes des en-têtes (A:<dernière colonne>), plutôt
-        // que la feuille entière : sans ça, values.append peut repérer une donnée isolée plus
-        // loin dans la feuille (hors colonne A) et y ancrer le "tableau" détecté, décalant la
-        // nouvelle ligne vers la droite au lieu de l'aligner sur les colonnes réelles.
         const derniereColonne = lettreColonne(Math.max(entetes.length - 1, 0));
-        const url =
-          `${this.baseUrl}/values/${encodeURIComponent(titre)}!A:${derniereColonne}:append` +
-          `?valueInputOption=USER_ENTERED&insertDataOption=INSERT_ROWS`;
-        return this.http.post(url, { values: [ligne] }, { headers });
+        const plageColonnes = `${encodeURIComponent(titre)}!A:${derniereColonne}`;
+
+        return this.http.get<{ values?: string[][] }>(`${this.baseUrl}/values/${plageColonnes}`, { headers }).pipe(
+          switchMap(reponse => {
+            const prochaineLigne = (reponse.values?.length ?? 0) + 1;
+            const plageCible = `${encodeURIComponent(titre)}!A${prochaineLigne}:${derniereColonne}${prochaineLigne}`;
+            return this.http.put(
+              `${this.baseUrl}/values/${plageCible}?valueInputOption=USER_ENTERED`,
+              { values: [ligne] },
+              { headers }
+            );
+          })
+        );
       }),
       map(() => {
         this.sheetsApi.clearCache(gid);
