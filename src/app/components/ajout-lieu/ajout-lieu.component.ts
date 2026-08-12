@@ -21,6 +21,7 @@ import { RestaurantService } from '../../service/restaurant/restaurant.service';
 import { RestaurantModel } from '../../models/restaurant.model';
 import { MagasinService } from '../../service/magasin/magasin.service';
 import { MagasinModel } from '../../models/magasin.model';
+import { ActiviteService } from '../../service/activite/activite.service';
 import { ActiviteModel } from '../../models/activite.model';
 import { IaService } from '../../service/ia/ia.service';
 
@@ -60,9 +61,9 @@ const GID_VILLES = '357846773';
 /** "Plat" et "Quartier" ne sont pas des lieux (pas de Quartier/Localisation) : traités à part dans le formulaire. */
 const TYPES_LIEU: TypeAjout[] = ['restaurant', 'activite', 'magasin'];
 
-/** Types pour lesquels la case "Franchise" est proposée : restaurants et magasins ont
- * de vraies chaînes multi-quartiers (konbini, fast-foods...), pas les activités. */
-const TYPES_FRANCHISABLES: TypeAjout[] = ['restaurant', 'magasin'];
+/** Types pour lesquels la case "Franchise" est proposée : restaurants, activités et magasins
+ * ont de vraies chaînes/enseignes multi-quartiers (konbini, fast-foods, salles d'arcade...). */
+const TYPES_FRANCHISABLES: TypeAjout[] = ['restaurant', 'activite', 'magasin'];
 
 /**
  * Formulaire d'ajout d'un lieu (restaurant/activité/magasin), qui écrit
@@ -89,6 +90,7 @@ export class AjoutLieuComponent implements OnInit {
   private readonly iaService = inject(IaService);
   private readonly restaurantService = inject(RestaurantService);
   private readonly magasinService = inject(MagasinService);
+  private readonly activiteService = inject(ActiviteService);
   private readonly alertController = inject(AlertController);
   private readonly destroyRef = inject(DestroyRef);
 
@@ -201,6 +203,7 @@ export class AjoutLieuComponent implements OnInit {
   private readonly platsBruts = signal<Plat[]>([]);
   private readonly restaurantsBruts = signal<RestaurantModel[]>([]);
   private readonly magasinsBruts = signal<MagasinModel[]>([]);
+  private readonly activitesBruts = signal<ActiviteModel[]>([]);
 
   /** Noms de plats connus (feuille "Plats"), pour le sélecteur du formulaire Restaurant. */
   readonly platsDisponibles = computed(() =>
@@ -233,10 +236,10 @@ export class AjoutLieuComponent implements OnInit {
    * recherche Google Places quartier par quartier d'un restaurant "franchise". */
   readonly quartiersConnus = computed(() => this.quartiersParVille().flatMap(g => g.quartiers));
 
-  /** Par type franchisable (restaurant/magasin), nom de lieu normalisé -> Set des quartiers
-   * (normalisés) où il existe déjà dans le Sheet, pour ne pas rechercher/ajouter en double une
-   * instance de franchise déjà présente (et pour avertir d'un doublon sur un ajout normal, voir
-   * confirmerDoublonSiNecessaire()). */
+  /** Par type franchisable (restaurant/activité/magasin), nom de lieu normalisé -> Set des
+   * quartiers (normalisés) où il existe déjà dans le Sheet, pour ne pas rechercher/ajouter en
+   * double une instance de franchise déjà présente (et pour avertir d'un doublon sur un ajout
+   * normal, voir confirmerDoublonSiNecessaire()). */
   private readonly quartiersParNomParType = computed(() => {
     const parType = new Map<TypeAjout, Map<string, Set<string>>>();
 
@@ -259,6 +262,9 @@ export class AjoutLieuComponent implements OnInit {
     }
     for (const m of this.magasinsBruts()) {
       indexerLieu('magasin', m.Nom, m.Quartier?.Nom);
+    }
+    for (const a of this.activitesBruts()) {
+      indexerLieu('activite', a.Nom, a.Quartier?.Nom);
     }
 
     return parType;
@@ -426,6 +432,10 @@ export class AjoutLieuComponent implements OnInit {
     this.magasinService.getMagasins(forceRefresh)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe(magasins => this.magasinsBruts.set(magasins));
+
+    this.activiteService.getActivites(forceRefresh)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(activites => this.activitesBruts.set(activites));
   }
 
   changerType(type: TypeAjout): void {
@@ -898,10 +908,9 @@ export class AjoutLieuComponent implements OnInit {
   /**
    * Cas restaurant/activité/magasin "normal" (pas franchise) : avant d'écrire, avertit si un
    * lieu de même nom existe déjà dans le quartier choisi (via l'index construit pour la
-   * déduplication franchise, quartiersParNomParType — donc uniquement pour restaurant/magasin,
-   * une activité ne pouvant de toute façon pas être ajoutée en franchise). But : éviter un
-   * doublon accidentel dans le Sheet partagé (ex: un membre du groupe ignore qu'un autre a déjà
-   * ajouté ce restaurant à ce quartier). Sans doublon détecté, écrit directement sans alerte.
+   * déduplication franchise, quartiersParNomParType). But : éviter un doublon accidentel dans
+   * le Sheet partagé (ex: un membre du groupe ignore qu'un autre a déjà ajouté ce lieu à ce
+   * quartier). Sans doublon détecté, écrit directement sans alerte.
    */
   private async soumettreLieuNormal(type: TypeAjout): Promise<void> {
     if (!(await this.confirmerDoublonSiNecessaire(type))) {
@@ -922,7 +931,7 @@ export class AjoutLieuComponent implements OnInit {
       return true;
     }
 
-    const libelleType = type === 'restaurant' ? 'restaurant' : 'magasin';
+    const libelleType = type === 'restaurant' ? 'restaurant' : type === 'activite' ? 'activité' : 'magasin';
     const alert = await this.alertController.create({
       header: 'Déjà présent ?',
       message: `Un ${libelleType} nommé "${this.nom().trim()}" existe déjà à ${this.quartier()} dans le Sheet. Ajouter quand même ?`,
@@ -937,7 +946,7 @@ export class AjoutLieuComponent implements OnInit {
   }
 
   /**
-   * Cas "franchise" (restaurant ou magasin) : pas de quartier unique saisi par
+   * Cas "franchise" (restaurant, activité ou magasin) : pas de quartier unique saisi par
    * l'utilisateur — on recherche une instance via Google Places ("Nom quartier") dans
    * chacun des quartiers connus du Sheet (quartiersConnus()) qui n'ont pas déjà cette
    * enseigne (quartiersDejaCouverts()), séquentiellement (concatMap) pour rester dans
@@ -1075,9 +1084,9 @@ export class AjoutLieuComponent implements OnInit {
     }
   }
 
-  /** Valeurs d'une ligne (restaurant ou magasin) pour un quartier de franchise donné :
-   * Localisation vient toujours du résultat Places (spécifique à ce quartier) ; Liens ne
-   * reprend le site web Places que s'il existe, plutôt que dupliquer un lien saisi
+  /** Valeurs d'une ligne (restaurant, activité ou magasin) pour un quartier de franchise
+   * donné : Localisation vient toujours du résultat Places (spécifique à ce quartier) ;
+   * Liens ne reprend le site web Places que s'il existe, plutôt que dupliquer un lien saisi
    * manuellement sur chaque ligne. */
   private construireValeursFranchise(type: TypeAjout, quartierCourant: string, resultat: ResultatPlaces): Record<string, string> {
     const commun: Record<string, string> = {
@@ -1096,6 +1105,15 @@ export class AjoutLieuComponent implements OnInit {
         Plats: this.platsSelectionnes().join(', '),
         Video: this.video().trim(),
         Menu: this.menu().trim(),
+      };
+    }
+
+    if (type === 'activite') {
+      return {
+        ...commun,
+        Description: this.description().trim(),
+        Prix: this.prix().trim(),
+        Temps: this.temps().trim(),
       };
     }
 
