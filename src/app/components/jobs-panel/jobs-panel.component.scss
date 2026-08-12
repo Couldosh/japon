@@ -1,0 +1,118 @@
+// Voir recherche-restaurant.component.scss / ajout-lieu.component.scss pour l'explication :
+// sans ça, l'hôte <app-jobs-panel> (display: inline par défaut) casse le calcul de hauteur de
+// ion-content dans la modale.
+:host {
+  display: contents;
+}
+
+.jobs-panel {
+  padding: 8px 16px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.jobs-panel-intro {
+  margin: 4px 0 0;
+  font-size: 13px;
+  color: var(--ion-color-medium-shade);
+
+  code {
+    background: var(--ion-color-light);
+    border-radius: 4px;
+    padding: 1px 5px;
+  }
+}
+
+.jobs-panel-carte {
+  border: 1px solid var(--ion-color-light-shade);
+  border-radius: 12px;
+  padding: 12px 14px;
+
+  &.jobs-panel-carte-active {
+    border-color: var(--ion-color-primary);
+  }
+
+  p {
+    margin: 4px 0 8px;
+    font-size: 13px;
+    color: var(--ion-color-medium-shade);
+  }
+
+  ion-item {
+    --padding-start: 0;
+    --inner-padding-end: 0;
+    font-size: 13px;
+  }
+}
+
+.jobs-panel-carte-entete {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  h3 {
+    margin: 0;
+    font-size: 15px;
+  }
+}
+
+.jobs-panel-avertissement {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  color: var(--ion-color-warning-shade);
+
+  ion-icon {
+    flex-shrink: 0;
+    margin-top: 1px;
+  }
+}
+
+.jobs-panel-suivi {
+  border-top: 1px solid var(--ion-color-light-shade);
+  padding-top: 12px;
+}
+
+.jobs-panel-suivi-entete {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.jobs-panel-statut {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--ion-color-medium-shade);
+
+  &.jobs-panel-statut-en-cours {
+    color: var(--ion-color-primary);
+  }
+}
+
+.jobs-panel-erreur {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  color: var(--ion-color-danger);
+  font-size: 13px;
+
+  ion-icon {
+    flex-shrink: 0;
+    margin-top: 1px;
+  }
+}
+
+.jobs-panel-logs {
+  margin: 8px 0 0;
+  padding: 10px 12px;
+  background: var(--ion-color-step-50, #f4f4f4);
+  border-radius: 8px;
+  font-size: 12px;
+  line-height: 1.5;
+  max-height: 45vh;
+  overflow-y: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+}

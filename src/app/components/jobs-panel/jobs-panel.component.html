@@ -1,0 +1,101 @@
+<ion-header class="ion-no-border">
+  <ion-toolbar>
+    <ion-title>Jobs de maintenance</ion-title>
+    <ion-buttons slot="end">
+      <ion-button (click)="ferme.emit()" aria-label="Fermer" title="Fermer">
+        <ion-icon slot="icon-only" name="close-outline"></ion-icon>
+      </ion-button>
+    </ion-buttons>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content>
+  <div class="jobs-panel">
+    <p class="jobs-panel-intro">
+      Lance ici les scripts de maintenance du Sheet (habituellement <code>npm run ...</code> en local). Un seul job à la fois pour tout le groupe.
+    </p>
+
+    @for (carte of cartes; track carte.type) {
+      <div class="jobs-panel-carte" [class.jobs-panel-carte-active]="jobEnCours() === carte.type">
+        <div class="jobs-panel-carte-entete">
+          <h3>{{ carte.titre }}</h3>
+          @if (jobEnCours() === carte.type) {
+            <ion-spinner name="dots"></ion-spinner>
+          }
+        </div>
+        <p>{{ carte.description }}</p>
+        @if (carte.avertissement) {
+          <p class="jobs-panel-avertissement">
+            <ion-icon name="warning-outline"></ion-icon>
+            {{ carte.avertissement }}
+          </p>
+        }
+
+        @switch (carte.type) {
+          @case ('horaires') {
+            <ion-item lines="none">
+              <ion-toggle [checked]="horaires.force()" (ionChange)="horaires.force.set($any($event.detail).checked)">Écraser les horaires déjà renseignés</ion-toggle>
+            </ion-item>
+            <ion-item lines="none">
+              <ion-toggle [checked]="horaires.rafraichir()" (ionChange)="horaires.rafraichir.set($any($event.detail).checked)">Ignorer le cache</ion-toggle>
+            </ion-item>
+          }
+          @case ('menu') {
+            <ion-item lines="none">
+              <ion-toggle [checked]="menu.rafraichir()" (ionChange)="menu.rafraichir.set($any($event.detail).checked)">Ignorer le cache</ion-toggle>
+            </ion-item>
+            <ion-item lines="none">
+              <ion-toggle [checked]="menu.appliquer()" (ionChange)="menu.appliquer.set($any($event.detail).checked)">Écrire dans le Sheet</ion-toggle>
+            </ion-item>
+          }
+          @case ('localisation') {
+            <ion-item lines="none">
+              <ion-toggle [checked]="localisation.rafraichir()" (ionChange)="localisation.rafraichir.set($any($event.detail).checked)">Ignorer le cache</ion-toggle>
+            </ion-item>
+            <ion-item lines="none">
+              <ion-toggle [checked]="localisation.reformater()" (ionChange)="localisation.reformater.set($any($event.detail).checked)">Reformater les anciens liens</ion-toggle>
+            </ion-item>
+            <ion-item lines="none">
+              <ion-toggle [checked]="localisation.appliquer()" (ionChange)="localisation.appliquer.set($any($event.detail).checked)">Écrire dans le Sheet</ion-toggle>
+            </ion-item>
+          }
+          @case ('dupliquer-quartiers') {
+            <ion-item lines="none">
+              <ion-toggle [checked]="quartiers.rafraichir()" (ionChange)="quartiers.rafraichir.set($any($event.detail).checked)">Ignorer le cache</ion-toggle>
+            </ion-item>
+            <ion-item lines="none">
+              <ion-toggle [checked]="quartiers.appliquer()" (ionChange)="quartiers.appliquer.set($any($event.detail).checked)">Écrire dans le Sheet</ion-toggle>
+            </ion-item>
+          }
+        }
+
+        <ion-button expand="block" fill="outline" [disabled]="jobEnCours() !== null" (click)="lancer(carte.type)">
+          <ion-icon slot="start" name="play-outline"></ion-icon>
+          Lancer
+        </ion-button>
+      </div>
+    }
+
+    <div class="jobs-panel-suivi">
+      <div class="jobs-panel-suivi-entete">
+        <span class="jobs-panel-statut" [class.jobs-panel-statut-en-cours]="statut() === 'EN_COURS'">{{ statut() }}</span>
+        @if (jobEnCours()) {
+          <ion-button size="small" fill="clear" color="danger" (click)="annulerJob()">
+            <ion-icon slot="start" name="stop-outline"></ion-icon>
+            Annuler
+          </ion-button>
+        }
+      </div>
+
+      @if (erreur()) {
+        <p class="jobs-panel-erreur">
+          <ion-icon name="alert-circle-outline"></ion-icon>
+          {{ erreur() }}
+        </p>
+      }
+
+      <pre class="jobs-panel-logs" #zoneLogs>@for (ligne of logs(); track $index) {{{ ligne }}
+}</pre>
+    </div>
+  </div>
+</ion-content>

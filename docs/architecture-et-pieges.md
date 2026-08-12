@@ -65,6 +65,15 @@ Indépendants de l'app, authentification OAuth "Desktop app" (pas de compte de s
 - Les 3 scripts qui appellent Places API partagent un cache disque (`scripts/lib/cache.mjs`, fichiers sous `scripts/.cache/`, gitignorés) par `(feuille, nom, quartier)`, pour économiser les appels API et garantir que ce qui est écrit avec `--appliquer` correspond exactement à ce qui a été vu à l'aperçu.
 - Le lien Google Maps écrit par les scripts est toujours construit nous-mêmes (jamais le `googleMapsUri` brut de Google, souvent un lien par `cid` sans coordonnées lisibles), au format `https://www.google.com/maps/search/?api=1&query=<lat>,<lng>&query_place_id=<id>` — reconnu par `extraireCoordonnees` côté app, et affiche la fiche complète du lieu au clic dans Google Maps grâce à `query_place_id` (voir le piège "lien Localisation sans fiche lieu au clic" plus haut).
 
+### Port Java (menu caché "jobs") — pas un remplacement, un second consommateur
+
+Ces 4 scripts existent aussi en version Java côté backend ClaudeApiTkt (package `jobs/`, voir son `CLAUDE.md`), pour permettre au menu caché de l'app (`JobsPanelComponent`) de les déclencher en prod. **Les fichiers `.mjs` restent la référence** : ce sont eux qu'on édite pour changer le comportement d'un job (colonnes, gids, format des liens/horaires...), le port Java doit ensuite être répercuté à la main (pas de génération automatique). Deux écarts assumés par rapport aux scripts :
+
+- **Auth sans flow OAuth interactif.** Un serveur headless ne peut pas ouvrir de navigateur pour le flow "Desktop app". Le port Java réutilise directement le `refresh_token` déjà présent dans le `token.json` généré une fois par un script Node (voir `GoogleSheetsConfig` côté ClaudeApiTkt) — remplacer ce refresh token périmé (révoqué, changement de compte Google) est une opération manuelle sur le host de déploiement, pas quelque chose que l'app peut re-déclencher elle-même.
+- **Cache mémoire (Caffeine) au lieu du cache disque** (`scripts/.cache/*.json`) : le serveur Java est un processus long-vivant (contrairement aux scripts Node relancés à chaque exécution), un cache en mémoire suffit et évite de gérer un volume disque partagé entre requêtes concurrentes.
+
+**Suivi de progression en polling, pas en SSE.** Le backend ClaudeApiTkt est 100% servlet-bloquant (pas de `SseEmitter`/WebFlux dans ce repo) et le relais same-origin (`public/api/jobs.php`) est un simple curl PHP sans streaming chunk-par-chunk. Plutôt que d'ajouter cette complexité pour un outil de maintenance interne, `JobsPanelComponent` sonde `/jobs/etat` toutes les 1,5s avec un curseur incrémental (`depuis`/`total`) — perçu comme "en direct" sans les fragilités d'un vrai stream à travers PHP.
+
 ## Conventions de code
 
 - Tout le code (variables, commentaires, messages UI) est en **français**.

@@ -46,6 +46,7 @@ import { CarteComponent } from './carte/carte.component';
 import { PlanningComponent } from './planning/planning.component';
 import { AjoutLieuComponent, EditionInitiale } from './ajout-lieu/ajout-lieu.component';
 import { RechercheRestaurantComponent } from './recherche-restaurant/recherche-restaurant.component';
+import { JobsPanelComponent } from './jobs-panel/jobs-panel.component';
 import { GoogleAuthService } from '../service/google/google-auth.service';
 
 type Vue = 'liste' | 'carte' | 'favoris' | 'planning';
@@ -102,7 +103,7 @@ type DetailLieu =
     IonContent, IonSkeletonText, IonRefresher, IonRefresherContent,
     IonModal, IonTitle, IonSelect, IonSelectOption, IonTextarea, IonToast,
     IonFab, IonFabButton,
-    CarteComponent, PlanningComponent, AjoutLieuComponent, RechercheRestaurantComponent
+    CarteComponent, PlanningComponent, AjoutLieuComponent, RechercheRestaurantComponent, JobsPanelComponent
   ],
   templateUrl: './home.component.html',
   styleUrl: './home.component.scss'
@@ -170,6 +171,8 @@ export class HomeComponent implements OnInit {
    * reset à null systématiquement à la fermeture pour qu'un futur "+" reparte en création. */
   readonly editionInitiale = signal<EditionInitiale | null>(null);
   readonly afficherModaleRecherche = signal(false);
+  /** Menu caché "jobs" de maintenance du Sheet (voir onTapTheme()). */
+  readonly panneauJobsOuvert = signal(false);
 
   // Callback [canDismiss] de la modale d'ajout : arrow function (pas une méthode
   // liée par le binding Angular) pour garder un `this` correct quand Ionic
@@ -690,6 +693,29 @@ export class HomeComponent implements OnInit {
       this.sakuraTaps = 0;
       clearTimeout(this.sakuraTapsTimeout);
       this.declencherSakura();
+    }
+  }
+
+  // Menu caché "jobs" de maintenance du Sheet : 7 taps sur le bouton de thème en moins de 3s
+  // (même mécanisme que l'easter egg Sakura ci-dessus, sur une cible différente pour ne pas se
+  // déclencher en même temps). Le bouton continue de basculer le thème à chaque tap, comme
+  // d'habitude — ce n'est qu'un compteur en plus, pas un nouveau geste dédié.
+  private static readonly JOBS_SEUIL_TAPS = 7;
+  private static readonly JOBS_FENETRE_MS = 3000;
+  private jobsTaps = 0;
+  private jobsTapsTimeout?: ReturnType<typeof setTimeout>;
+
+  onTapTheme(): void {
+    this.themeService.basculer();
+
+    this.jobsTaps++;
+    clearTimeout(this.jobsTapsTimeout);
+    this.jobsTapsTimeout = setTimeout(() => (this.jobsTaps = 0), HomeComponent.JOBS_FENETRE_MS);
+
+    if (this.jobsTaps >= HomeComponent.JOBS_SEUIL_TAPS) {
+      this.jobsTaps = 0;
+      clearTimeout(this.jobsTapsTimeout);
+      this.panneauJobsOuvert.set(true);
     }
   }
 

@@ -15,7 +15,7 @@
         <ion-button fill="clear" (click)="ouvrirModaleAjout()" aria-label="Ajouter un lieu" title="Ajouter un lieu">
           <ion-icon slot="icon-only" name="add-outline"></ion-icon>
         </ion-button>
-        <ion-button fill="clear" (click)="themeService.basculer()" aria-label="Changer de thème" title="Changer de thème">
+        <ion-button fill="clear" (click)="onTapTheme()" aria-label="Changer de thème" title="Changer de thème">
           <ion-icon slot="icon-only" [name]="themeService.theme() === 'dark' ? 'sunny-outline' : 'moon-outline'"></ion-icon>
         </ion-button>
         <ion-button fill="clear" (click)="rafraichir()" [disabled]="rafraichissementEnCours()" aria-label="Rafraîchir les données" title="Rafraîchir les données">
@@ -892,6 +892,12 @@
       (ferme)="afficherModaleRecherche.set(false)"
       (restaurantChoisi)="onRestaurantChoisi($event)">
     </app-recherche-restaurant>
+  </ng-template>
+</ion-modal>
+
+<ion-modal [style.--height]="'100vh'" [isOpen]="panneauJobsOuvert()" (didDismiss)="panneauJobsOuvert.set(false)" [initialBreakpoint]="1" [breakpoints]="[0, 1]">
+  <ng-template>
+    <app-jobs-panel (ferme)="panneauJobsOuvert.set(false)"></app-jobs-panel>
   </ng-template>
 </ion-modal>
 

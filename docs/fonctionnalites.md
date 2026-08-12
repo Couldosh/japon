@@ -108,6 +108,14 @@ Modale en bottom-sheet swipeable (`[breakpoints]="[0,1]"`), commune aux 3 types 
 - Icône de rafraîchissement animée (rotation continue) pendant le chargement, plutôt que le seul bouton désactivé — feedback plus clair que "rien ne se passe".
 - Fondu (`mask-image`) sur les bords gauche/droit des rangées scrollables horizontalement (chips de filtres, "Vus récemment", mini-nav de jours du Planning) : indice visuel qu'il y a plus de contenu à faire défiler. CSS dupliqué entre `home.component.scss` et `planning.component.scss` (encapsulation de vue Angular) ; reste visible même quand tout le contenu tient déjà à l'écran (pas de détection JS de dépassement, jugée inutile pour un effet aussi discret).
 
+## Menu caché "jobs" de maintenance du Sheet (`components/jobs-panel/`)
+
+- Lance côté serveur (backend ClaudeApiTkt) les mêmes scripts que `scripts/*.mjs` (horaires, menu, localisation, dupliquer-quartiers), sans avoir besoin de `.env`/OAuth local — voir `docs/architecture-et-pieges.md` pour le détail de l'architecture (port Java, réutilisation du refresh token déjà obtenu par les scripts Node).
+- Déclenché par un geste caché plutôt qu'un bouton visible (`HomeComponent.onTapTheme()`) : 7 taps sur le bouton de thème de l'en-tête en moins de 3s, même mécanisme que l'easter egg Sakura (4 taps sur l'onglet Liste) sur une cible différente. Le bouton continue de basculer le thème normalement à chaque tap.
+- Panneau bottom-sheet (`JobsPanelComponent`) : une carte par job avec ses flags propres (force/rafraichir/reformater selon le job), case "Écrire dans le Sheet" décochée par défaut (aperçu, sauf le job Horaires qui écrit toujours directement — pas de mode aperçu côté script d'origine). Un seul job actif à la fois pour **tout le groupe** (le backend refuse un second lancement, 409) : le panneau interroge l'état courant dès son ouverture, pas seulement après un lancement local, pour refléter un job démarré par quelqu'un d'autre.
+- Suivi "en direct" par polling (toutes les 1,5s sur `/jobs/etat`, pas de SSE réel) avec curseur incrémental (`depuis`/`total`) pour ne renvoyer que les nouvelles lignes de log à chaque sondage. Bouton Annuler tant qu'un job tourne.
+- Accès ouvert à tout le groupe (réutilise l'allowlist Cloudflare Access déjà en place pour `ia.faburisu.com`) — le geste caché limite juste la découverte accidentelle, ce n'est pas un contrôle d'accès.
+
 ## Idées proposées mais non retenues (ne pas re-proposer sans qu'on les redemande)
 
 PWA/mode hors-ligne installable, tri/filtre par note (Avis), conversion de devise ¥→€, recherche texte dans le Planning, croisement géoloc × Planning ("près de vous"), attribution des favoris/notes par personne (nécessiterait un backend pour une vraie synchro de groupe).

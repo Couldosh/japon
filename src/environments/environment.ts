@@ -26,10 +26,14 @@
 // d'auth. En prod (environment.prod.ts, voir angular.json > fileReplacements), URL relative
 // (même origine que l'app) : un reverse proxy côté hébergement relaie vers le vrai backend,
 // authentifié par un Service Token Cloudflare Access côté serveur — jamais exposé au navigateur.
+//
+// jobsApiUrl : menu caché "jobs" (lancement des scripts de maintenance du Sheet depuis l'app,
+// voir JobsService/JobsPanelComponent) — même backend ClaudeApiTkt, mêmes principes que iaApiUrl.
 export const environment = {
   maptilerApiKey: '7YdE9Q6gkkL2xYRMRXEm',
   googleClientId: '269278292482-8kiuosoicm657f8m0d06vcn7cv883qqd.apps.googleusercontent.com',
   spreadsheetId: '1ZD1owGxkH-cLFIG3Sq7hrlWOgB2E1C2Qe4ChokZmkIc',
   placesApiKey: 'AIzaSyCwGuNICti1j2buomQq2EGY8U4L_3dPIS0',
   iaApiUrl: 'http://localhost:8000/ai',
+  jobsApiUrl: 'http://localhost:8000/jobs',
 };
