@@ -107,7 +107,8 @@
 .jobs-panel-logs {
   margin: 8px 0 0;
   padding: 10px 12px;
-  background: var(--ion-color-step-50, #f4f4f4);
+  background: var(--ion-background-color-step-50, #f4f4f4);
+  color: var(--ion-text-color);
   border-radius: 8px;
   font-size: 12px;
   line-height: 1.5;
