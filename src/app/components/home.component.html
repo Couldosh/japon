@@ -46,7 +46,7 @@
   @if (vue() !== 'planning') {
     <div class="filtres filtres-segment">
       <ion-segment [value]="filtreActif()" (ionChange)="changerFiltre($any($event.detail).value)" title="Filtrer par type de lieu">
-        <ion-segment-button value="tout" aria-label="Tout" title="Tout">
+        <ion-segment-button value="tout" aria-label="Tout" title="Tout" (click)="onTapFiltreTout()">
           <ion-icon name="apps-outline"></ion-icon>
         </ion-segment-button>
         <ion-segment-button value="restaurant" aria-label="Restaurants" title="Restaurants">

@@ -696,18 +696,21 @@ export class HomeComponent implements OnInit {
     }
   }
 
-  // Menu caché "jobs" de maintenance du Sheet : 7 taps sur le bouton de thème en moins de 3s
+  onTapTheme(): void {
+    this.themeService.basculer();
+  }
+
+  // Menu caché "jobs" de maintenance du Sheet : 7 taps sur le chip "Tout" en moins de 3s
   // (même mécanisme que l'easter egg Sakura ci-dessus, sur une cible différente pour ne pas se
-  // déclencher en même temps). Le bouton continue de basculer le thème à chaque tap, comme
-  // d'habitude — ce n'est qu'un compteur en plus, pas un nouveau geste dédié.
+  // déclencher en même temps). Le chip continue de filtrer sur "tout" à chaque tap, comme
+  // d'habitude (via le (click) dédié, en plus du (ionChange) du segment) — ce n'est qu'un
+  // compteur en plus, pas un nouveau geste dédié.
   private static readonly JOBS_SEUIL_TAPS = 7;
   private static readonly JOBS_FENETRE_MS = 3000;
   private jobsTaps = 0;
   private jobsTapsTimeout?: ReturnType<typeof setTimeout>;
 
-  onTapTheme(): void {
-    this.themeService.basculer();
-
+  onTapFiltreTout(): void {
     this.jobsTaps++;
     clearTimeout(this.jobsTapsTimeout);
     this.jobsTapsTimeout = setTimeout(() => (this.jobsTaps = 0), HomeComponent.JOBS_FENETRE_MS);
