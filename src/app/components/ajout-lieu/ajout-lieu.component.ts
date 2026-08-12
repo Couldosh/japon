@@ -453,8 +453,10 @@ export class AjoutLieuComponent implements OnInit {
   }
 
   /** Bascule la case "Franchise" — en l'activant, efface les suggestions IA et le résultat
-   * Google Places d'une éventuelle recherche précédente (par quartier, donc sans sens une fois
-   * la case cochée) pour ne pas laisser un résidu confus à l'écran. */
+   * Google Places d'une éventuelle recherche précédente (par quartier, donc pas forcément
+   * représentatif de l'enseigne dans son ensemble) pour ne pas laisser un résidu confus à
+   * l'écran ni fausser la génération IA (rechercherResumeFranchise() refera une recherche
+   * générique, sans quartier, la prochaine fois que le bouton IA sera utilisé). */
   basculerFranchise(active: boolean): void {
     this.estFranchise.set(active);
     if (active) {
@@ -463,6 +465,7 @@ export class AjoutLieuComponent implements OnInit {
       this.suggestionsIaErreur.set(null);
       this.rechercheMessage.set(null);
       this.photoApercu.set(null);
+      this.resumeGooglePlaces.set(null);
     }
   }
 
@@ -613,10 +616,18 @@ export class AjoutLieuComponent implements OnInit {
    * ni l'identification IA par Nom seul (rechercherSuggestionsIa(), qui vise à faire choisir
    * *un* quartier) ni la recherche Google Places par quartier (rechercherPlaces()) n'ont de
    * sens ici — soumettreFranchise() fait déjà sa propre recherche Places quartier par quartier
-   * à la soumission. Seules la description et, pour un restaurant, les plats sont générés une
-   * fois par l'IA à partir du seul Nom (+ Type), puis dupliqués sur chaque ligne créée (voir
-   * construireValeursFranchise()). */
+   * à la soumission. À la place, rechercherResumeFranchise() va chercher un résumé éditorial
+   * générique de l'enseigne (recherche Places sur le Nom seul, sans quartier) : sans lui, l'IA
+   * ne dispose que de Nom + Type pour rédiger la description, ce qui donne des textes vagues
+   * ("vous allez passer un bon moment...") au lieu d'une vraie description de ce qu'est
+   * l'enseigne — un résumé Google, même générique, lui donne de quoi être concrète. Description
+   * et, pour un restaurant, plats sont ensuite générés une fois par l'IA à partir de ce résumé,
+   * puis dupliqués sur chaque ligne créée (voir construireValeursFranchise()). */
   private async completerAutomatiquementFranchise(): Promise<void> {
+    if (!this.resumeGooglePlaces()) {
+      await this.rechercherResumeFranchise();
+    }
+
     const taches: Promise<void>[] = [];
     if (!this.description().trim()) {
       taches.push(this.genererDescriptionIa());
@@ -625,6 +636,47 @@ export class AjoutLieuComponent implements OnInit {
       taches.push(this.extrairePlatsIa());
     }
     await Promise.all(taches);
+  }
+
+  /** Franchise : recherche Google Places générique sur le seul Nom (pas de quartier, donc pas
+   * de biais de localisation — contrairement à rechercherPlaces()) pour obtenir un résumé
+   * éditorial et une photo de l'enseigne, qui servent uniquement à enrichir la génération IA
+   * (description, plats) et à confirmer visuellement la bonne enseigne avant de lancer la
+   * recherche par quartier de soumettreFranchise() (potentiellement coûteuse). Ne touche pas à
+   * Lien/Localisation — sans sens pour une franchise avant cette recherche par quartier, qui
+   * fournira le lien/la localisation propres à chaque instance. Best-effort : une erreur ou
+   * l'absence de résultat n'empêche pas la suite de completerAutomatiquementFranchise(), qui se
+   * rabat alors sur Nom/Type seuls pour la génération IA. */
+  private async rechercherResumeFranchise(): Promise<void> {
+    const nom = this.nom().trim();
+    if (!nom || this.rechercheEnCours()) {
+      return;
+    }
+
+    this.rechercheEnCours.set(true);
+    this.rechercheMessage.set(null);
+    this.photoApercu.set(null);
+
+    try {
+      const resultat = await firstValueFrom(
+        this.placesSearch.rechercher(nom, null).pipe(takeUntilDestroyed(this.destroyRef))
+      );
+      this.rechercheEnCours.set(false);
+
+      if (!resultat) {
+        this.rechercheMessage.set('Aucun établissement trouvé sur Google Places pour ce nom.');
+        return;
+      }
+
+      this.photoApercu.set(resultat.photoUrl);
+      this.resumeGooglePlaces.set(resultat.resume);
+      this.rechercheMessage.set(
+        `Trouvé : ${resultat.nom}${resultat.adresse ? ' — ' + resultat.adresse : ''}. Vérifie que c'est la bonne enseigne avant de lancer la recherche par quartier.`
+      );
+    } catch (err) {
+      this.rechercheEnCours.set(false);
+      this.rechercheMessage.set((err as Error).message);
+    }
   }
 
   /**

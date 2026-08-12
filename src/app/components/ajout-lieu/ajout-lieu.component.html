@@ -167,6 +167,19 @@
           <p class="ajout-lieu-hint">Saisis un nom ci-dessus pour activer le remplissage automatique.</p>
         }
 
+        @if (photoApercu()) {
+          <img class="ajout-lieu-photo-apercu" [src]="photoApercu()" alt="Photo Google Places de l'établissement trouvé" />
+        }
+
+        @if (rechercheMessage()) {
+          <p class="ajout-lieu-recherche-message">
+            <span>{{ rechercheMessage() }}</span>
+            <button class="ajout-lieu-message-fermer" (click)="rechercheMessage.set(null); photoApercu.set(null)" aria-label="Masquer ce message" title="Masquer ce message">
+              <ion-icon name="close-outline"></ion-icon>
+            </button>
+          </p>
+        }
+
         @if (!estLieuFranchise()) {
           @if (suggestionsIaErreur()) {
             <p class="ajout-lieu-recherche-message">
@@ -211,19 +224,6 @@
           <span>{{ quartier() ?? 'Choisir un quartier *' }}</span>
           <ion-icon name="chevron-down-outline" class="ajout-lieu-quartier-chevron"></ion-icon>
         </button>
-
-        @if (photoApercu()) {
-          <img class="ajout-lieu-photo-apercu" [src]="photoApercu()" alt="Photo Google Places de l'établissement trouvé" />
-        }
-
-        @if (rechercheMessage()) {
-          <p class="ajout-lieu-recherche-message">
-            <span>{{ rechercheMessage() }}</span>
-            <button class="ajout-lieu-message-fermer" (click)="rechercheMessage.set(null); photoApercu.set(null)" aria-label="Masquer ce message" title="Masquer ce message">
-              <ion-icon name="close-outline"></ion-icon>
-            </button>
-          </p>
-        }
 
         <ion-item>
           <ion-input
