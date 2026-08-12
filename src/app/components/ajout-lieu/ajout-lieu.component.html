@@ -114,7 +114,7 @@
         <ion-item lines="none" class="ajout-lieu-toggle-franchise">
           <ion-toggle
             [checked]="estFranchise()"
-            (ionChange)="estFranchise.set($any($event.detail).checked)">
+            (ionChange)="basculerFranchise($any($event.detail).checked)">
             Franchise (une instance par quartier)
           </ion-toggle>
         </ion-item>
@@ -133,14 +133,14 @@
         }
       }
 
-      @if (estUnLieu() && !estLieuFranchise()) {
+      @if (estUnLieu()) {
         <ion-button
           class="ajout-lieu-ia"
           fill="outline"
           size="small"
           [disabled]="!nom().trim() || remplissageAutoEnCours()"
           (click)="remplirAutomatiquement()"
-          [title]="quartier() ? 'Compléter automatiquement (Google Places, description, plats) avec l\'IA' : 'Identifier ce lieu avec l\'IA, puis affiner sur Google Places'">
+          [title]="estLieuFranchise() ? 'Générer une description (et les plats pour un restaurant) avec l\'IA, à partir du seul nom' : quartier() ? 'Compléter automatiquement (Google Places, description, plats) avec l\'IA' : 'Identifier ce lieu avec l\'IA, puis affiner sur Google Places'">
           @if (remplissageAutoEnCours()) {
             <ion-spinner name="dots" slot="start"></ion-spinner>
           } @else {
@@ -154,6 +154,8 @@
             Génération de la description...
           } @else if (platsIaEnCours()) {
             Extraction des plats...
+          } @else if (estLieuFranchise()) {
+            Compléter avec l'IA (description, plats)
           } @else if (quartier()) {
             Compléter automatiquement avec l'IA
           } @else {
@@ -165,39 +167,41 @@
           <p class="ajout-lieu-hint">Saisis un nom ci-dessus pour activer le remplissage automatique.</p>
         }
 
-        @if (suggestionsIaErreur()) {
-          <p class="ajout-lieu-recherche-message">
-            <span>{{ suggestionsIaErreur() }}</span>
-            <button class="ajout-lieu-message-fermer" (click)="suggestionsIaErreur.set(null)" aria-label="Masquer ce message" title="Masquer ce message">
-              <ion-icon name="close-outline"></ion-icon>
-            </button>
-          </p>
-        }
-
-        @if (suggestionsIa().length) {
-          <div class="ajout-lieu-suggestions-ia-entete">
-            <p class="ajout-lieu-hint ajout-lieu-hint-ia">
-              <ion-icon name="sparkles-outline"></ion-icon>
-              Suggestions IA — à vérifier
-            </p>
-            <button class="ajout-lieu-message-fermer" (click)="suggestionsIa.set([])" aria-label="Masquer les suggestions" title="Masquer les suggestions">
-              <ion-icon name="close-outline"></ion-icon>
-            </button>
-          </div>
-          <div class="ajout-lieu-suggestions-ia">
-            @for (suggestion of suggestionsIa(); track suggestion.nom + suggestion.quartier) {
-              <button
-                class="ajout-lieu-suggestion-ia"
-                (click)="choisirSuggestionIa(suggestion)"
-                [title]="'Choisir ' + suggestion.nom">
-                <span class="ajout-lieu-suggestion-ia-nom">{{ suggestion.nom }}</span>
-                <span class="ajout-lieu-suggestion-ia-lieu">{{ suggestion.quartier }}, {{ suggestion.ville }}</span>
-                <span class="ajout-lieu-suggestion-ia-raison">{{ suggestion.raison }}</span>
+        @if (!estLieuFranchise()) {
+          @if (suggestionsIaErreur()) {
+            <p class="ajout-lieu-recherche-message">
+              <span>{{ suggestionsIaErreur() }}</span>
+              <button class="ajout-lieu-message-fermer" (click)="suggestionsIaErreur.set(null)" aria-label="Masquer ce message" title="Masquer ce message">
+                <ion-icon name="close-outline"></ion-icon>
               </button>
-            }
-          </div>
-        } @else if (suggestionsIaEffectuee()) {
-          <p class="ajout-lieu-hint">Aucune suggestion trouvée par l'IA pour ce nom — choisis un quartier manuellement.</p>
+            </p>
+          }
+
+          @if (suggestionsIa().length) {
+            <div class="ajout-lieu-suggestions-ia-entete">
+              <p class="ajout-lieu-hint ajout-lieu-hint-ia">
+                <ion-icon name="sparkles-outline"></ion-icon>
+                Suggestions IA — à vérifier
+              </p>
+              <button class="ajout-lieu-message-fermer" (click)="suggestionsIa.set([])" aria-label="Masquer les suggestions" title="Masquer les suggestions">
+                <ion-icon name="close-outline"></ion-icon>
+              </button>
+            </div>
+            <div class="ajout-lieu-suggestions-ia">
+              @for (suggestion of suggestionsIa(); track suggestion.nom + suggestion.quartier) {
+                <button
+                  class="ajout-lieu-suggestion-ia"
+                  (click)="choisirSuggestionIa(suggestion)"
+                  [title]="'Choisir ' + suggestion.nom">
+                  <span class="ajout-lieu-suggestion-ia-nom">{{ suggestion.nom }}</span>
+                  <span class="ajout-lieu-suggestion-ia-lieu">{{ suggestion.quartier }}, {{ suggestion.ville }}</span>
+                  <span class="ajout-lieu-suggestion-ia-raison">{{ suggestion.raison }}</span>
+                </button>
+              }
+            </div>
+          } @else if (suggestionsIaEffectuee()) {
+            <p class="ajout-lieu-hint">Aucune suggestion trouvée par l'IA pour ce nom — choisis un quartier manuellement.</p>
+          }
         }
       }
 

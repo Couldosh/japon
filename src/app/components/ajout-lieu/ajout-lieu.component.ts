@@ -452,6 +452,20 @@ export class AjoutLieuComponent implements OnInit {
     }
   }
 
+  /** Bascule la case "Franchise" — en l'activant, efface les suggestions IA et le résultat
+   * Google Places d'une éventuelle recherche précédente (par quartier, donc sans sens une fois
+   * la case cochée) pour ne pas laisser un résidu confus à l'écran. */
+  basculerFranchise(active: boolean): void {
+    this.estFranchise.set(active);
+    if (active) {
+      this.suggestionsIa.set([]);
+      this.suggestionsIaEffectuee.set(false);
+      this.suggestionsIaErreur.set(null);
+      this.rechercheMessage.set(null);
+      this.photoApercu.set(null);
+    }
+  }
+
   choisirQuartier(nom: string): void {
     this.quartier.set(nom);
     this.pickerQuartierOuvert.set(false);
@@ -540,6 +554,8 @@ export class AjoutLieuComponent implements OnInit {
    * Google Places / Description IA / Plats IA) : décide lui-même quels services appeler selon
    * ce qui est déjà renseigné dans le formulaire plutôt que de laisser l'utilisateur choisir le
    * bon bouton dans le bon ordre.
+   * - Franchise (pas de quartier unique à choisir, voir completerAutomatiquementFranchise()) →
+   *   description + plats seulement, à partir du seul Nom.
    * - Pas encore de quartier connu → identification IA à partir du seul Nom
    *   (rechercherSuggestionsIa()) ; choisir une suggestion (choisirSuggestionIa()) enchaîne
    *   ensuite automatiquement sur completerAutomatiquement(). En parallèle, pour un Restaurant
@@ -554,6 +570,11 @@ export class AjoutLieuComponent implements OnInit {
    */
   async remplirAutomatiquement(): Promise<void> {
     if (!this.nom().trim() || this.remplissageAutoEnCours()) {
+      return;
+    }
+
+    if (this.estLieuFranchise()) {
+      await this.completerAutomatiquementFranchise();
       return;
     }
 
@@ -586,6 +607,24 @@ export class AjoutLieuComponent implements OnInit {
     if (this.type() === 'restaurant' && this.platsSelectionnes().length === 0) {
       await this.extrairePlatsIa();
     }
+  }
+
+  /** Franchise (pas de quartier unique choisi par l'utilisateur, voir soumettreFranchise()) :
+   * ni l'identification IA par Nom seul (rechercherSuggestionsIa(), qui vise à faire choisir
+   * *un* quartier) ni la recherche Google Places par quartier (rechercherPlaces()) n'ont de
+   * sens ici — soumettreFranchise() fait déjà sa propre recherche Places quartier par quartier
+   * à la soumission. Seules la description et, pour un restaurant, les plats sont générés une
+   * fois par l'IA à partir du seul Nom (+ Type), puis dupliqués sur chaque ligne créée (voir
+   * construireValeursFranchise()). */
+  private async completerAutomatiquementFranchise(): Promise<void> {
+    const taches: Promise<void>[] = [];
+    if (!this.description().trim()) {
+      taches.push(this.genererDescriptionIa());
+    }
+    if (this.type() === 'restaurant' && this.platsSelectionnes().length === 0) {
+      taches.push(this.extrairePlatsIa());
+    }
+    await Promise.all(taches);
   }
 
   /**
@@ -736,11 +775,13 @@ export class AjoutLieuComponent implements OnInit {
   }
 
   /** Génère une description via le backend IA (ClaudeApiTkt) à partir de Nom/Type/Quartier et
-   * du résumé Google Places de la dernière recherche. Demande confirmation avant d'écraser une
-   * description déjà saisie, comme pour Lien/Localisation (confirmerEcrasement). */
+   * du résumé Google Places de la dernière recherche. Quartier peut être absent (mode
+   * Franchise, voir completerAutomatiquementFranchise()) : le backend accepte `quartier: null`
+   * et se rabat sur Nom/Type seuls. Demande confirmation avant d'écraser une description déjà
+   * saisie, comme pour Lien/Localisation (confirmerEcrasement). */
   async genererDescriptionIa(): Promise<void> {
     const nom = this.nom().trim();
-    if (!nom || !this.quartier() || this.descriptionIaEnCours()) {
+    if (!nom || this.descriptionIaEnCours()) {
       return;
     }
 
