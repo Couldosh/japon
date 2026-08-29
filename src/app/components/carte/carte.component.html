@@ -6,39 +6,54 @@
 } @else {
   <div #carteEl class="carte-conteneur"></div>
 
-  @if (aucunLieuAffiche()) {
+  @if (modeCarte() === 'normal' && aucunLieuAffiche()) {
     <div class="carte-etat-vide">
       <p>Aucun lieu ne correspond aux filtres actifs.</p>
       <ion-button fill="outline" size="small" (click)="filtrerFavoris.set(false); filtrerOuverts.set(false)" title="Afficher tous les lieux">Afficher tous les lieux</ion-button>
     </div>
   }
 
-  <button
-    class="bouton-favoris"
-    [class.bouton-favoris-actif]="filtrerFavoris()"
-    (click)="basculerFiltreFavoris()"
-    [attr.aria-label]="filtrerFavoris() ? 'Afficher tous les lieux' : 'Afficher seulement mes favoris'"
-    [attr.title]="filtrerFavoris() ? 'Afficher tous les lieux' : 'Afficher seulement mes favoris'">
-    <ion-icon [name]="filtrerFavoris() ? 'heart' : 'heart-outline'"></ion-icon>
-  </button>
+  <!-- Deux modes mutuellement exclusifs (pas un calque additionnel) : Normal
+       affiche les lieux du voyage comme avant, Stamps bascule sur la couche
+       "Eki stamps" (voir CarteComponent.basculerModeCarte()). -->
+  <div class="mode-carte">
+    <button
+      class="mode-carte-bouton"
+      [class.mode-carte-bouton-actif]="modeCarte() === 'normal'"
+      (click)="basculerModeCarte('normal')"
+      aria-label="Lieux du voyage"
+      title="Lieux du voyage">
+      <ion-icon name="map-outline"></ion-icon>
+    </button>
+    <button
+      class="mode-carte-bouton"
+      [class.mode-carte-bouton-actif]="modeCarte() === 'stamps'"
+      (click)="basculerModeCarte('stamps')"
+      aria-label="Eki stamps"
+      title="Eki stamps">
+      <ion-icon name="ticket-outline"></ion-icon>
+    </button>
+  </div>
 
-  <button
-    class="bouton-ouverts"
-    [class.bouton-ouverts-actif]="filtrerOuverts()"
-    (click)="basculerFiltreOuverts()"
-    [attr.aria-label]="filtrerOuverts() ? 'Afficher tous les lieux' : 'Afficher seulement les lieux ouverts'"
-    [attr.title]="filtrerOuverts() ? 'Afficher tous les lieux' : 'Afficher seulement les lieux ouverts'">
-    <ion-icon name="time-outline"></ion-icon>
-  </button>
+  @if (modeCarte() === 'normal') {
+    <button
+      class="bouton-favoris"
+      [class.bouton-favoris-actif]="filtrerFavoris()"
+      (click)="basculerFiltreFavoris()"
+      [attr.aria-label]="filtrerFavoris() ? 'Afficher tous les lieux' : 'Afficher seulement mes favoris'"
+      [attr.title]="filtrerFavoris() ? 'Afficher tous les lieux' : 'Afficher seulement mes favoris'">
+      <ion-icon [name]="filtrerFavoris() ? 'heart' : 'heart-outline'"></ion-icon>
+    </button>
 
-  <button
-    class="bouton-eki-stamps"
-    [class.bouton-eki-stamps-actif]="afficherEkiStamps()"
-    (click)="basculerEkiStamps()"
-    [attr.aria-label]="afficherEkiStamps() ? 'Masquer les eki stamps' : 'Afficher les eki stamps'"
-    [attr.title]="afficherEkiStamps() ? 'Masquer les eki stamps' : 'Afficher les eki stamps'">
-    <ion-icon name="ticket-outline"></ion-icon>
-  </button>
+    <button
+      class="bouton-ouverts"
+      [class.bouton-ouverts-actif]="filtrerOuverts()"
+      (click)="basculerFiltreOuverts()"
+      [attr.aria-label]="filtrerOuverts() ? 'Afficher tous les lieux' : 'Afficher seulement les lieux ouverts'"
+      [attr.title]="filtrerOuverts() ? 'Afficher tous les lieux' : 'Afficher seulement les lieux ouverts'">
+      <ion-icon name="time-outline"></ion-icon>
+    </button>
+  }
 
   @if (position()) {
     <button class="bouton-recentrer" (click)="recentrer()" aria-label="Recentrer sur ma position" title="Recentrer sur ma position">

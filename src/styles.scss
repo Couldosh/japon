@@ -49,18 +49,6 @@
   box-shadow: 0 0 0 2px var(--ion-color-primary, #3880ff);
 }
 
-/* Couche "Eki stamps" (voir CarteComponent.basculerEkiStamps()) : un simple point,
-   volontairement plus discret que .marqueur-emoji — ce sont ~1600 points de
-   référence secondaires, pas les lieux du voyage. */
-.marqueur-eki-stamp {
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
-  background: var(--ion-color-tertiary, #5260ff);
-  border: 2px solid white;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
-}
-
 .popup-eki-stamp {
   font-size: 13px;
   line-height: 1.5;

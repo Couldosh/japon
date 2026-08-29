@@ -6,14 +6,21 @@ import {
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { IonIcon, IonButton } from '@ionic/angular/standalone';
 import { addIcons } from 'ionicons';
-import { locateOutline, heart, heartOutline, timeOutline, ticketOutline } from 'ionicons/icons';
+import { locateOutline, heart, heartOutline, timeOutline, ticketOutline, mapOutline } from 'ionicons/icons';
 import type * as LeafletType from 'leaflet';
 
 import { LieuAffichable } from '../../models/lieu-affichable.model';
 import { EkiStampModel } from '../../models/eki-stamp.model';
 import { FavorisService } from '../../service/favoris/favoris.service';
 import { EkiStampService } from '../../service/eki-stamp/eki-stamp.service';
+import { emojiEkiStamp } from '../../utils/emoji-eki-stamp';
 import { environment } from '../../../environments/environment';
+
+/** Les deux modes d'affichage de la Carte : les lieux du voyage (comportement historique,
+ * filtres favoris/ouverts inclus), ou la couche "Eki stamps" — mutuellement exclusifs,
+ * pas un simple calque additionnel, pour ne pas surcharger la carte de ~1600 points
+ * en plus des lieux. */
+type ModeCarte = 'normal' | 'stamps';
 
 // Leaflet + leaflet.markercluster sont chargés en scripts globaux classiques
 // (angular.json > build > options > scripts), PAS importés en module ES.
@@ -88,12 +95,12 @@ export class CarteComponent implements AfterViewInit, OnDestroy {
     (this.filtrerFavoris() || this.filtrerOuverts()) && this.lieuxFiltres().length === 0
   );
 
-  /** Couche indépendante des lieux du Sheet (voir docs/architecture-et-pieges.md) : les
-   * ~1600 "eki stamps" du carnet de gares/lieux touristiques, chargés depuis
-   * public/eki-stamps.json à la demande (voir basculerEkiStamps()), pas au montage —
-   * fichier de ~700 Ko qu'un utilisateur qui n'active jamais cette couche ne doit
-   * jamais télécharger. */
-  readonly afficherEkiStamps = signal(false);
+  /** Mode d'affichage indépendant des lieux du Sheet (voir docs/architecture-et-pieges.md) :
+   * bascule vers les ~1600 "eki stamps" du carnet de gares/lieux touristiques, chargés
+   * depuis public/eki-stamps.json à la demande (voir basculerModeCarte()), pas au
+   * montage — fichier de ~700 Ko qu'un utilisateur qui ne passe jamais en mode Stamps
+   * ne doit jamais télécharger. */
+  readonly modeCarte = signal<ModeCarte>('normal');
   private ekiStampsChargement = false;
   // Conservés après le premier chargement pour pouvoir reconstruire le layer
   // group si la carte est réinitialisée (reessayer() après une erreur) sans
@@ -126,7 +133,7 @@ export class CarteComponent implements AfterViewInit, OnDestroy {
   private carteInitialisee = false;
 
   constructor() {
-    addIcons({ locateOutline, heart, heartOutline, timeOutline, ticketOutline });
+    addIcons({ locateOutline, heart, heartOutline, timeOutline, ticketOutline, mapOutline });
 
     effect(() => this.mettreAJourMarqueursLieux(this.lieuxFiltres()));
     effect(() => this.mettreAJourMarqueurPosition(this.position()));
@@ -188,39 +195,52 @@ export class CarteComponent implements AfterViewInit, OnDestroy {
   }
 
   /**
-   * Bascule la couche "Eki stamps". Charge public/eki-stamps.json au premier
-   * affichage seulement (this.ekiStampsChargement), puis se contente d'attacher/
-   * détacher le layer group déjà construit — pas de rechargement ni de
-   * reconstruction des marqueurs aux bascules suivantes.
+   * Bascule entre les deux modes de la Carte (voir ModeCarte). Charge
+   * public/eki-stamps.json au premier passage en mode Stamps seulement
+   * (this.ekiStampsChargement), puis se contente d'attacher/détacher les
+   * layer groups déjà construits — pas de rechargement ni de reconstruction
+   * des marqueurs aux bascules suivantes.
    */
-  basculerEkiStamps(): void {
-    this.afficherEkiStamps.set(!this.afficherEkiStamps());
+  basculerModeCarte(mode: ModeCarte): void {
+    if (this.modeCarte() === mode) {
+      return;
+    }
+    this.modeCarte.set(mode);
 
-    if (this.afficherEkiStamps() && !this.ekiStampsChargement) {
+    if (mode === 'stamps' && !this.ekiStampsChargement) {
       this.ekiStampsChargement = true;
       this.ekiStampService.getEkiStamps()
         .pipe(takeUntilDestroyed(this.destroyRef))
         .subscribe(stamps => {
           this.ekiStampsCache = stamps;
           this.construireMarqueursEkiStamps(stamps);
-          this.appliquerVisibiliteEkiStamps();
+          this.appliquerVisibiliteCouches();
         });
       return;
     }
 
-    this.appliquerVisibiliteEkiStamps();
+    this.appliquerVisibiliteCouches();
   }
 
-  private appliquerVisibiliteEkiStamps(): void {
-    if (!this.carte || !this.groupeEkiStamps) {
+  /** Attache/détache chaque layer group selon le mode courant — les deux couches
+   * restent construites en mémoire en permanence, seule leur présence sur la
+   * carte Leaflet change, pour ne jamais avoir à les reconstruire au retour
+   * sur un mode déjà visité. */
+  private appliquerVisibiliteCouches(): void {
+    if (!this.carte || !this.groupeMarqueurs || !this.groupeEkiStamps) {
       return;
     }
-    const doitAfficher = this.afficherEkiStamps();
-    const dejaAffiche = this.carte.hasLayer(this.groupeEkiStamps);
-    if (doitAfficher && !dejaAffiche) {
-      this.carte.addLayer(this.groupeEkiStamps);
-    } else if (!doitAfficher && dejaAffiche) {
-      this.carte.removeLayer(this.groupeEkiStamps);
+    const modeStamps = this.modeCarte() === 'stamps';
+    this.basculerCouche(this.groupeMarqueurs, !modeStamps);
+    this.basculerCouche(this.groupeEkiStamps, modeStamps);
+  }
+
+  private basculerCouche(groupe: LeafletType.MarkerClusterGroup, visible: boolean): void {
+    const dejaPresent = this.carte!.hasLayer(groupe);
+    if (visible && !dejaPresent) {
+      this.carte!.addLayer(groupe);
+    } else if (!visible && dejaPresent) {
+      this.carte!.removeLayer(groupe);
     }
   }
 
@@ -230,10 +250,10 @@ export class CarteComponent implements AfterViewInit, OnDestroy {
     }
     for (const stamp of stamps) {
       const icone = L.divIcon({
-        html: '<div class="marqueur-eki-stamp"></div>',
+        html: `<div class="marqueur-emoji">${emojiEkiStamp(stamp)}</div>`,
         className: 'marqueur-conteneur',
-        iconSize: [16, 16],
-        iconAnchor: [8, 8],
+        iconSize: [34, 34],
+        iconAnchor: [17, 17],
       });
       const marqueur = L.marker([stamp.latitude, stamp.longitude], { icon: icone });
       marqueur.bindPopup(this.popupEkiStamp(stamp));
@@ -291,20 +311,14 @@ export class CarteComponent implements AfterViewInit, OnDestroy {
       }).addTo(this.carte);
 
       this.groupeMarqueurs = L.markerClusterGroup();
-      this.carte.addLayer(this.groupeMarqueurs);
-
-      // Pas ajoutée au layer group tout de suite : n'est attachée à la carte
-      // que si la couche est déjà demandée (voir basculerEkiStamps()). Si des
-      // stamps sont déjà en cache (reessayer() après une erreur d'init
-      // survenue après un premier chargement), reconstruit directement les
-      // marqueurs sans refaire d'appel HTTP.
       this.groupeEkiStamps = L.markerClusterGroup();
+      // Si des stamps sont déjà en cache (reessayer() après une erreur d'init
+      // survenue après un premier chargement en mode Stamps), reconstruit
+      // directement les marqueurs sans refaire d'appel HTTP.
       if (this.ekiStampsCache.length > 0) {
         this.construireMarqueursEkiStamps(this.ekiStampsCache);
       }
-      if (this.afficherEkiStamps()) {
-        this.carte.addLayer(this.groupeEkiStamps);
-      }
+      this.appliquerVisibiliteCouches();
 
       this.mettreAJourMarqueursLieux(this.lieuxFiltres());
       this.mettreAJourMarqueurPosition(this.position());
