@@ -1,15 +1,18 @@
 /// <reference types="leaflet.markercluster" />
 import {
-  AfterViewInit, Component, ElementRef, OnDestroy, ViewChild,
+  AfterViewInit, Component, DestroyRef, ElementRef, OnDestroy, ViewChild,
   computed, effect, inject, input, output, signal
 } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { IonIcon, IonButton } from '@ionic/angular/standalone';
 import { addIcons } from 'ionicons';
-import { locateOutline, heart, heartOutline, timeOutline } from 'ionicons/icons';
+import { locateOutline, heart, heartOutline, timeOutline, ticketOutline } from 'ionicons/icons';
 import type * as LeafletType from 'leaflet';
 
 import { LieuAffichable } from '../../models/lieu-affichable.model';
+import { EkiStampModel } from '../../models/eki-stamp.model';
 import { FavorisService } from '../../service/favoris/favoris.service';
+import { EkiStampService } from '../../service/eki-stamp/eki-stamp.service';
 import { environment } from '../../../environments/environment';
 
 // Leaflet + leaflet.markercluster sont chargés en scripts globaux classiques
@@ -46,6 +49,8 @@ const ZOOM_RECENTRAGE = 16;
 })
 export class CarteComponent implements AfterViewInit, OnDestroy {
   private readonly favorisService = inject(FavorisService);
+  private readonly ekiStampService = inject(EkiStampService);
+  private readonly destroyRef = inject(DestroyRef);
 
   readonly lieux = input.required<LieuAffichable[]>();
   readonly position = input<{ latitude: number; longitude: number } | null>(null);
@@ -83,10 +88,23 @@ export class CarteComponent implements AfterViewInit, OnDestroy {
     (this.filtrerFavoris() || this.filtrerOuverts()) && this.lieuxFiltres().length === 0
   );
 
+  /** Couche indépendante des lieux du Sheet (voir docs/architecture-et-pieges.md) : les
+   * ~1600 "eki stamps" du carnet de gares/lieux touristiques, chargés depuis
+   * public/eki-stamps.json à la demande (voir basculerEkiStamps()), pas au montage —
+   * fichier de ~700 Ko qu'un utilisateur qui n'active jamais cette couche ne doit
+   * jamais télécharger. */
+  readonly afficherEkiStamps = signal(false);
+  private ekiStampsChargement = false;
+  // Conservés après le premier chargement pour pouvoir reconstruire le layer
+  // group si la carte est réinitialisée (reessayer() après une erreur) sans
+  // reproposer un appel HTTP.
+  private ekiStampsCache: EkiStampModel[] = [];
+
   @ViewChild('carteEl') private readonly carteEl!: ElementRef<HTMLDivElement>;
 
   private carte?: LeafletType.Map;
   private groupeMarqueurs?: LeafletType.MarkerClusterGroup;
+  private groupeEkiStamps?: LeafletType.MarkerClusterGroup;
   private marqueurPosition?: LeafletType.Marker;
 
   // Évite de reconstruire tous les marqueurs (coûteux : clearLayers + reclustering)
@@ -108,7 +126,7 @@ export class CarteComponent implements AfterViewInit, OnDestroy {
   private carteInitialisee = false;
 
   constructor() {
-    addIcons({ locateOutline, heart, heartOutline, timeOutline });
+    addIcons({ locateOutline, heart, heartOutline, timeOutline, ticketOutline });
 
     effect(() => this.mettreAJourMarqueursLieux(this.lieuxFiltres()));
     effect(() => this.mettreAJourMarqueurPosition(this.position()));
@@ -170,6 +188,73 @@ export class CarteComponent implements AfterViewInit, OnDestroy {
   }
 
   /**
+   * Bascule la couche "Eki stamps". Charge public/eki-stamps.json au premier
+   * affichage seulement (this.ekiStampsChargement), puis se contente d'attacher/
+   * détacher le layer group déjà construit — pas de rechargement ni de
+   * reconstruction des marqueurs aux bascules suivantes.
+   */
+  basculerEkiStamps(): void {
+    this.afficherEkiStamps.set(!this.afficherEkiStamps());
+
+    if (this.afficherEkiStamps() && !this.ekiStampsChargement) {
+      this.ekiStampsChargement = true;
+      this.ekiStampService.getEkiStamps()
+        .pipe(takeUntilDestroyed(this.destroyRef))
+        .subscribe(stamps => {
+          this.ekiStampsCache = stamps;
+          this.construireMarqueursEkiStamps(stamps);
+          this.appliquerVisibiliteEkiStamps();
+        });
+      return;
+    }
+
+    this.appliquerVisibiliteEkiStamps();
+  }
+
+  private appliquerVisibiliteEkiStamps(): void {
+    if (!this.carte || !this.groupeEkiStamps) {
+      return;
+    }
+    const doitAfficher = this.afficherEkiStamps();
+    const dejaAffiche = this.carte.hasLayer(this.groupeEkiStamps);
+    if (doitAfficher && !dejaAffiche) {
+      this.carte.addLayer(this.groupeEkiStamps);
+    } else if (!doitAfficher && dejaAffiche) {
+      this.carte.removeLayer(this.groupeEkiStamps);
+    }
+  }
+
+  private construireMarqueursEkiStamps(stamps: EkiStampModel[]): void {
+    if (!this.groupeEkiStamps) {
+      return;
+    }
+    for (const stamp of stamps) {
+      const icone = L.divIcon({
+        html: '<div class="marqueur-eki-stamp"></div>',
+        className: 'marqueur-conteneur',
+        iconSize: [16, 16],
+        iconAnchor: [8, 8],
+      });
+      const marqueur = L.marker([stamp.latitude, stamp.longitude], { icon: icone });
+      marqueur.bindPopup(this.popupEkiStamp(stamp));
+      this.groupeEkiStamps.addLayer(marqueur);
+    }
+  }
+
+  /** Popup Leaflet native (pas la popup détail de l'app, propre aux LieuAffichable) :
+   * un eki stamp n'a pas les champs attendus par cette dernière (Description, Avis...). */
+  private popupEkiStamp(stamp: EkiStampModel): string {
+    const lignes = [`<strong>${stamp.nom}</strong>`, stamp.nomJaponais];
+    if (stamp.nomAnglais) lignes.push(stamp.nomAnglais);
+    lignes.push(stamp.categorie);
+    if (stamp.dateFermeture) lignes.push(`Fermé : ${stamp.dateFermeture}`);
+    if (stamp.sansPersonnelDepuis) lignes.push(`Sans personnel depuis ${stamp.sansPersonnelDepuis}`);
+    lignes.push(stamp.tamponDisponible ? 'Tampon disponible' : 'Pas de tampon');
+    lignes.push(`<a href="${stamp.url}" target="_blank" rel="noopener">Fiche funakiya.com</a>`);
+    return `<div class="popup-eki-stamp">${lignes.map(l => `<div>${l}</div>`).join('')}</div>`;
+  }
+
+  /**
    * Recentre la carte sur les marqueurs actuellement affichés, indépendamment du
    * cadrage initial déjà effectué (contrairement à `ajusterVueInitiale`, qui ne
    * joue qu'une seule fois). Utilisé quand on arrive depuis un filtre quartier.
@@ -208,6 +293,19 @@ export class CarteComponent implements AfterViewInit, OnDestroy {
       this.groupeMarqueurs = L.markerClusterGroup();
       this.carte.addLayer(this.groupeMarqueurs);
 
+      // Pas ajoutée au layer group tout de suite : n'est attachée à la carte
+      // que si la couche est déjà demandée (voir basculerEkiStamps()). Si des
+      // stamps sont déjà en cache (reessayer() après une erreur d'init
+      // survenue après un premier chargement), reconstruit directement les
+      // marqueurs sans refaire d'appel HTTP.
+      this.groupeEkiStamps = L.markerClusterGroup();
+      if (this.ekiStampsCache.length > 0) {
+        this.construireMarqueursEkiStamps(this.ekiStampsCache);
+      }
+      if (this.afficherEkiStamps()) {
+        this.carte.addLayer(this.groupeEkiStamps);
+      }
+
       this.mettreAJourMarqueursLieux(this.lieuxFiltres());
       this.mettreAJourMarqueurPosition(this.position());
       this.ajusterVueInitiale();
@@ -217,6 +315,7 @@ export class CarteComponent implements AfterViewInit, OnDestroy {
       this.carte?.remove();
       this.carte = undefined;
       this.groupeMarqueurs = undefined;
+      this.groupeEkiStamps = undefined;
       this.signatureMarqueurs = '';
       this.vueInitialeAjustee = false;
     }

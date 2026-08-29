@@ -31,6 +31,15 @@
     <ion-icon name="time-outline"></ion-icon>
   </button>
 
+  <button
+    class="bouton-eki-stamps"
+    [class.bouton-eki-stamps-actif]="afficherEkiStamps()"
+    (click)="basculerEkiStamps()"
+    [attr.aria-label]="afficherEkiStamps() ? 'Masquer les eki stamps' : 'Afficher les eki stamps'"
+    [attr.title]="afficherEkiStamps() ? 'Masquer les eki stamps' : 'Afficher les eki stamps'">
+    <ion-icon name="ticket-outline"></ion-icon>
+  </button>
+
   @if (position()) {
     <button class="bouton-recentrer" (click)="recentrer()" aria-label="Recentrer sur ma position" title="Recentrer sur ma position">
       <ion-icon name="locate-outline"></ion-icon>
