@@ -36,7 +36,7 @@ Modale en bottom-sheet swipeable (`[breakpoints]="[0,1]"`), commune aux 3 types 
 
 ## Carte (`components/carte/`)
 
-- Leaflet + `leaflet.markercluster`, tuiles **raster** Geoapify (`osm-bright`, schéma OpenMapTiles — remplace MapTiler, quota gratuit trop vite atteint) — pas de WebGL/vecteur (voir pièges connus : ça plantait sur la machine de dev).
+- Leaflet + `leaflet.markercluster`, tuiles **raster** Geoapify (`osm-bright`, schéma OpenMapTiles — remplace MapTiler, quota gratuit trop vite atteint) — pas de WebGL/vecteur (voir pièges connus : ça plantait sur la machine de dev). Tuiles déjà vues mises en cache par appareil via un Service Worker dédié (`public/sw-tiles.js`, voir pièges connus) pour ne pas les redemander à chaque pan/zoom.
 - **Composant monté en permanence**, masqué en CSS (`visibility:hidden`) plutôt que détruit via `@if` — recréer le contexte carte à chaque changement d'onglet causait des "WebGL context was lost".
 - Marqueur emoji par lieu, marqueur de position dédié, bouton recentrage sur la position.
 - Filtre "favoris uniquement" (bouton cœur haut-droit) ; overlay d'état vide si le filtre ne retourne aucun marqueur.
