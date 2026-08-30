@@ -5,7 +5,7 @@ Application Ionic/Angular servant de guide de voyage pour un séjour au Japon : 
 ## Fonctionnalités
 
 - **Liste** — restaurants / activités / magasins, recherche, filtre par type et par quartier (regroupé par ville), tri par distance (ou alphabétique sans géolocalisation), horaires d'ouverture en temps réel (avec alerte "ferme bientôt" / "réouvre à...").
-- **Carte** — Leaflet + tuiles raster MapTiler, position en direct, filtre "favoris uniquement", recentrage automatique.
+- **Carte** — Leaflet + tuiles raster Geoapify, position en direct, filtre "favoris uniquement", recentrage automatique.
 - **Favoris** — mise en favori d'un lieu depuis sa fiche détail, badge de comptage sur l'onglet.
 - **Planning** — itinéraire jour par jour depuis un onglet dédié du Sheet, jour courant mis en évidence et auto-scrollé, filtre par ville, lien direct vers la fiche d'un lieu quand l'activité y correspond.
 - **Notes personnelles** — note libre par lieu, stockée localement sur l'appareil (pas de compte, pas de synchronisation).
@@ -15,7 +15,7 @@ Application Ionic/Angular servant de guide de voyage pour un séjour au Japon : 
 
 - Angular 21 (standalone components, signals, zoneless change detection)
 - Ionic Framework (composants UI, gestion des vues/modales)
-- Leaflet + leaflet.markercluster (carte), tuiles MapTiler
+- Leaflet + leaflet.markercluster (carte), tuiles Geoapify
 - ngx-papaparse (parsing CSV du Google Sheet)
 - RxJS
 
@@ -34,7 +34,7 @@ npm test              # tests unitaires (Karma/Jasmine)
 
 ## Configuration
 
-`src/environments/environment.ts` contient la clé API MapTiler utilisée par l'onglet Carte. Cette clé est volontairement visible côté client : MapTiler restreint l'usage par domaine autorisé (dashboard MapTiler → la clé → *Allowed origins/domains*), pas par confidentialité de la clé elle-même.
+`src/environments/environment.ts` contient la clé API Geoapify utilisée par l'onglet Carte (créer un compte gratuit sur [geoapify.com](https://www.geoapify.com/), *MyProjects* → créer un projet → une clé API y est générée automatiquement). Cette clé est volontairement visible côté client : Geoapify restreint l'usage par domaine autorisé (dashboard Geoapify → la clé → référents HTTP autorisés), pas par confidentialité de la clé elle-même. Le plan gratuit (~360 000 tuiles/mois) impose l'attribution "Powered by Geoapify" déjà incluse dans `CarteComponent`.
 
 ### Écriture dans le Sheet depuis l'app ("Ajouter un lieu")
 

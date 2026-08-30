@@ -1,8 +1,11 @@
-// Clé API MapTiler (gratuite) pour le fond de carte vectoriel de l'onglet Carte.
-// Contrairement aux credentials des scripts Node (scripts/*.mjs), cette clé est
-// destinée à être visible côté client — c'est le modèle de sécurité de MapTiler :
-// on la restreint par domaine autorisé (dashboard MapTiler > la clé > "Allowed
-// origins/domains"), pas en la gardant secrète.
+// Clé API Geoapify (gratuite) pour le fond de carte raster de l'onglet Carte —
+// remplace MapTiler (quota gratuit 100k tuiles/mois trop vite atteint) par un
+// fournisseur au quota plus large (~360k tuiles/mois) basé sur le même schéma
+// OpenMapTiles, voir CarteComponent.initialiserCarte(). Contrairement aux
+// credentials des scripts Node (scripts/*.mjs), cette clé est destinée à être
+// visible côté client — c'est le modèle de sécurité de Geoapify : on la
+// restreint par domaine autorisé (dashboard Geoapify > la clé > référents
+// autorisés), pas en la gardant secrète.
 //
 // googleClientId / spreadsheetId : mêmes principes pour la fonctionnalité
 // "Ajouter un lieu" (écriture dans le Sheet). googleClientId est un ID client
@@ -30,7 +33,7 @@
 // jobsApiUrl : menu caché "jobs" (lancement des scripts de maintenance du Sheet depuis l'app,
 // voir JobsService/JobsPanelComponent) — même backend ClaudeApiTkt, mêmes principes que iaApiUrl.
 export const environment = {
-  maptilerApiKey: '7YdE9Q6gkkL2xYRMRXEm',
+  geoapifyApiKey: '0ca44e9faad04009a76bfb3820c654b8',
   googleClientId: '269278292482-8kiuosoicm657f8m0d06vcn7cv883qqd.apps.googleusercontent.com',
   spreadsheetId: '1ZD1owGxkH-cLFIG3Sq7hrlWOgB2E1C2Qe4ChokZmkIc',
   placesApiKey: 'AIzaSyCwGuNICti1j2buomQq2EGY8U4L_3dPIS0',

@@ -63,7 +63,7 @@ export class CarteComponent implements AfterViewInit, OnDestroy {
   readonly position = input<{ latitude: number; longitude: number } | null>(null);
   /** True quand l'onglet Carte est effectivement affiché (le composant, lui, reste monté en
    * permanence). Déclenche l'initialisation de la carte (donc le premier chargement de tuiles
-   * MapTiler) à son premier passage à true, voir carteInitialisee/essayerInitialiser() ;
+   * Geoapify) à son premier passage à true, voir carteInitialisee/essayerInitialiser() ;
    * ensuite, ne sert plus qu'à invalidateSize() à chaque réaffichage. */
   readonly actif = input<boolean>(true);
   readonly lieuClique = output<LieuAffichable>();
@@ -125,10 +125,10 @@ export class CarteComponent implements AfterViewInit, OnDestroy {
   private vueInitialeAjustee = false;
 
   /** True dès qu'une tentative d'initialisation (réussie ou en erreur) a eu lieu — l'init
-   * elle-même (donc les requêtes de tuiles MapTiler) est différée au premier passage à
+   * elle-même (donc les requêtes de tuiles Geoapify) est différée au premier passage à
    * `actif`, pas déclenchée au montage du composant. Le composant reste monté en
    * permanence (voir docs/architecture-et-pieges.md), mais tant que l'onglet Carte n'a
-   * jamais été ouvert, aucune tuile n'est chargée — évite de consommer le quota MapTiler
+   * jamais été ouvert, aucune tuile n'est chargée — évite de consommer le quota Geoapify
    * pour les utilisateurs qui ne visitent jamais cet onglet. */
   private carteInitialisee = false;
 
@@ -298,13 +298,21 @@ export class CarteComponent implements AfterViewInit, OnDestroy {
         zoom: ZOOM_PAR_DEFAUT,
       });
 
-      // Tuiles raster MapTiler (rendu serveur du même style OpenMapTiles que la
-      // version vectorielle) : les noms romanisés ("name:latin") sont calculés
-      // par translittération et affichés même sans tag name:en explicite dans
-      // OSM (cas fréquent au Japon hors lieux connus). Aucun besoin de WebGL,
-      // contrairement à MapLibre GL qui posait problème sur cette machine.
-      L.tileLayer(`https://api.maptiler.com/maps/streets-v2/{z}/{x}/{y}{r}.png?key=${environment.maptilerApiKey}`, {
-        attribution: '&copy; <a href="https://www.maptiler.com/copyright/">MapTiler</a> ' +
+      // Tuiles raster Geoapify (style "osm-bright", rendu serveur du même schéma
+      // OpenMapTiles que l'ancien fond MapTiler) : les noms romanisés ("name:latin")
+      // sont calculés par translittération et affichés même sans tag name:en explicite
+      // dans OSM (cas fréquent au Japon hors lieux connus) — ce calcul fait partie du
+      // schéma OpenMapTiles open-source lui-même, pas d'une fonctionnalité propriétaire
+      // MapTiler, d'où la portabilité vers un autre hébergeur du même schéma. Remplace
+      // MapTiler (quota gratuit 100k tuiles/mois trop vite atteint) par Geoapify, dont
+      // le quota gratuit (~360k tuiles/mois, 3000 crédits/jour à 0,25 crédit/tuile) est
+      // nettement plus large. Aucun besoin de WebGL, contrairement à MapLibre GL qui
+      // posait problème sur cette machine.
+      L.tileLayer(`https://maps.geoapify.com/v1/tile/osm-bright/{z}/{x}/{y}{r}.png?apiKey=${environment.geoapifyApiKey}`, {
+        // "Powered by Geoapify" est une exigence contractuelle du plan gratuit
+        // (retirée sur un plan payant) — voir docs/architecture-et-pieges.md.
+        attribution: '&copy; <a href="https://www.geoapify.com/">Geoapify</a> ' +
+          '&copy; <a href="https://www.openmaptiles.org/">OpenMapTiles</a> ' +
           '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
         maxZoom: 20,
         detectRetina: true,
@@ -325,7 +333,7 @@ export class CarteComponent implements AfterViewInit, OnDestroy {
       this.ajusterVueInitiale();
     } catch (e) {
       console.error('Erreur lors de l\'initialisation de la carte :', e);
-      this.erreur.set("Impossible d'afficher la carte. Vérifie que la clé MapTiler est valide.");
+      this.erreur.set("Impossible d'afficher la carte. Vérifie que la clé Geoapify est valide.");
       this.carte?.remove();
       this.carte = undefined;
       this.groupeMarqueurs = undefined;
